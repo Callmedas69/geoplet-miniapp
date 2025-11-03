@@ -42,10 +42,75 @@ function validateEnv() {
 }
 
 /**
+ * Mock payment verification for TEST_MODE
+ * Bypasses Onchain.fi and performs local validation only
+ */
+async function verifyX402PaymentMock(paymentHeader: string): Promise<boolean> {
+  console.log('🧪 [TEST MODE] Mock payment verification (Onchain.fi bypassed)');
+
+  try {
+    const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
+
+    console.log('🧪 [TEST MODE] Mock Payment Details:', {
+      from: decoded.payload?.authorization?.from,
+      to: decoded.payload?.authorization?.to,
+      value: decoded.payload?.authorization?.value,
+      scheme: decoded.scheme,
+      network: decoded.network,
+    });
+
+    const checks = {
+      hasPayload: !!decoded.payload,
+      hasAuthorization: !!decoded.payload?.authorization,
+      hasSignature: !!decoded.payload?.signature,
+      isBaseNetwork: decoded.network === 'base',
+      isCorrectScheme: decoded.scheme === 'exact',
+      hasValidAmount: decoded.payload?.authorization?.value === '2000000', // 2.00 USDC in atomic units
+      hasValidRecipient: decoded.payload?.authorization?.to?.toLowerCase() === RECIPIENT_ADDRESS.toLowerCase(),
+    };
+
+    console.log('🧪 [TEST MODE] Mock Verification Checks:', checks);
+
+    const autoApprove = process.env.TEST_MODE_AUTO_APPROVE === 'true';
+
+    if (autoApprove) {
+      console.log('🧪 [TEST MODE] ✅ Payment AUTO-APPROVED (TEST_MODE_AUTO_APPROVE=true)');
+      return true;
+    }
+
+    const allChecksPassed = Object.values(checks).every(check => check === true);
+
+    if (allChecksPassed) {
+      console.log('🧪 [TEST MODE] ✅ Payment APPROVED (all checks passed)');
+      return true;
+    } else {
+      console.log('🧪 [TEST MODE] ❌ Payment REJECTED (checks failed)');
+      return false;
+    }
+
+  } catch (error: unknown) {
+    console.error('🧪 [TEST MODE] Mock verification error:', error);
+
+    if (process.env.TEST_MODE_AUTO_APPROVE === 'true') {
+      console.log('🧪 [TEST MODE] ✅ Payment AUTO-APPROVED (despite error)');
+      return true;
+    }
+
+    return false;
+  }
+}
+
+/**
  * Verify and settle x402 payment via Onchain.fi SDK
  *
- * This function both verifies the payment signature AND settles it onchain,
- * ensuring the USDC actually transfers to the recipient address.
+ * This function calls Onchain.fi's verifyAndSettle() which:
+ * 1. Verifies the EIP-3009 payment signature
+ * 2. Routes to optimal facilitator (Coinbase CDP, x402.rs, etc.)
+ * 3. Settles payment on-chain (USDC transfers to treasury)
+ * 4. Returns transaction hash for confirmation
+ *
+ * @param paymentHeader - Base64-encoded x402 payment authorization
+ * @returns true if payment verified AND settled successfully
  */
 async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
   try {
@@ -67,37 +132,60 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
       console.log('[TEST] Could not decode payment header');
     }
 
-    console.log('[TEST] Verifying x402 payment via Onchain.fi (verify only)...');
+    console.log('[ONCHAIN.FI] Verifying and settling x402 payment...');
 
-    const result = await client.verify({
+    const result = await client.verifyAndSettle(
       paymentHeader,
-      network: 'base',
-      expectedAmount: MINT_PRICE,
-      expectedToken: 'USDC',
-      recipientAddress: RECIPIENT_ADDRESS,
-    });
+      {
+        network: 'base',
+        expectedAmount: MINT_PRICE,
+        expectedToken: 'USDC',
+        recipientAddress: RECIPIENT_ADDRESS,
+      }
+    );
 
-    console.log('[TEST] Verify result:', {
-      valid: result.valid,
-      facilitator: result.facilitator,
-      from: result.from,
-      to: result.to,
-      amount: result.amount,
-      token: result.token,
+    console.log('[ONCHAIN.FI] Payment result:', {
+      verified: result.verified,
+      settled: result.settled,
       txHash: result.txHash,
+      facilitator: result.facilitator,
     });
 
-    console.log('[TEST] ⚠️  CHECK YOUR TREASURY WALLET TO SEE IF USDC TRANSFERRED!');
-    console.log('[TEST] Treasury Address:', RECIPIENT_ADDRESS);
-
-    return result.valid;
-  } catch (error: any) {
+    if (result.verified && result.settled) {
+      console.log('[ONCHAIN.FI] ✅ Payment successful! USDC transferred to treasury');
+      console.log('[ONCHAIN.FI] Transaction hash:', result.txHash);
+      console.log('[ONCHAIN.FI] Treasury address:', RECIPIENT_ADDRESS);
+      return true;
+    } else {
+      console.error('[ONCHAIN.FI] ❌ Payment failed:', {
+        verified: result.verified,
+        settled: result.settled,
+        reason: 'Payment not fully settled on-chain',
+      });
+      return false;
+    }
+  } catch (error: unknown) {
     console.error('[TEST] Payment verification error:', {
-      message: error?.message,
-      response: error?.response?.data,
-      status: error?.response?.status,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      error: error,
     });
     return false;
+  }
+}
+
+/**
+ * Payment verifier selector
+ * Routes to mock or real verification based on TEST_MODE
+ */
+async function getPaymentVerifier(paymentHeader: string): Promise<boolean> {
+  const isTestMode = process.env.TEST_MODE === 'true';
+
+  if (isTestMode) {
+    console.log('🧪 [TEST MODE] Using mock payment verification');
+    return verifyX402PaymentMock(paymentHeader);
+  } else {
+    console.log('🔒 [PRODUCTION] Using Onchain.fi payment verification');
+    return verifyX402Payment(paymentHeader);
   }
 }
 
@@ -249,9 +337,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify and settle payment via Onchain.fi
-    console.log('Verifying and settling x402 payment...');
-    const paymentValid = await verifyX402Payment(paymentHeader);
+    // Verify payment (mock or real based on TEST_MODE)
+    console.log('Verifying x402 payment...');
+    const paymentValid = await getPaymentVerifier(paymentHeader);
 
     if (!paymentValid) {
       return NextResponse.json(
@@ -286,12 +374,13 @@ export async function POST(request: NextRequest) {
       }
     );
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get mint signature error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate mint signature';
     return NextResponse.json(
       {
         error: 'Internal server error',
-        message: error.message || 'Failed to generate mint signature',
+        message: errorMessage,
       },
       { status: 500, headers: corsHeaders }
     );
