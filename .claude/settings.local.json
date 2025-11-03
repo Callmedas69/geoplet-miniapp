@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(npm install:*)",
+      "WebSearch",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:cookbook.openai.com)",
+      "Bash(npm run build:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm uninstall:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm search:*)",
+      "Bash(python -m json.tool:*)",
+      "WebFetch(domain:miniapps.farcaster.xyz)",
+      "Bash(move:*)",
+      "Bash(node test-contract.js:*)",
+      "Bash(del test-contract.js)",
+      "Bash(cp:*)",
+      "Bash(test:*)",
+      "Bash(cat:*)",
+      "Bash(del libx402.ts)",
+      "Bash(npm info:*)",
+      "WebFetch(domain:docs.cdp.coinbase.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:onchain.fi)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:docs.payai.network)",
+      "WebFetch(domain:www.quicknode.com)",
+      "WebFetch(domain:docs.onchain.fi)",
+      "Bash(npm view:*)",
+      "WebFetch(domain:basescan.org)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
+}

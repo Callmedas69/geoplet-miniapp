@@ -1,65 +1,166 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { sdk } from "@farcaster/miniapp-sdk";
+import { MobileWalletButton } from "@/components/MobileWalletButton";
+import { HeroSection } from "@/components/HeroSection";
+import { GenerateMintButton } from "@/components/GenerateMintButton";
+import { SuccessModal } from "@/components/SuccessModal";
+import { GallerySection } from "@/components/GallerySection";
+import { useWarplets } from "@/hooks/useWarplets";
+import { useAccount } from "wagmi";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Home() {
+  const [isSDKReady, setIsSDKReady] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [mintTxHash, setMintTxHash] = useState<string | null>(null);
+  const [mintedTokenId, setMintedTokenId] = useState<string | null>(null);
+
+  const { isConnected } = useAccount();
+  const { nft, fid, isLoading, error: fetchError, hasWarplet } = useWarplets();
+
+  // Initialize Farcaster SDK
+  useEffect(() => {
+    const initSDK = async () => {
+      try {
+        await sdk.actions.ready();
+        setIsSDKReady(true);
+        console.log("Farcaster SDK initialized");
+      } catch (error) {
+        console.error("Failed to initialize Farcaster SDK:", error);
+        // Continue anyway for development
+        setIsSDKReady(true);
+      }
+    };
+
+    initSDK();
+  }, []);
+
+  if (!isSDKReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f3daa1]/50">
+        <div className="text-black italic text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="flex min-h-screen flex-col bg-gray-100 mobile-safe-area">
+      {/* Mobile-Optimized Header */}
+      <header className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-black">GEOPLET</h1>
+          <p className="text-gray-600 text-xs sm:text-sm italic">
+            when geo meet warplets
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <MobileWalletButton />
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col gap-8 px-4 pb-safe">
+        {/* State-based rendering */}
+        {!isConnected ? (
+          <div className="max-w-md mx-auto bg-white rounded-2xl border-2 border-black p-8 text-black text-center my-8">
+            <div className="text-4xl mb-4">🔌</div>
+            <p className="text-sm">Connect your wallet to continue</p>
+          </div>
+        ) : isLoading ? (
+          <div className="max-w-md mx-auto bg-white rounded-2xl border-2 border-black p-8 text-black text-center my-8">
+            <div className="animate-spin text-4xl mb-4">⏳</div>
+            <p className="text-sm">Loading your Warplets...</p>
+          </div>
+        ) : fetchError ? (
+          <div className="max-w-md mx-auto bg-white rounded-2xl border-2 border-black p-8 text-black text-center my-8">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h3 className="text-lg font-semibold mb-2">
+              Error Loading Warplets
+            </h3>
+            <p className="text-sm text-red-600">{fetchError}</p>
+          </div>
+        ) : !hasWarplet || !nft ? (
+          <div className="max-w-md mx-auto bg-white rounded-2xl border-2 border-black p-8 text-black text-center space-y-4 my-8">
+            <div className="text-4xl">🖼️</div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">No Warplet Found</h3>
+              <p className="text-sm mb-1">
+                Your FID{fid ? ` #${fid}` : ""} doesn&apos;t have a Warplet NFT
+                yet.
+              </p>
+              <p className="text-xs text-gray-600">
+                Warplets use FID as token ID - you need Warplet #{fid}
+              </p>
+            </div>
+            <a
+              href={`https://opensea.io/assets/base/${process.env.NEXT_PUBLIC_WARPLETS_ADDRESS}/${fid}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-black text-white hover:bg-gray-800 px-4 py-2 rounded-lg font-medium"
+            >
+              View on OpenSea →
+            </a>
+          </div>
+        ) : (
+          <>
+            {/* Hero Section - 2 Grid Layout */}
+            <div className="my-4">
+              <HeroSection
+                warpletImage={nft.thumbnailUrl || nft.imageUrl}
+                warpletTokenId={nft.tokenId}
+                generatedImage={generatedImage}
+              />
+            </div>
+
+            {/* Generate & Mint Button */}
+            <div className="flex justify-center my-4">
+              <GenerateMintButton
+                generatedImage={generatedImage}
+                onGenerate={setGeneratedImage}
+                onSuccess={(hash, tokenId) => {
+                  setMintTxHash(hash);
+                  setMintedTokenId(tokenId);
+                  setShowSuccessModal(true);
+                }}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Gallery Section - Always show */}
+        <div className="my-8">
+          <GallerySection />
         </div>
       </main>
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          // Reset generated image after modal closes
+          setGeneratedImage(null);
+        }}
+        image={generatedImage}
+        txHash={mintTxHash}
+        tokenId={mintedTokenId}
+      />
+
+      {/* Footer */}
+      <footer className="mt-4 mb-safe text-center text-gray-500 text-[10px] sm:text-sm py-4">
+        <p>
+          💡 FREE during testing • Powered by OpenAI gpt-image-1 •{" "}
+          <a
+            href="https://onchain.fi"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-black"
+          >
+            Onchain.fi x402
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
