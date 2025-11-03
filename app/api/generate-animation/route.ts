@@ -63,9 +63,10 @@ async function verifyPayment(txHash: string, userAddress: string): Promise<boole
     }
 
     return true;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Payment verification failed:', error);
-    throw new Error(error.message || 'Payment verification failed');
+    const errorMessage = error instanceof Error ? error.message : 'Payment verification failed';
+    throw new Error(errorMessage);
   }
 }
 
@@ -109,7 +110,7 @@ async function generateAnimation(imageData: string): Promise<string> {
     }
 
     return animationUrl;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('xAI generation failed:', error);
 
     // Fallback: Return mock data for development
@@ -118,7 +119,8 @@ async function generateAnimation(imageData: string): Promise<string> {
       return 'https://example.com/mock-animation.mp4';
     }
 
-    throw new Error(error.message || 'Animation generation failed');
+    const errorMessage = error instanceof Error ? error.message : 'Animation generation failed';
+    throw new Error(errorMessage);
   }
 }
 
@@ -154,20 +156,21 @@ export async function POST(request: NextRequest) {
       animationUrl: resultAnimationUrl,
       txHash,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('API Error:', error);
 
     // Determine error status code
+    const errorMessage = error instanceof Error ? error.message : 'Animation generation failed';
     let statusCode = 500;
-    if (error.message.includes('Payment')) {
+    if (errorMessage.includes('Payment')) {
       statusCode = 402; // Payment Required
-    } else if (error.message.includes('Missing')) {
+    } else if (errorMessage.includes('Missing')) {
       statusCode = 400; // Bad Request
     }
 
     return NextResponse.json(
       {
-        error: error.message || 'Animation generation failed',
+        error: errorMessage,
         success: false,
       },
       { status: statusCode }

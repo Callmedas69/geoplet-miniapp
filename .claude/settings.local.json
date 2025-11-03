@@ -32,7 +32,8 @@
       "WebFetch(domain:www.quicknode.com)",
       "WebFetch(domain:docs.onchain.fi)",
       "Bash(npm view:*)",
-      "WebFetch(domain:basescan.org)"
+      "WebFetch(domain:basescan.org)",
+      "Bash(npx tsc:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
