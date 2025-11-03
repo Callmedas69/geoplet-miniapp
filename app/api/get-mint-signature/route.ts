@@ -1,3 +1,5 @@
+//api/get-mint-signature/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { createWalletClient, http, type Address, recoverTypedDataAddress, isAddressEqual } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -34,70 +36,19 @@ const MINT_PRICE = '2.00'; // $2.00 USDC
 const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
 const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS as string;
 
+// Mint voucher type
+interface MintVoucher {
+  to: string;
+  fid: string;
+  nonce: string;
+  deadline: string;
+}
+
 // Validate environment variables
 function validateEnv() {
   if (!PRIVATE_KEY) throw new Error('PRIVATE_KEY not configured');
   if (!RECIPIENT_ADDRESS) throw new Error('RECIPIENT_ADDRESS not configured');
   if (!process.env.ONCHAIN_FI_API_KEY) throw new Error('ONCHAIN_FI_API_KEY not configured');
-}
-
-/**
- * Mock payment verification for TEST_MODE
- * Bypasses Onchain.fi and performs local validation only
- */
-async function verifyX402PaymentMock(paymentHeader: string): Promise<boolean> {
-  console.log('🧪 [TEST MODE] Mock payment verification (Onchain.fi bypassed)');
-
-  try {
-    const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
-
-    console.log('🧪 [TEST MODE] Mock Payment Details:', {
-      from: decoded.payload?.authorization?.from,
-      to: decoded.payload?.authorization?.to,
-      value: decoded.payload?.authorization?.value,
-      scheme: decoded.scheme,
-      network: decoded.network,
-    });
-
-    const checks = {
-      hasPayload: !!decoded.payload,
-      hasAuthorization: !!decoded.payload?.authorization,
-      hasSignature: !!decoded.payload?.signature,
-      isBaseNetwork: decoded.network === 'base',
-      isCorrectScheme: decoded.scheme === 'exact',
-      hasValidAmount: decoded.payload?.authorization?.value === '2000000', // 2.00 USDC in atomic units
-      hasValidRecipient: decoded.payload?.authorization?.to?.toLowerCase() === RECIPIENT_ADDRESS.toLowerCase(),
-    };
-
-    console.log('🧪 [TEST MODE] Mock Verification Checks:', checks);
-
-    const autoApprove = process.env.TEST_MODE_AUTO_APPROVE === 'true';
-
-    if (autoApprove) {
-      console.log('🧪 [TEST MODE] ✅ Payment AUTO-APPROVED (TEST_MODE_AUTO_APPROVE=true)');
-      return true;
-    }
-
-    const allChecksPassed = Object.values(checks).every(check => check === true);
-
-    if (allChecksPassed) {
-      console.log('🧪 [TEST MODE] ✅ Payment APPROVED (all checks passed)');
-      return true;
-    } else {
-      console.log('🧪 [TEST MODE] ❌ Payment REJECTED (checks failed)');
-      return false;
-    }
-
-  } catch (error: unknown) {
-    console.error('🧪 [TEST MODE] Mock verification error:', error);
-
-    if (process.env.TEST_MODE_AUTO_APPROVE === 'true') {
-      console.log('🧪 [TEST MODE] ✅ Payment AUTO-APPROVED (despite error)');
-      return true;
-    }
-
-    return false;
-  }
 }
 
 /**
@@ -121,15 +72,15 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
     // Decode payment header to log details
     try {
       const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
-      console.log('[TEST] Payment Details:', {
+      console.log('[ONCHAIN.FI] Payment Details:', {
         from: decoded.payload?.authorization?.from,
         to: decoded.payload?.authorization?.to,
         value: decoded.payload?.authorization?.value,
         scheme: decoded.scheme,
         network: decoded.network,
       });
-    } catch (e) {
-      console.log('[TEST] Could not decode payment header');
+    } catch {
+      console.log('[ONCHAIN.FI] Could not decode payment header');
     }
 
     console.log('[ONCHAIN.FI] Verifying and settling x402 payment...');
@@ -165,27 +116,11 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
       return false;
     }
   } catch (error: unknown) {
-    console.error('[TEST] Payment verification error:', {
+    console.error('[ONCHAIN.FI] Payment verification error:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       error: error,
     });
     return false;
-  }
-}
-
-/**
- * Payment verifier selector
- * Routes to mock or real verification based on TEST_MODE
- */
-async function getPaymentVerifier(paymentHeader: string): Promise<boolean> {
-  const isTestMode = process.env.TEST_MODE === 'true';
-
-  if (isTestMode) {
-    console.log('🧪 [TEST MODE] Using mock payment verification');
-    return verifyX402PaymentMock(paymentHeader);
-  } else {
-    console.log('🔒 [PRODUCTION] Using Onchain.fi payment verification');
-    return verifyX402Payment(paymentHeader);
   }
 }
 
@@ -195,7 +130,7 @@ async function getPaymentVerifier(paymentHeader: string): Promise<boolean> {
 async function generateMintSignature(
   to: Address,
   fid: string
-): Promise<{ voucher: any; signature: `0x${string}` }> {
+): Promise<{ voucher: MintVoucher; signature: `0x${string}` }> {
   // Create account from private key
   const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
 
@@ -337,9 +272,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify payment (mock or real based on TEST_MODE)
-    console.log('Verifying x402 payment...');
-    const paymentValid = await getPaymentVerifier(paymentHeader);
+    // Verify and settle payment via Onchain.fi
+    console.log('Verifying and settling x402 payment via Onchain.fi...');
+    console.log('[DEBUG] Raw X-Payment header (base64):', paymentHeader);
+    console.log('[DEBUG] X-Payment header length:', paymentHeader.length, 'characters');
+
+    // Decode and log full payment header structure
+    try {
+      const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
+      console.log('[DEBUG] Full decoded payment header:', JSON.stringify(decoded, null, 2));
+      console.log('[DEBUG] Payment header keys:', Object.keys(decoded));
+      if (decoded.payload) {
+        console.log('[DEBUG] Payload keys:', Object.keys(decoded.payload));
+        if (decoded.payload.authorization) {
+          console.log('[DEBUG] Authorization keys:', Object.keys(decoded.payload.authorization));
+        }
+      }
+    } catch (e) {
+      console.log('[DEBUG] Could not decode payment header for inspection');
+    }
+
+    const paymentValid = await verifyX402Payment(paymentHeader);
 
     if (!paymentValid) {
       return NextResponse.json(

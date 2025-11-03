@@ -14,6 +14,21 @@ export interface GeopletNFT {
   owner?: string;
 }
 
+interface AlchemyNFT {
+  tokenId: string;
+  name?: string;
+  image?: {
+    cachedUrl?: string;
+    originalUrl?: string;
+  };
+  raw?: {
+    metadata?: {
+      image?: string;
+    };
+  };
+  owners?: string[];
+}
+
 /**
  * Hook to fetch all minted Geoplets using Alchemy NFT API with pagination
  */
@@ -65,7 +80,7 @@ export function useGalleryNFTs() {
         }
 
         // Parse NFTs from Alchemy response
-        const parsedNFTs: GeopletNFT[] = data.nfts.map((nft: any) => ({
+        const parsedNFTs: GeopletNFT[] = data.nfts.map((nft: AlchemyNFT) => ({
           tokenId: parseInt(nft.tokenId, 16), // Alchemy returns hex
           name: nft.name || `Geoplet #${parseInt(nft.tokenId, 16)}`,
           image: nft.image?.cachedUrl || nft.image?.originalUrl || nft.raw?.metadata?.image || '',
@@ -113,6 +128,7 @@ export function useGalleryNFTs() {
     if (nfts.length === 0 && !isLoading) {
       fetchNFTs();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {

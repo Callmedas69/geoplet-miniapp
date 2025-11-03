@@ -1,13 +1,14 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Button } from './ui/button';
-import { shareToFarcaster } from '@/lib/generators';
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { haptics } from '@/lib/haptics';
-import { GEOPLET_CONFIG } from '@/lib/contracts';
+import Image from "next/image";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Button } from "./ui/button";
+import { shareToFarcaster } from "@/lib/generators";
+import { useState } from "react";
+import { toast } from "sonner";
+import { haptics } from "@/lib/haptics";
+import { GEOPLET_CONFIG } from "@/lib/contracts";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 interface SuccessModalProps {
   isOpen: boolean;
@@ -33,11 +34,11 @@ export function SuccessModal({
       await navigator.clipboard.writeText(txHash);
       setIsCopied(true);
       haptics.success();
-      toast.success('Transaction hash copied!');
+      toast.success("Transaction hash copied!");
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (error) {
+    } catch {
       haptics.error();
-      toast.error('Failed to copy');
+      toast.error("Failed to copy");
     }
   };
 
@@ -47,20 +48,46 @@ export function SuccessModal({
     try {
       await shareToFarcaster(image, tokenId);
     } catch (error) {
-      console.error('Share error:', error);
+      console.error("Share error:", error);
       haptics.error();
-      toast.error('Failed to share to Farcaster');
+      toast.error("Failed to share to Farcaster");
+    }
+  };
+
+  const handleAddToWarpcast = async () => {
+    try {
+      await sdk.actions.addMiniApp();
+      haptics.success();
+      toast.success(
+        "Added to Warpcast! You can now access Geoplet from your apps."
+      );
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === "RejectedByUser") {
+        // User chose not to add the app - this is not an error
+        toast.info(
+          "No problem! You can add Geoplet later from your Warpcast settings."
+        );
+      } else if (error instanceof Error && error.message === "InvalidDomainManifestJson") {
+        // Domain mismatch or manifest issue (common in development with ngrok)
+        console.error("Domain/manifest error:", error);
+        toast.error("Unable to add app. Please try again later.");
+      } else {
+        // Unexpected error
+        console.error("Failed to add mini app:", error);
+        toast.error("Failed to add to Warpcast");
+        haptics.error();
+      }
     }
   };
 
   // Explorer URLs (Base Mainnet)
   const openSeaUrl = tokenId
     ? `${GEOPLET_CONFIG.explorers.opensea}/${GEOPLET_CONFIG.address}/${tokenId}`
-    : '';
+    : "";
 
   const baseScanUrl = txHash
     ? `${GEOPLET_CONFIG.explorers.basescan}/tx/${txHash}`
-    : '';
+    : "";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -100,7 +127,7 @@ export function SuccessModal({
                   onClick={handleCopyTxHash}
                   className="text-xs"
                 >
-                  {isCopied ? '✓ Copied' : 'Copy'}
+                  {isCopied ? "✓ Copied" : "Copy"}
                 </Button>
               </div>
               {baseScanUrl && (
@@ -139,16 +166,20 @@ export function SuccessModal({
                 className="bg-white/10 hover:bg-white/20 border-white/20 text-white"
                 asChild
               >
-                <a
-                  href={openSeaUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href={openSeaUrl} target="_blank" rel="noopener noreferrer">
                   View on OpenSea
                 </a>
               </Button>
             )}
           </div>
+
+          {/* Add to Warpcast Button */}
+          <Button
+            onClick={handleAddToWarpcast}
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold"
+          >
+            ⭐ Add Geoplet to Warpcast
+          </Button>
 
           {/* Close Button */}
           <Button

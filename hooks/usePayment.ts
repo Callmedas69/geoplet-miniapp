@@ -1,3 +1,5 @@
+//hooks/usePayment.ts
+
 /**
  * usePayment Hook - x402 Payment with Pay-First Flow
  *
@@ -70,6 +72,7 @@ export function usePayment() {
       // wagmi's walletClient is compatible with x402's EvmSigner type
       // Set maxValue to 2.00 USDC (2,000,000 atomic units with 6 decimals)
       const maxPaymentAmount = BigInt(2 * 10 ** 6); // 2.00 USDC
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fetchWithPayment = wrapFetchWithPayment(fetch, walletClient as any, maxPaymentAmount);
 
       console.log('Requesting mint signature with x402 payment...');
@@ -112,9 +115,9 @@ export function usePayment() {
       setStatus('success');
 
       return data;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Payment error:', err);
-      const errorMessage = err?.message || 'Payment failed';
+      const errorMessage = err instanceof Error ? err.message : 'Payment failed';
       setError(errorMessage);
       setStatus('error');
       throw new Error(errorMessage);

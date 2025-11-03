@@ -115,9 +115,9 @@ export function useWarplets() {
         };
 
         setNft(warplet);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching Warplet by FID:', err);
-        setError(err.message || 'Failed to fetch Warplet NFT');
+        setError(err instanceof Error ? err.message : 'Failed to fetch Warplet NFT');
         setNft(null);
       } finally {
         setIsLoading(false);

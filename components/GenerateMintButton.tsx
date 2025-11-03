@@ -1,3 +1,5 @@
+//components/GenerateMintButton.tsx
+
 /**
  * GenerateMintButton - Pay First Flow
  *

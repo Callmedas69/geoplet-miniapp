@@ -33,7 +33,9 @@
       "WebFetch(domain:docs.onchain.fi)",
       "Bash(npm view:*)",
       "WebFetch(domain:basescan.org)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(del TEST_MODE.md)",
+      "WebFetch(domain:api.onchain.fi)"
     ]
   },
   "enableAllProjectMcpServers": true,
