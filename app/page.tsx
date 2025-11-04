@@ -6,7 +6,6 @@ import { MobileWalletButton } from "@/components/MobileWalletButton";
 import { HeroSection } from "@/components/HeroSection";
 import { GenerateMintButton } from "@/components/GenerateMintButton";
 import { SuccessModal } from "@/components/SuccessModal";
-import { GallerySection } from "@/components/GallerySection";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useAccount } from "wagmi";
 import { AnimateIcon } from "@/components/animate-ui/icons/icon";
@@ -60,7 +59,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col gap-8 px-4 pb-safe">
+      <main className="flex-1 flex flex-col gap-8 px-4 pb-20">
         {/* State-based rendering */}
         {!isConnected ? (
           <div className="max-w-md mx-auto p-8 text-black/80 text-center my-8">
@@ -131,11 +130,6 @@ export default function Home() {
             </div>
           </>
         )}
-
-        {/* Gallery Section - Always show */}
-        <div className="my-8">
-          <GallerySection />
-        </div>
       </main>
 
       {/* Success Modal */}
@@ -152,7 +146,7 @@ export default function Home() {
       />
 
       {/* Footer */}
-      <footer className="mt-4 mb-safe text-center text-gray-500 text-[8px] sm:text-sm py-4 italic">
+      <footer className="mt-4 mb-safe text-center text-gray-500 text-[8px] sm:text-sm py-4 italic pb-20">
         <p>
           Powered by $GEOPLET • Build by GeoArt.Studio •{" "}
           <a
