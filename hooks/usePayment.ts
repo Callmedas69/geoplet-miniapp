@@ -1,29 +1,57 @@
-//hooks/usePayment.ts
-
 /**
- * usePayment Hook - x402 Payment with Pay-First Flow
+ * usePayment Hook - Manual x402 Payment Implementation (REFACTORED)
  *
  * Flow: Pay $2 USDC → Get Signature → Generate Image → Mint
  *
- * Uses x402-fetch to automatically handle payment prompts:
- * 1. Makes request to backend
- * 2. Backend returns 402 Payment Required
- * 3. x402-fetch intercepts and prompts wallet
- * 4. User approves USDC payment in wallet
- * 5. Request retries with X-Payment header
+ * Manual 402 Payment Flow:
+ * 1. Make initial request to backend (no payment header)
+ * 2. Receive 402 Payment Required with payment terms
+ * 3. Prompt user to authorize USDC payment (EIP-3009 signature)
+ * 4. Generate x402 payment header with signature
+ * 5. Retry request with X-Payment header
  * 6. Backend verifies payment and returns mint signature
+ *
+ * Benefits of manual implementation:
+ * - Full control over payment header format
+ * - Guaranteed compatibility with onchain.fi
+ * - Better error handling and debugging
+ * - No black box dependencies
+ * - KISS principle compliance
+ *
+ * REFACTOR IMPROVEMENTS:
+ * - Handles structured error responses with error codes
+ * - Better error type detection and handling
+ * - Throws AppError with error codes
+ * - Maintains backward compatibility with string errors
  */
 
 'use client';
 
 import { useState } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
-import { wrapFetchWithPayment } from 'x402-fetch';
+import { generatePaymentHeader } from '@/lib/payment-header';
+import type { PaymentRequired402Response } from '@/types/x402';
+import {
+  isAPIError,
+  AppError,
+  PaymentErrorCode,
+  type APIError,
+} from '@/types/errors';
 
 const MINT_PRICE = '2.00'; // $2.00 USDC
+const MINT_PRICE_ATOMIC = '2000000'; // 2.00 USDC in atomic units (6 decimals)
 const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || '';
+const USDC_ADDRESS = process.env.NEXT_PUBLIC_BASE_USDC_ADDRESS as `0x${string}`;
+const CHAIN_ID = 8453; // Base Mainnet
 
-export type PaymentStatus = 'idle' | 'processing' | 'verifying' | 'success' | 'error';
+export type PaymentStatus =
+  | 'idle'
+  | 'fetching_terms'      // Getting 402 response
+  | 'awaiting_signature'  // Waiting for user to sign
+  | 'processing'          // Generating payment header
+  | 'verifying'           // Backend verifying payment
+  | 'success'
+  | 'error';
 
 export interface MintSignatureResponse {
   voucher: {
@@ -41,15 +69,16 @@ export function usePayment() {
   const [status, setStatus] = useState<PaymentStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [signatureData, setSignatureData] = useState<MintSignatureResponse | null>(null);
+  const [paymentTerms, setPaymentTerms] = useState<PaymentRequired402Response | null>(null);
 
   /**
-   * Request mint signature with x402 payment
+   * Request mint signature with manual x402 payment flow
    *
-   * This function uses x402-fetch which automatically:
-   * 1. Sends request to backend
-   * 2. Detects 402 response
-   * 3. Prompts user's wallet to sign USDC payment
-   * 4. Retries request with payment header
+   * Step 1: Make initial request (no payment)
+   * Step 2: Receive 402 with payment terms
+   * Step 3: User signs EIP-3009 authorization
+   * Step 4: Generate payment header
+   * Step 5: Retry with X-Payment header
    *
    * @param fid - Farcaster ID
    * @returns Mint signature and voucher data
@@ -64,26 +93,17 @@ export function usePayment() {
         throw new Error('Wallet client not available');
       }
 
-      setStatus('processing');
+      if (!USDC_ADDRESS) {
+        throw new Error('USDC address not configured');
+      }
+
+      setStatus('fetching_terms');
       setError(null);
 
-      // Wrap fetch with x402 payment handling
-      // x402-fetch expects either a WalletClient or LocalAccount
-      // wagmi's walletClient is compatible with x402's EvmSigner type
-      // Set maxValue to 2.00 USDC (2,000,000 atomic units with 6 decimals)
-      const maxPaymentAmount = BigInt(2 * 10 ** 6); // 2.00 USDC
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fetchWithPayment = wrapFetchWithPayment(fetch, walletClient as any, maxPaymentAmount);
+      console.log('[x402] Step 1: Requesting payment terms...');
 
-      console.log('Requesting mint signature with x402 payment...');
-
-      // This will automatically handle the payment flow:
-      // 1. Send request
-      // 2. Get 402 response
-      // 3. Prompt wallet for $2 USDC payment
-      // 4. Retry with X-Payment header
-      // 5. Return mint signature
-      const response = await fetchWithPayment(`${API_BASE_URL}/api/get-mint-signature`, {
+      // Step 1: Make initial request without payment header
+      const initialResponse = await fetch(`${API_BASE_URL}/api/get-mint-signature`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,33 +114,130 @@ export function usePayment() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          error: 'Payment verification failed'
-        }));
-        throw new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
+      // Step 2: Expect 402 Payment Required
+      if (initialResponse.status !== 402) {
+        // If not 402, something is wrong
+        const errorData = await initialResponse.json().catch(() => null);
+
+        // Check if error has error code structure
+        if (errorData && isAPIError(errorData)) {
+          throw AppError.fromAPIError(errorData.error);
+        }
+
+        // Fallback to generic error
+        const message = errorData?.message || errorData?.error || `Unexpected status: ${initialResponse.status}`;
+        throw new AppError(PaymentErrorCode.API_ERROR, message);
       }
 
-      setStatus('verifying');
+      const paymentTermsData = await initialResponse.json() as PaymentRequired402Response;
+      setPaymentTerms(paymentTermsData);
 
-      const data = await response.json();
+      console.log('[x402] Step 2: Received 402 Payment Required:', {
+        amount: paymentTermsData.accepts[0]?.maxAmountRequired,
+        recipient: paymentTermsData.accepts[0]?.payTo,
+        description: paymentTermsData.accepts[0]?.description,
+      });
+
+      // Validate payment terms
+      if (!paymentTermsData.accepts?.[0]) {
+        throw new Error('Invalid payment terms received');
+      }
+
+      const terms = paymentTermsData.accepts[0];
+
+      // Step 3: Prompt user to sign (UI will show modal)
+      setStatus('awaiting_signature');
+      console.log('[x402] Step 3: Awaiting user signature for payment authorization...');
+
+      // Generate payment header with EIP-3009 signature
+      setStatus('processing');
+      console.log('[x402] Step 4: Generating payment header...');
+
+      const paymentHeader = await generatePaymentHeader(walletClient, {
+        from: address,
+        to: terms.payTo as `0x${string}`,
+        value: MINT_PRICE_ATOMIC,
+        validAfter: '0',
+        usdcAddress: USDC_ADDRESS,
+        chainId: CHAIN_ID,
+      });
+
+      console.log('[x402] Payment header generated, length:', paymentHeader.length);
+
+      // Step 5: Retry request with X-Payment header
+      setStatus('verifying');
+      console.log('[x402] Step 5: Retrying request with payment header...');
+
+      const paymentResponse = await fetch(`${API_BASE_URL}/api/get-mint-signature`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Payment': paymentHeader,
+        },
+        body: JSON.stringify({
+          userAddress: address,
+          fid,
+        }),
+      });
+
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json().catch(() => null);
+
+        // Check if error has error code structure
+        if (errorData && isAPIError(errorData)) {
+          throw AppError.fromAPIError(errorData.error);
+        }
+
+        // Fallback to generic error
+        const message = errorData?.message || errorData?.error || `HTTP ${paymentResponse.status}`;
+        throw new AppError(PaymentErrorCode.PAYMENT_VERIFICATION_FAILED, message);
+      }
+
+      const data = await paymentResponse.json();
 
       if (!data.success || !data.voucher || !data.signature) {
-        throw new Error('Invalid response from server');
+        throw new AppError(PaymentErrorCode.API_ERROR, 'Invalid response from server');
       }
 
-      console.log('Payment verified and signature received!');
+      console.log('[x402] Payment verified and signature received!');
 
       setSignatureData(data);
       setStatus('success');
 
       return data;
     } catch (err: unknown) {
-      console.error('Payment error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Payment failed';
-      setError(errorMessage);
+      console.error('[x402] Payment error:', err);
+
+      // Handle AppError with error codes
+      if (err instanceof AppError) {
+        setError(err.message);
+        setStatus('error');
+        throw err; // Re-throw AppError to preserve error code
+      }
+
+      // Handle generic errors (wallet rejections, etc.)
+      if (err instanceof Error) {
+        const message = err.message.toLowerCase();
+
+        // Detect user rejection/cancellation
+        if (message.includes('user rejected') || message.includes('user denied') || message.includes('user cancelled')) {
+          const appError = new AppError(PaymentErrorCode.USER_REJECTED, 'Payment cancelled by user');
+          setError(appError.message);
+          setStatus('error');
+          throw appError;
+        }
+
+        // Generic error
+        setError(err.message);
+        setStatus('error');
+        throw new AppError(PaymentErrorCode.UNKNOWN_ERROR, err.message);
+      }
+
+      // Unknown error type
+      const unknownError = new AppError(PaymentErrorCode.UNKNOWN_ERROR, 'Payment failed');
+      setError(unknownError.message);
       setStatus('error');
-      throw new Error(errorMessage);
+      throw unknownError;
     }
   };
 
@@ -131,6 +248,7 @@ export function usePayment() {
     setStatus('idle');
     setError(null);
     setSignatureData(null);
+    setPaymentTerms(null);
   };
 
   return {
@@ -138,6 +256,7 @@ export function usePayment() {
     status,
     error,
     signatureData,
+    paymentTerms,
     isConnected,
     address,
     mintPrice: MINT_PRICE,

@@ -35,7 +35,9 @@
       "WebFetch(domain:basescan.org)",
       "Bash(npx tsc:*)",
       "Bash(del TEST_MODE.md)",
-      "WebFetch(domain:api.onchain.fi)"
+      "WebFetch(domain:api.onchain.fi)",
+      "WebFetch(domain:eips.ethereum.org)",
+      "WebFetch(domain:www.radix-ui.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

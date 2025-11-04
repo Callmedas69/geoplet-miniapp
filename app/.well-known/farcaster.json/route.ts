@@ -25,15 +25,15 @@ export async function GET() {
       subtitle: "GeoFy your Warplets",
       description: "Geoplet: when geometric art meets Warplets",
       screenshotUrls: [
-        `${appUrl}/og-image.png`
+        `${appUrl}/og-image.webp`
       ],
       primaryCategory: "social",
       tags: ["nft", "art", "geoplets", "base", "erc721"],
-      heroImageUrl: `${appUrl}/og-image.png`,
+      heroImageUrl: `${appUrl}/og-image.webp`,
       tagline: "GeoFy your Warplets",
       ogTitle: "Geoplet - Geometric Warplets",
       ogDescription: "Geoplet: when geometric art meets Warplets",
-      ogImageUrl: `${appUrl}/og-image.png`,
+      ogImageUrl: `${appUrl}/og-image.webp`,
       noindex: true
     }
   };

@@ -5,9 +5,15 @@ import { createWalletClient, http, type Address, recoverTypedDataAddress, isAddr
 import { privateKeyToAccount } from 'viem/accounts';
 import { X402Client } from '@onchainfi/x402-aggregator-client';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
+import {
+  PaymentErrorCode,
+  MintErrorCode,
+  AppError,
+  type APIError,
+} from '@/types/errors';
 
 /**
- * API Route: Get Mint Signature with x402 Payment Verification & Settlement
+ * API Route: Get Mint Signature with x402 Payment Verification & Settlement (REFACTORED)
  *
  * Flow:
  * 1. Verify x402 payment via Onchain.fi
@@ -20,6 +26,12 @@ import { GEOPLET_CONFIG } from '@/lib/contracts';
  * - EIP-712 signature with deadline (5 min)
  * - Nonce uniqueness (timestamp-based)
  * - CORS protection
+ *
+ * REFACTOR IMPROVEMENTS:
+ * - Returns structured error responses with error codes
+ * - Better error categorization and handling
+ * - Type-safe error responses
+ * - Maintains backward compatibility (includes message field)
  */
 
 // CORS headers for frontend requests
@@ -49,6 +61,47 @@ function validateEnv() {
   if (!PRIVATE_KEY) throw new Error('PRIVATE_KEY not configured');
   if (!RECIPIENT_ADDRESS) throw new Error('RECIPIENT_ADDRESS not configured');
   if (!process.env.ONCHAIN_FI_API_KEY) throw new Error('ONCHAIN_FI_API_KEY not configured');
+}
+
+/**
+ * Create error response with error code
+ * Maintains backward compatibility by including message field
+ */
+function createErrorResponse(
+  code: PaymentErrorCode | MintErrorCode,
+  message: string,
+  status: number,
+  details?: APIError['details']
+): NextResponse {
+  const errorResponse: { error: APIError } = {
+    error: {
+      code,
+      message,
+      details,
+    },
+  };
+
+  return NextResponse.json(errorResponse, {
+    status,
+    headers: corsHeaders,
+  });
+}
+
+/**
+ * Convert AppError to appropriate error code for this endpoint
+ * This endpoint only handles Payment and Mint errors, not Generation errors
+ */
+function getErrorCodeForEndpoint(error: AppError): PaymentErrorCode | MintErrorCode {
+  // If it's already a Payment or Mint error code, return as-is
+  if (Object.values(PaymentErrorCode).includes(error.code as PaymentErrorCode)) {
+    return error.code as PaymentErrorCode;
+  }
+  if (Object.values(MintErrorCode).includes(error.code as MintErrorCode)) {
+    return error.code as MintErrorCode;
+  }
+
+  // For other error types (like GenerationErrorCode), map to generic API error
+  return PaymentErrorCode.API_ERROR;
 }
 
 /**
@@ -222,17 +275,19 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!userAddress || !fid) {
-      return NextResponse.json(
-        { error: 'Missing required fields: userAddress, fid' },
-        { status: 400, headers: corsHeaders }
+      return createErrorResponse(
+        PaymentErrorCode.API_ERROR,
+        'Missing required fields: userAddress, fid',
+        400
       );
     }
 
     // Validate address format
     if (!/^0x[a-fA-F0-9]{40}$/.test(userAddress)) {
-      return NextResponse.json(
-        { error: 'Invalid Ethereum address' },
-        { status: 400, headers: corsHeaders }
+      return createErrorResponse(
+        PaymentErrorCode.API_ERROR,
+        'Invalid Ethereum address',
+        400
       );
     }
 
@@ -272,35 +327,100 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify and settle payment via Onchain.fi
-    console.log('Verifying and settling x402 payment via Onchain.fi...');
+    // Validate payment header structure BEFORE calling SDK
+    console.log('[VALIDATION] Starting payment header validation...');
     console.log('[DEBUG] Raw X-Payment header (base64):', paymentHeader);
     console.log('[DEBUG] X-Payment header length:', paymentHeader.length, 'characters');
 
-    // Decode and log full payment header structure
+    // Decode and validate payment header structure
     try {
       const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
       console.log('[DEBUG] Full decoded payment header:', JSON.stringify(decoded, null, 2));
-      console.log('[DEBUG] Payment header keys:', Object.keys(decoded));
-      if (decoded.payload) {
-        console.log('[DEBUG] Payload keys:', Object.keys(decoded.payload));
-        if (decoded.payload.authorization) {
-          console.log('[DEBUG] Authorization keys:', Object.keys(decoded.payload.authorization));
-        }
+
+      // Validate required root-level fields
+      const validationErrors: string[] = [];
+
+      if (!decoded.x402Version || decoded.x402Version !== 1) {
+        validationErrors.push('Missing or invalid x402Version (must be 1)');
       }
+
+      if (!decoded.scheme || decoded.scheme !== 'exact') {
+        validationErrors.push('Invalid payment scheme (must be "exact")');
+      }
+
+      if (!decoded.network || decoded.network !== 'base') {
+        validationErrors.push('Invalid network (must be "base")');
+      }
+
+      if (!decoded.payload?.signature) {
+        validationErrors.push('Missing payment signature');
+      }
+
+      if (!decoded.payload?.authorization) {
+        validationErrors.push('Missing authorization data');
+      }
+
+      // Validate authorization fields
+      const auth = decoded.payload?.authorization;
+      if (auth) {
+        if (!auth.from || !/^0x[a-fA-F0-9]{40}$/.test(auth.from)) {
+          validationErrors.push('Invalid "from" address');
+        }
+        if (!auth.to || !/^0x[a-fA-F0-9]{40}$/.test(auth.to)) {
+          validationErrors.push('Invalid "to" address');
+        }
+        if (!auth.value || auth.value !== '2000000') {
+          validationErrors.push(`Invalid payment value (expected 2000000, got ${auth.value})`);
+        }
+        if (!auth.validBefore) {
+          validationErrors.push('Missing validBefore timestamp');
+        }
+        if (!auth.nonce || !/^0x[a-fA-F0-9]{64}$/.test(auth.nonce)) {
+          validationErrors.push('Invalid nonce format (must be 32-byte hex)');
+        }
+
+        console.log('[VALIDATION] Authorization details:', {
+          from: auth.from,
+          to: auth.to,
+          value: auth.value,
+          validAfter: auth.validAfter,
+          validBefore: auth.validBefore,
+          nonce: auth.nonce,
+        });
+      }
+
+      if (validationErrors.length > 0) {
+        console.error('[VALIDATION FAILED] Payment header errors:', validationErrors);
+        return createErrorResponse(
+          PaymentErrorCode.INVALID_SIGNATURE,
+          'Invalid payment header format',
+          400,
+          {
+            validationErrors,
+            hint: 'Payment header must match onchain.fi specification. See .docs/HEADER_FORMAT.md',
+          }
+        );
+      }
+
+      console.log('[VALIDATION PASSED] Payment header structure is correct');
     } catch (e) {
-      console.log('[DEBUG] Could not decode payment header for inspection');
+      console.error('[VALIDATION ERROR] Could not parse payment header:', e);
+      return createErrorResponse(
+        PaymentErrorCode.INVALID_SIGNATURE,
+        'Malformed payment header - Invalid base64 encoding or JSON structure',
+        400
+      );
     }
 
+    // Verify and settle payment via Onchain.fi
+    console.log('[ONCHAIN.FI] Verifying and settling x402 payment...');
     const paymentValid = await verifyX402Payment(paymentHeader);
 
     if (!paymentValid) {
-      return NextResponse.json(
-        {
-          error: 'Payment verification/settlement failed',
-          message: 'Invalid or insufficient payment. Please try again.',
-        },
-        { status: 402, headers: corsHeaders }
+      return createErrorResponse(
+        PaymentErrorCode.PAYMENT_VERIFICATION_FAILED,
+        'Payment verification/settlement failed - Invalid or insufficient payment',
+        402
       );
     }
 
@@ -329,13 +449,23 @@ export async function POST(request: NextRequest) {
 
   } catch (error: unknown) {
     console.error('Get mint signature error:', error);
+
+    // Handle AppError with error codes
+    if (error instanceof AppError) {
+      return createErrorResponse(
+        getErrorCodeForEndpoint(error),
+        error.message,
+        500,
+        error.details
+      );
+    }
+
+    // Handle generic errors
     const errorMessage = error instanceof Error ? error.message : 'Failed to generate mint signature';
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: errorMessage,
-      },
-      { status: 500, headers: corsHeaders }
+    return createErrorResponse(
+      PaymentErrorCode.API_ERROR,
+      errorMessage,
+      500
     );
   }
 }

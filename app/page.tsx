@@ -150,7 +150,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="mt-4 mb-safe text-center text-gray-500 text-[10px] sm:text-sm py-4">
         <p>
-          💡 FREE during testing • Powered by OpenAI gpt-image-1 •{" "}
+          Powered by $GEOPLET • Build by GeoArt.Studio •{" "}
           <a
             href="https://onchain.fi"
             target="_blank"
