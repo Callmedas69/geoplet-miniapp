@@ -3,7 +3,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createWalletClient, http, type Address, recoverTypedDataAddress, isAddressEqual } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { X402Client } from '@onchainfi/x402-aggregator-client';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
 import {
   PaymentErrorCode,
@@ -12,11 +11,14 @@ import {
   type APIError,
 } from '@/types/errors';
 
+// Onchain.fi API configuration
+const ONCHAIN_API_URL = 'https://api.onchain.fi/v1';
+
 /**
- * API Route: Get Mint Signature with x402 Payment Verification & Settlement (REFACTORED)
+ * API Route: Get Mint Signature with x402 Payment Verification & Settlement
  *
  * Flow:
- * 1. Verify x402 payment via Onchain.fi
+ * 1. Verify x402 payment via Onchain.fi API (direct fetch call)
  * 2. Settle payment onchain (transfer USDC to recipient)
  * 3. Generate EIP-712 signature for mint voucher
  * 4. Return signature + voucher data
@@ -27,11 +29,10 @@ import {
  * - Nonce uniqueness (timestamp-based)
  * - CORS protection
  *
- * REFACTOR IMPROVEMENTS:
- * - Returns structured error responses with error codes
- * - Better error categorization and handling
- * - Type-safe error responses
- * - Maintains backward compatibility (includes message field)
+ * Implementation:
+ * - Direct API calls (no SDK) for better control and reliability
+ * - Same approach as Onchain.fi UI
+ * - Structured error responses with error codes
  */
 
 // CORS headers for frontend requests
@@ -105,23 +106,19 @@ function getErrorCodeForEndpoint(error: AppError): PaymentErrorCode | MintErrorC
 }
 
 /**
- * Verify and settle x402 payment via Onchain.fi SDK
+ * Verify and settle x402 payment via Onchain.fi API (Direct API calls)
  *
- * This function calls Onchain.fi's verifyAndSettle() which:
- * 1. Verifies the EIP-3009 payment signature
- * 2. Routes to optimal facilitator (Coinbase CDP, x402.rs, etc.)
- * 3. Settles payment on-chain (USDC transfers to treasury)
- * 4. Returns transaction hash for confirmation
+ * This function makes direct API calls (same as Onchain UI):
+ * 1. POST /v1/verify - Verifies the EIP-3009 payment signature
+ * 2. POST /v1/settle - Settles payment on-chain (USDC transfers to treasury)
+ * 
+ * Replaces SDK to avoid timeout/retry issues
  *
  * @param paymentHeader - Base64-encoded x402 payment authorization
  * @returns true if payment verified AND settled successfully
  */
 async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
   try {
-    const client = new X402Client({
-      apiKey: process.env.ONCHAIN_FI_API_KEY!,
-    });
-
     // Decode payment header to log details
     try {
       const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
@@ -136,40 +133,75 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
       console.log('[ONCHAIN.FI] Could not decode payment header');
     }
 
-    console.log('[ONCHAIN.FI] Verifying and settling x402 payment...');
+    console.log('[ONCHAIN.FI] Step 1: Verifying payment...');
 
-    const result = await client.verifyAndSettle(
-      paymentHeader,
-      {
+    // Step 1: Verify payment
+    const verifyResponse = await fetch(`${ONCHAIN_API_URL}/verify`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        paymentHeader,
         network: 'base',
         expectedAmount: MINT_PRICE,
         expectedToken: 'USDC',
         recipientAddress: RECIPIENT_ADDRESS,
-      }
-    );
-
-    console.log('[ONCHAIN.FI] Payment result:', {
-      verified: result.verified,
-      settled: result.settled,
-      txHash: result.txHash,
-      facilitator: result.facilitator,
+        priority: 'balanced',
+      }),
     });
 
-    if (result.verified && result.settled) {
-      console.log('[ONCHAIN.FI] ✅ Payment successful! USDC transferred to treasury');
-      console.log('[ONCHAIN.FI] Transaction hash:', result.txHash);
-      console.log('[ONCHAIN.FI] Treasury address:', RECIPIENT_ADDRESS);
-      return true;
-    } else {
-      console.error('[ONCHAIN.FI] ❌ Payment failed:', {
-        verified: result.verified,
-        settled: result.settled,
-        reason: 'Payment not fully settled on-chain',
-      });
+    const verifyData = await verifyResponse.json();
+    
+    console.log('[ONCHAIN.FI] Verify response:', {
+      status: verifyResponse.status,
+      valid: verifyData.data?.valid,
+      facilitator: verifyData.data?.facilitator,
+    });
+
+    if (!verifyResponse.ok || verifyData.status !== 'success' || !verifyData.data?.valid) {
+      console.error('[ONCHAIN.FI] ❌ Verification failed:', verifyData.data?.reason);
       return false;
     }
+
+    console.log('[ONCHAIN.FI] ✅ Payment verified');
+    console.log('[ONCHAIN.FI] Step 2: Settling payment...');
+
+    // Step 2: Settle payment
+    const settleResponse = await fetch(`${ONCHAIN_API_URL}/settle`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        paymentHeader,
+        network: 'base',
+        priority: 'balanced',
+      }),
+    });
+
+    const settleData = await settleResponse.json();
+
+    console.log('[ONCHAIN.FI] Settle response:', {
+      status: settleResponse.status,
+      settled: settleData.data?.settled,
+      txHash: settleData.data?.txHash,
+    });
+
+    if (!settleResponse.ok || settleData.status !== 'success' || !settleData.data?.settled) {
+      console.error('[ONCHAIN.FI] ❌ Settlement failed:', settleData.data?.reason);
+      return false;
+    }
+
+    console.log('[ONCHAIN.FI] ✅ Payment settled successfully!');
+    console.log('[ONCHAIN.FI] Transaction hash:', settleData.data.txHash);
+    console.log('[ONCHAIN.FI] Treasury address:', RECIPIENT_ADDRESS);
+    
+    return true;
   } catch (error: unknown) {
-    console.error('[ONCHAIN.FI] Payment verification error:', {
+    console.error('[ONCHAIN.FI] Payment error:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       error: error,
     });
