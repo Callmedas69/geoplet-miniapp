@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import { GeopletNFT } from "@/hooks/useGalleryNFTs";
 import { Card } from "./ui/card";
+import { useUserNFTs } from "@/hooks/useUserNFTs";
 
 interface NFTGalleryGridProps {
   nfts: GeopletNFT[];
@@ -19,6 +20,17 @@ export function NFTGalleryGrid({
   onLoadMore,
 }: NFTGalleryGridProps) {
   const observerRef = useRef<HTMLDivElement>(null);
+  const { nfts: userNFTs, isConnected } = useUserNFTs();
+
+  // Sort NFTs by token ID descending (most recent first)
+  const sortedNFTs = useMemo(() => {
+    return [...nfts].sort((a, b) => b.tokenId - a.tokenId);
+  }, [nfts]);
+
+  // Get user's Geoplet (each user only has 1)
+  const myGeoplet = useMemo(() => {
+    return isConnected && userNFTs.length > 0 ? userNFTs[0] : null;
+  }, [isConnected, userNFTs]);
 
   // Infinite scroll using Intersection Observer
   useEffect(() => {
@@ -52,13 +64,70 @@ export function NFTGalleryGrid({
   }
 
   return (
-    <div className="space-y-8">
-      {/* NFT Grid - Simple blue rounded squares like the image */}
+    <div className="space-y-6 mb-safe mt-4">
+      {/* Row 1: Featured Section (Featured NFT + Info Column) */}
+      <div className="grid grid-cols-2 gap-4 pb-6 border-b border-black/8">
+        {/* Left: Featured "My Geoplet" Card - 2x bigger, sticky */}
+        <div className="sticky top-20 z-10">
+          <div className="relative w-full aspect-square border-2 border-dashed border-black/8 rounded-3xl overflow-hidden p-4">
+            {myGeoplet ? (
+              // Show user's NFT
+              <div className="relative w-full h-full">
+                <Image
+                  src={myGeoplet.image}
+                  alt={myGeoplet.name}
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            ) : (
+              // Show placeholder
+              <div className="relative w-full h-full flex items-center justify-center">
+                <p className="text-black/40 text-xs italic text-center">
+                  Your Geoplet here
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: NFT Info Column */}
+        <div className="flex flex-col justify-center gap-3">
+          {myGeoplet ? (
+            <>
+              <div>
+                <p className="text-black/50 text-xs uppercase tracking-wide mb-1">
+                  Name
+                </p>
+                <p className="text-black text-lg font-medium">
+                  {myGeoplet.name}
+                </p>
+              </div>
+              <div>
+                <p className="text-black/50 text-xs uppercase tracking-wide mb-1">
+                  Token ID
+                </p>
+                <p className="text-black text-lg font-medium">
+                  #{myGeoplet.tokenId}
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-center">
+              <p className="text-black/40 text-sm italic">geofying....</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Row 2: Pure 4-Column NFT Grid */}
       <div className="grid grid-cols-4 gap-4">
-        {nfts.map((nft) => (
+        {/* Regular NFTs */}
+        {sortedNFTs.map((nft) => (
           <div
             key={nft.tokenId}
-            className="group relative aspect-square bg-blue-400 rounded-3xl overflow-hidden cursor-pointer hover:bg-blue-500 transition-colors"
+            className="group relative aspect-square  rounded-xl overflow-hidden cursor-pointer hover:bg-blue-500 transition-colors"
           >
             {/* NFT Image */}
             <div className="relative w-full h-full p-2">

@@ -50,6 +50,7 @@ import {
   MintErrorCode,
   getErrorMessage,
 } from "@/types/errors";
+import { TokenUSDC } from "@web3icons/react";
 
 type ButtonState =
   | "idle" // Check USDC balance
@@ -330,9 +331,7 @@ function GenerateMintButtonInner({
         const msg = error.message.toLowerCase();
 
         if (msg.includes("insufficient")) {
-          toast.error(
-            `Insufficient USDC. You have $${balance}, need $${mintPrice}`
-          );
+          toast.error(`Insufficient funds.`);
           setState("insufficient_usdc");
         } else if (
           msg.includes("rejected") ||
@@ -392,14 +391,19 @@ function GenerateMintButtonInner({
   const getButtonText = useCallback(() => {
     switch (state) {
       case "idle":
-        return `Pay ${mintPrice} USDC`;
+        return (
+          <span className="flex items-center justify-center gap-2">
+            <TokenUSDC variant="branded" size="128" />{" "}
+            <span className="text-xs">${mintPrice} USDC</span>
+          </span>
+        );
       case "insufficient_usdc":
         return `Get USDC (need ${mintPrice}, have ${balance})`;
       case "paying":
         return (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            <span>Step 1/3: Processing Payment...</span>
+            <span>initiate x402...</span>
           </span>
         );
       case "paid":
@@ -408,7 +412,7 @@ function GenerateMintButtonInner({
         return (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            <span>Step 2/3: Generating Art...</span>
+            <span>geofying...</span>
           </span>
         );
       case "ready_to_mint":
@@ -417,13 +421,13 @@ function GenerateMintButtonInner({
         return (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            <span>Step 3/3: Minting NFT...</span>
+            <span>delivering geoplet...</span>
           </span>
         );
       case "success":
-        return "Minted Successfully";
+        return "Minted";
       case "already_minted":
-        return "Already Minted";
+        return "Minted";
       default:
         return "Pay & Mint";
     }
@@ -480,7 +484,7 @@ function GenerateMintButtonInner({
       aria-busy={isProcessing()}
       aria-disabled={isDisabled}
       aria-live="polite"
-      className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto bg-white text-black hover:bg-gray-100 font-semibold text-base sm:text-lg touch-target haptic-press disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto bg-white text-black hover:bg-gray-100 font-semibold text-xs sm:text-lg touch-target haptic-press disabled:opacity-50 disabled:cursor-not-allowed"
       size="lg"
     >
       {getButtonText()}
