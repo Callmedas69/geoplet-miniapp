@@ -22,7 +22,14 @@ import Image from "next/image";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
-import { CheckCircle2, Copy, ExternalLink, Share2, Star, Loader2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  ExternalLink,
+  Share2,
+  Star,
+  Loader2,
+} from "lucide-react";
 import { shareToFarcaster } from "@/lib/generators";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
@@ -34,8 +41,10 @@ import { ErrorBoundary } from "./ErrorBoundary";
 const TOAST_MESSAGES = {
   COPY_SUCCESS: "Transaction hash copied!",
   COPY_ERROR: "Failed to copy",
-  WARPCAST_ADDED: "Added to Warpcast! You can now access Geoplet from your apps.",
-  WARPCAST_LATER: "No problem! You can add Geoplet later from your Warpcast settings.",
+  WARPCAST_ADDED:
+    "Added to Warpcast! You can now access Geoplet from your apps.",
+  WARPCAST_LATER:
+    "No problem! You can add Geoplet later from your Warpcast settings.",
   WARPCAST_ERROR: "Unable to add app. Please try again later.",
   WARPCAST_FAILED: "Failed to add to Warpcast",
   FARCASTER_ERROR: "Failed to share to Farcaster",
@@ -160,8 +169,7 @@ function SuccessModalInner({
         return;
       }
 
-      const errorMessage =
-        error instanceof Error ? error.message : "";
+      const errorMessage = error instanceof Error ? error.message : "";
 
       // Handle specific error codes
       if (errorMessage === WarpcastErrorCode.REJECTED_BY_USER) {
@@ -206,7 +214,7 @@ function SuccessModalInner({
               className="w-6 h-6 text-green-500"
               aria-hidden="true"
             />
-            NFT Minted Successfully
+            Geofying Successfully
           </DialogTitle>
         </DialogHeader>
 
@@ -238,7 +246,7 @@ function SuccessModalInner({
                 id="transaction-info"
                 className="text-xs text-gray-400 uppercase tracking-wide"
               >
-                Transaction Hash
+                Tx Hash
               </p>
               <div className="flex items-center justify-between gap-2">
                 <code className="text-xs sm:text-sm text-white/80 font-mono truncate">
@@ -277,10 +285,10 @@ function SuccessModalInner({
                   href={baseScanUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs sm:text-sm text-blue-400 hover:text-blue-300 hover:underline block flex items-center gap-1"
+                  className="text-xs sm:text-sm text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
                   aria-label={`View transaction ${txHash} on BaseScan blockchain explorer (opens in new tab)`}
                 >
-                  View on BaseScan
+                  explorer
                   <ExternalLink className="w-3 h-3" aria-hidden="true" />
                   <span className="sr-only">(opens in new window)</span>
                 </a>
@@ -290,7 +298,11 @@ function SuccessModalInner({
 
           {/* Token ID */}
           {tokenId && (
-            <div className="text-center" role="region" aria-label="Token ID information">
+            <div
+              className="text-center"
+              role="region"
+              aria-label="Token ID information"
+            >
               <p className="text-xs sm:text-sm text-gray-400">Token ID</p>
               <p className="text-lg sm:text-xl font-bold text-white">
                 #{tokenId}
@@ -351,7 +363,7 @@ function SuccessModalInner({
           <Button
             onClick={handleAddToWarpcast}
             disabled={isAddingToWarpcast}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold touch-target"
+            className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold touch-target"
             aria-label="Add Geoplet miniapp to your Warpcast applications"
             aria-busy={isAddingToWarpcast}
             aria-disabled={isAddingToWarpcast}

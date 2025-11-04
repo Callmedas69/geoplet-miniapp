@@ -101,9 +101,7 @@ export function NFTGalleryGrid({
       {/* End message */}
       {!hasMore && nfts.length > 0 && (
         <div className="text-center py-8">
-          <p className="text-gray-600 text-sm">
-            You&apos;ve reached the end of the gallery
-          </p>
+          <p className="text-gray-600 text-sm">~ Geo ~</p>
         </div>
       )}
     </div>

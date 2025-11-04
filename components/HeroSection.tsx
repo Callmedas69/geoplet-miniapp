@@ -1,7 +1,12 @@
 import { WarpletDisplay } from "./WarpletDisplay";
-import { ProjectDescription } from "./ProjectDescription";
 import { useGalleryNFTs } from "@/hooks/useGalleryNFTs";
 import { sdk } from "@farcaster/miniapp-sdk";
+import localfont from "next/font/local";
+
+const schoolBell = localfont({
+  src: "../public/font/Schoolbell-Regular.ttf",
+  display: "swap",
+});
 
 interface HeroSectionProps {
   warpletImage: string | null;
@@ -97,7 +102,9 @@ export function HeroSection({
       </div>
 
       {/* Bottom Section: Full width description */}
-      <div className="text-center text-[10px] text-black/80 leading-relaxed italic">
+      <div
+        className={`text-center text-[12px] text-black/80 leading-relaxed italic ${schoolBell.className}`}
+      >
         <p>
           When Geometric Art meets Warplet — a fusion of form and frequency.
           <br />

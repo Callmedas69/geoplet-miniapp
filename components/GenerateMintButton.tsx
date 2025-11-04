@@ -1,25 +1,30 @@
 //components/GenerateMintButton.tsx
 
 /**
- * GenerateMintButton - Pay First Flow (REFACTORED)
+ * GenerateMintButton - All-in-One Flow (REFACTORED)
  *
- * Correct Flow: Pay → Generate → Mint → Success
+ * ONE CLICK Flow: Pay → Generate → Mint → Success (Auto-chained)
  *
- * 1. User pays $2 USDC (via x402 wallet prompt)
- * 2. Backend verifies payment → returns mint signature
- * 3. Generate geometric image (already paid for)
- * 4. Mint NFT with pre-authorized signature
- * 5. Success!
+ * 1. User clicks "Pay 2 USDC" once
+ * 2. Payment wallet prompt → Backend verifies → Returns signature
+ * 3. Auto-generate geometric image (no user action needed)
+ * 4. Auto-mint NFT (mint wallet prompt appears)
+ * 5. Success modal shows!
+ *
+ * Progress shown in button text:
+ * - "Step 1/3: Processing Payment..."
+ * - "Step 2/3: Generating Art..."
+ * - "Step 3/3: Minting NFT..."
  *
  * REFACTOR IMPROVEMENTS:
- * - Removed emoji dependencies → Plain text labels
- * - Added ARIA labels and accessibility
- * - Error code handling instead of string matching
- * - AbortController for cleanup
- * - Error boundary wrapper
- * - useCallback memoization
- * - Responsive breakpoints
- * - Semantic loading indicators
+ * - All-in-one button (one click triggers entire flow)
+ * - No PaymentModal (status shown in button)
+ * - Step X/3 progress indicators
+ * - Smart error recovery (retry without re-payment)
+ * - Minimal toast notifications (only final success + errors)
+ * - Error code handling
+ * - AbortController cleanup
+ * - Full accessibility (ARIA labels)
  */
 
 "use client";
@@ -38,15 +43,12 @@ import {
 } from "@/lib/generators";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
-import { PaymentModal } from "./PaymentModal";
 import { ErrorBoundary, ButtonErrorFallback } from "./ErrorBoundary";
 import {
-  isAPIError,
   AppError,
   PaymentErrorCode,
   MintErrorCode,
   getErrorMessage,
-  type APIError,
 } from "@/types/errors";
 
 type ButtonState =
@@ -77,18 +79,12 @@ function GenerateMintButtonInner({
 }: GenerateMintButtonProps) {
   const { nft, fid } = useWarplets();
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
-  const {
-    requestMintSignature,
-    status: paymentStatus,
-    error: paymentError,
-    reset: resetPayment
-  } = usePayment();
+  const { requestMintSignature } = usePayment();
   const { hasEnoughUSDC, balance, mintPrice } = useUSDCBalance();
 
   const [state, setState] = useState<ButtonState>("idle");
   const [signatureData, setSignatureData] =
     useState<MintSignatureResponse | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // AbortController for cleanup
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -115,17 +111,21 @@ function GenerateMintButtonInner({
     checkInitialState();
   }, [fid, hasEnoughUSDC]);
 
-  // Update state based on minting status
+  // Track if success callback has been called to avoid duplicates
+  const successCalledRef = useRef(false);
+
+  // Handle minting success side effects (no state updates in effect)
+  // State transition to "success" is handled in handleMint completion
   useEffect(() => {
-    if (isMinting) {
-      setState("minting");
-    } else if (isSuccess && txHash) {
-      setState("success");
-      if (nft) {
-        onSuccess(txHash, nft.tokenId);
-      }
+    if (isSuccess && txHash && nft && !successCalledRef.current) {
+      successCalledRef.current = true;
+
+      // Only side effects here (callbacks, toasts), no setState
+      onSuccess(txHash, nft.tokenId);
+      toast.success("Geoplet NFT minted successfully!");
+      haptics.success();
     }
-  }, [isMinting, isSuccess, txHash, nft, onSuccess]);
+  }, [isSuccess, txHash, nft, onSuccess]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -133,130 +133,8 @@ function GenerateMintButtonInner({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      if (showPaymentModal) {
-        setShowPaymentModal(false);
-      }
     };
-  }, [showPaymentModal]);
-
-  /**
-   * Step 1: Handle Payment
-   * User clicks "Pay 2 USDC" → wallet prompts → payment settles → signature received
-   */
-  const handlePayment = useCallback(async () => {
-    if (!fid) {
-      toast.error("Warplet not loaded");
-      return;
-    }
-
-    // Create new AbortController for this request
-    abortControllerRef.current = new AbortController();
-
-    try {
-      setState("paying");
-      setShowPaymentModal(true);
-
-      // Manual x402 payment flow
-      const signature = await requestMintSignature(fid.toString());
-
-      // Check if aborted
-      if (abortControllerRef.current.signal.aborted) {
-        return;
-      }
-
-      setSignatureData(signature);
-      setState("paid");
-      setShowPaymentModal(false);
-      toast.success("Payment verified! Now let's create your art.");
-    } catch (error) {
-      console.error("Payment error:", error);
-
-      // Check if aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
-      }
-
-      // Handle error codes
-      if (error instanceof AppError) {
-        const message = getErrorMessage(error.code, error.details);
-
-        if (error.code === PaymentErrorCode.INSUFFICIENT_FUNDS) {
-          setState("insufficient_usdc");
-        } else if (
-          error.code === PaymentErrorCode.USER_REJECTED ||
-          error.code === PaymentErrorCode.USER_CANCELLED
-        ) {
-          toast.info("Payment cancelled. Click again when ready.");
-          setState("idle");
-        } else {
-          toast.error(message);
-          setState("idle");
-        }
-      } else if (error instanceof Error) {
-        // Fallback for non-AppError errors (during transition period)
-        const msg = error.message.toLowerCase();
-
-        if (msg.includes("insufficient")) {
-          toast.error(`Insufficient USDC. You have $${balance}, need $${mintPrice}`);
-          setState("insufficient_usdc");
-        } else if (
-          msg.includes("rejected") ||
-          msg.includes("denied") ||
-          msg.includes("cancel")
-        ) {
-          toast.info("Payment cancelled. Click again when ready.");
-          setState("idle");
-        } else {
-          toast.error(error.message);
-          setState("idle");
-        }
-      } else {
-        toast.error("Payment failed");
-        setState("idle");
-      }
-
-      setShowPaymentModal(false);
-      haptics.error();
-    }
-  }, [fid, requestMintSignature, balance, mintPrice]);
-
-  /**
-   * Step 2: Handle Generate
-   * Payment complete → generate geometric art
-   */
-  const handleGenerate = useCallback(async () => {
-    if (!nft) {
-      toast.error("Warplet not loaded");
-      return;
-    }
-
-    try {
-      setState("generating");
-      const imageData = await generateImage(nft);
-
-      // Check if aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
-      }
-
-      onGenerate(imageData);
-      setState("ready_to_mint");
-      toast.success("Artwork created! Ready to mint.");
-    } catch (error) {
-      console.error("Generation error:", error);
-
-      // Check if aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
-      }
-
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to generate image";
-      haptics.error();
-      toast.error(errorMessage);
-      setState("paid"); // Allow retry
-    }
-  }, [nft, onGenerate]);
+  }, []);
 
   /**
    * Step 3: Handle Mint
@@ -279,7 +157,8 @@ function GenerateMintButtonInner({
 
       setState("minting");
       await mintNFT(signatureData, generatedImage);
-      toast.success("Minting transaction submitted!");
+      // Success state - mint completed successfully
+      setState("success");
     } catch (error) {
       console.error("Mint error:", error);
 
@@ -315,10 +194,12 @@ function GenerateMintButtonInner({
         let errorMessage = "Failed to mint NFT";
 
         if (msg.includes("fid already minted") || msg.includes("already")) {
-          errorMessage = "Your Farcaster ID has already been used to mint a Geoplet";
+          errorMessage =
+            "Your Farcaster ID has already been used to mint a Geoplet";
           setState("already_minted");
         } else if (msg.includes("signature expired")) {
-          errorMessage = "Payment signature expired (5 min limit). Please pay again.";
+          errorMessage =
+            "Payment signature expired (5 min limit). Please pay again.";
           setState("idle");
           setSignatureData(null);
         } else if (msg.includes("invalid signature")) {
@@ -352,11 +233,136 @@ function GenerateMintButtonInner({
   }, [signatureData, generatedImage, mintNFT]);
 
   /**
+   * Step 2: Handle Generate
+   * Payment complete → generate geometric art
+   */
+  const handleGenerate = useCallback(async () => {
+    if (!nft) {
+      toast.error("Warplet not loaded");
+      return;
+    }
+
+    try {
+      setState("generating");
+      const imageData = await generateImage(nft);
+
+      // Check if aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        return;
+      }
+
+      onGenerate(imageData);
+      setState("ready_to_mint");
+
+      // Auto-chain: Proceed to mint
+      await handleMint();
+    } catch (error) {
+      console.error("Generation error:", error);
+
+      // Check if aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        return;
+      }
+
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to generate image";
+      haptics.error();
+      toast.error(errorMessage);
+      setState("paid"); // Allow retry
+    }
+  }, [nft, onGenerate, handleMint]);
+
+  /**
+   * Step 1: Handle Payment
+   * User clicks "Pay 2 USDC" → wallet prompts → payment settles → signature received
+   */
+  const handlePayment = useCallback(async () => {
+    if (!fid) {
+      toast.error("Warplet not loaded");
+      return;
+    }
+
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+
+    try {
+      setState("paying");
+
+      // Manual x402 payment flow
+      const signature = await requestMintSignature(fid.toString());
+
+      // Check if aborted
+      if (abortControllerRef.current.signal.aborted) {
+        return;
+      }
+
+      setSignatureData(signature);
+      setState("paid");
+
+      // Auto-chain: Proceed to generation
+      await handleGenerate();
+    } catch (error) {
+      console.error("Payment error:", error);
+
+      // Check if aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        return;
+      }
+
+      // Handle error codes
+      if (error instanceof AppError) {
+        const message = getErrorMessage(error.code, error.details);
+
+        if (error.code === PaymentErrorCode.INSUFFICIENT_FUNDS) {
+          setState("insufficient_usdc");
+        } else if (
+          error.code === PaymentErrorCode.USER_REJECTED ||
+          error.code === PaymentErrorCode.USER_CANCELLED
+        ) {
+          toast.info("Payment cancelled. Click again when ready.");
+          setState("idle");
+        } else {
+          toast.error(message);
+          setState("idle");
+        }
+      } else if (error instanceof Error) {
+        // Fallback for non-AppError errors (during transition period)
+        const msg = error.message.toLowerCase();
+
+        if (msg.includes("insufficient")) {
+          toast.error(
+            `Insufficient USDC. You have $${balance}, need $${mintPrice}`
+          );
+          setState("insufficient_usdc");
+        } else if (
+          msg.includes("rejected") ||
+          msg.includes("denied") ||
+          msg.includes("cancel")
+        ) {
+          toast.info("Payment cancelled. Click again when ready.");
+          setState("idle");
+        } else {
+          toast.error(error.message);
+          setState("idle");
+        }
+      } else {
+        toast.error("Payment failed");
+        setState("idle");
+      }
+
+      haptics.error();
+    }
+  }, [fid, requestMintSignature, balance, mintPrice, handleGenerate]);
+
+  /**
    * Handle Button Click - Route to correct step
+   * Primary flow: "idle" triggers auto-chain (Payment → Generate → Mint)
+   * Error recovery: "paid" and "ready_to_mint" allow retry without re-payment
    */
   const handleClick = useCallback(async () => {
     switch (state) {
       case "idle":
+        // ONE CLICK: Start auto-chain flow (Payment → Generate → Mint)
         await handlePayment();
         break;
       case "insufficient_usdc":
@@ -367,9 +373,11 @@ function GenerateMintButtonInner({
         );
         break;
       case "paid":
+        // ERROR RECOVERY: Generation failed, retry generation only (already paid)
         await handleGenerate();
         break;
       case "ready_to_mint":
+        // ERROR RECOVERY: Mint failed, retry mint only (already generated)
         await handleMint();
         break;
       default:
@@ -379,7 +387,7 @@ function GenerateMintButtonInner({
 
   /**
    * Get Button Text based on current state
-   * Plain text labels (no emojis)
+   * Shows "Step X/3" progress for all-in-one flow
    */
   const getButtonText = useCallback(() => {
     switch (state) {
@@ -391,25 +399,25 @@ function GenerateMintButtonInner({
         return (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            <span>Processing Payment...</span>
+            <span>Step 1/3: Processing Payment...</span>
           </span>
         );
       case "paid":
-        return "Generate Artwork";
+        return "Retry Generation";
       case "generating":
         return (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            <span>Creating Image...</span>
+            <span>Step 2/3: Generating Art...</span>
           </span>
         );
       case "ready_to_mint":
-        return "Mint NFT";
+        return "Retry Mint";
       case "minting":
         return (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-            <span>Minting...</span>
+            <span>Step 3/3: Minting NFT...</span>
           </span>
         );
       case "success":
@@ -427,19 +435,19 @@ function GenerateMintButtonInner({
   const getAriaLabel = useCallback(() => {
     switch (state) {
       case "idle":
-        return `Pay ${mintPrice} USDC to mint your Geoplet NFT`;
+        return `Pay ${mintPrice} USDC to mint your Geoplet NFT - All steps will proceed automatically`;
       case "insufficient_usdc":
         return `Get USDC - You need ${mintPrice} but only have ${balance}`;
       case "paying":
-        return "Processing payment, please wait";
+        return "Step 1 of 3: Processing payment, please wait";
       case "paid":
-        return "Generate your Geoplet artwork";
+        return "Retry generating your Geoplet artwork";
       case "generating":
-        return "Creating your Geoplet image, please wait";
+        return "Step 2 of 3: Creating your Geoplet image, please wait";
       case "ready_to_mint":
-        return "Mint your Geoplet NFT to the blockchain";
+        return "Retry minting your Geoplet NFT";
       case "minting":
-        return "Minting your NFT, please wait for blockchain confirmation";
+        return "Step 3 of 3: Minting your NFT, please wait for blockchain confirmation";
       case "success":
         return "Your Geoplet NFT has been minted successfully";
       case "already_minted":
@@ -465,35 +473,18 @@ function GenerateMintButtonInner({
     !nft;
 
   return (
-    <>
-      <Button
-        onClick={handleClick}
-        disabled={isDisabled}
-        aria-label={getAriaLabel()}
-        aria-busy={isProcessing()}
-        aria-disabled={isDisabled}
-        aria-live="polite"
-        className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto bg-white text-black hover:bg-gray-100 font-semibold text-base sm:text-lg touch-target haptic-press disabled:opacity-50 disabled:cursor-not-allowed"
-        size="lg"
-      >
-        {getButtonText()}
-      </Button>
-
-      <PaymentModal
-        isOpen={showPaymentModal}
-        status={paymentStatus}
-        amount={mintPrice}
-        error={paymentError}
-        onCancel={() => {
-          setShowPaymentModal(false);
-          setState("idle");
-          resetPayment();
-          if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-          }
-        }}
-      />
-    </>
+    <Button
+      onClick={handleClick}
+      disabled={isDisabled}
+      aria-label={getAriaLabel()}
+      aria-busy={isProcessing()}
+      aria-disabled={isDisabled}
+      aria-live="polite"
+      className="w-full max-w-xs sm:max-w-sm md:max-w-md mx-auto bg-white text-black hover:bg-gray-100 font-semibold text-base sm:text-lg touch-target haptic-press disabled:opacity-50 disabled:cursor-not-allowed"
+      size="lg"
+    >
+      {getButtonText()}
+    </Button>
   );
 }
 

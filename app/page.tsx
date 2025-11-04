@@ -9,7 +9,7 @@ import { SuccessModal } from "@/components/SuccessModal";
 import { GallerySection } from "@/components/GallerySection";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useAccount } from "wagmi";
-import { Card, CardContent } from "@/components/ui/card";
+import { AnimateIcon } from "@/components/animate-ui/icons/icon";
 
 export default function Home() {
   const [isSDKReady, setIsSDKReady] = useState(false);
@@ -40,19 +40,19 @@ export default function Home() {
 
   if (!isSDKReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f3daa1]/50">
-        <div className="text-black italic text-lg">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-[#fff3d6]">
+        <div>Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-100 mobile-safe-area">
+    <div className="flex min-h-screen flex-col bg-[#fff3d6] mobile-safe-area">
       {/* Mobile-Optimized Header */}
       <header className="flex items-center justify-between px-4 pt-4 pb-3 shrink-0">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-black">GEOPLET</h1>
-          <p className="text-gray-600 text-xs sm:text-sm italic">
+          <p className="text-gray-600 text-[10px] sm:text-sm italic">
             when geo meet warplets
           </p>
         </div>
@@ -63,9 +63,13 @@ export default function Home() {
       <main className="flex-1 flex flex-col gap-8 px-4 pb-safe">
         {/* State-based rendering */}
         {!isConnected ? (
-          <div className="max-w-md mx-auto bg-white rounded-2xl border-2 border-black p-8 text-black text-center my-8">
-            <div className="text-4xl mb-4">🔌</div>
-            <p className="text-sm">Connect your wallet to continue</p>
+          <div className="max-w-md mx-auto p-8 text-black/80 text-center my-8">
+            <div className="text-4xl mb-4">
+              <AnimateIcon animateOnHover className="w-4 h-4">
+                🔗
+              </AnimateIcon>
+            </div>
+            <p className="text-[10px] sm:text-sm italic">connect...</p>
           </div>
         ) : isLoading ? (
           <div className="max-w-md mx-auto bg-white rounded-2xl border-2 border-black p-8 text-black text-center my-8">
@@ -148,7 +152,7 @@ export default function Home() {
       />
 
       {/* Footer */}
-      <footer className="mt-4 mb-safe text-center text-gray-500 text-[10px] sm:text-sm py-4">
+      <footer className="mt-4 mb-safe text-center text-gray-500 text-[8px] sm:text-sm py-4 italic">
         <p>
           Powered by $GEOPLET • Build by GeoArt.Studio •{" "}
           <a
