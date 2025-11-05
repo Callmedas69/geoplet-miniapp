@@ -99,9 +99,9 @@ export default function Home() {
 
   // Share handlers
   const handleFarcasterShare = async () => {
-    if (!generatedImage) return;
+    if (!generatedImage || !nft) return;
     try {
-      await shareToFarcaster(generatedImage);
+      await shareToFarcaster(generatedImage, nft.tokenId, nft.name);
     } catch (error) {
       console.error("Failed to share:", error);
       toast.error("Failed to share to Farcaster");
