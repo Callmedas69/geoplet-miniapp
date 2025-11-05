@@ -29,7 +29,6 @@ export async function generateImage(nft: WarpletNFT): Promise<string> {
   const result = await response.json();
 
   haptics.success();
-  toast.success('Geometric art generated!');
 
   return result.imageData;
 }

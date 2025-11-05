@@ -59,9 +59,23 @@ interface MintVoucher {
 
 // Validate environment variables
 function validateEnv() {
-  if (!PRIVATE_KEY) throw new Error('PRIVATE_KEY not configured');
-  if (!RECIPIENT_ADDRESS) throw new Error('RECIPIENT_ADDRESS not configured');
-  if (!process.env.ONCHAIN_FI_API_KEY) throw new Error('ONCHAIN_FI_API_KEY not configured');
+  const required = {
+    PRIVATE_KEY: PRIVATE_KEY,
+    RECIPIENT_ADDRESS: RECIPIENT_ADDRESS,
+    ONCHAIN_FI_API_KEY: process.env.ONCHAIN_FI_API_KEY,
+    BASE_USDC_ADDRESS: process.env.BASE_USDC_ADDRESS,
+  };
+
+  const missing = Object.entries(required)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
+
+  if (missing.length > 0) {
+    console.error('[ENV] ❌ Missing required environment variables:', missing);
+    throw new Error(`Missing environment variables: ${missing.join(', ')}`);
+  }
+
+  console.log('[ENV] ✅ All required environment variables present');
 }
 
 /**
@@ -326,6 +340,9 @@ export async function POST(request: NextRequest) {
     // Get x402 payment header
     const paymentHeader = request.headers.get('X-Payment');
     if (!paymentHeader) {
+      // ✅ LOG: Confirm 402 response path
+      console.log('[X402] No X-Payment header found, returning 402 Payment Required');
+
       // Return x402-compliant 402 response
       // Convert amount to atomic units (USDC has 6 decimals)
       const amountInAtomicUnits = (parseFloat(MINT_PRICE) * 1e6).toString();

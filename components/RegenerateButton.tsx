@@ -19,12 +19,9 @@ import { generateImage, validateImageSize } from "@/lib/generators";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
 import { TokenUSDC } from "@web3icons/react";
+import { RotatingText } from "./RotatingText";
 
-type ButtonState =
-  | "idle"
-  | "insufficient_usdc"
-  | "generating"
-  | "success";
+type ButtonState = "idle" | "insufficient_usdc" | "generating" | "success";
 
 interface RegenerateButtonProps {
   disabled?: boolean;
@@ -141,7 +138,17 @@ export function RegenerateButton({
         return (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Geofying...
+            <RotatingText
+              messages={[
+                "Summoning geometric harmony...",
+                "Aligning Bauhaus angles...",
+                "Wobbling pixels on-chain...",
+                "Infusing Base energy...",
+                "Balancing Suprematist chaos...",
+                "Painting the blockchain...",
+              ]}
+              interval={2000}
+            />
           </>
         );
       case "success":
@@ -163,7 +170,7 @@ export function RegenerateButton({
     <Button
       onClick={handleRegenerate}
       disabled={isDisabled}
-      className="w-full max-w-xs bg-black text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+      className="w-full bg-black text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
       size="lg"
       aria-label="Regenerate Geoplet for $3"
     >

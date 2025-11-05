@@ -11,6 +11,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useAccount } from "wagmi";
 import { Button } from "./ui/button";
 import { Loader2, Sparkles } from "lucide-react";
 import { useWarplets } from "@/hooks/useWarplets";
@@ -21,6 +22,7 @@ import { validateImageSize, checkFidMinted } from "@/lib/generators";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
 import { TokenUSDC } from "@web3icons/react";
+import { RotatingText } from "./RotatingText";
 
 type ButtonState =
   | "idle"
@@ -43,13 +45,15 @@ export function MintButton({
   onSuccess,
   onDeleteFromSupabase,
 }: MintButtonProps) {
+  const { address } = useAccount();
   const { nft, fid } = useWarplets();
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
   const { requestMintSignature } = usePayment();
   const { hasEnoughUSDC, balance, mintPrice } = useUSDCBalance();
 
   const [state, setState] = useState<ButtonState>("idle");
-  const [signatureData, setSignatureData] = useState<MintSignatureResponse | null>(null);
+  const [signatureData, setSignatureData] =
+    useState<MintSignatureResponse | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const successCalledRef = useRef(false);
 
@@ -116,14 +120,41 @@ export function MintButton({
       }
 
       // Step 1: Payment
+      console.log("[MINT] Starting payment flow", { fid, address });
       setState("paying");
       const signature = await requestMintSignature(fid.toString());
 
       if (abortControllerRef.current.signal.aborted) return;
 
+      // ✅ DEFENSIVE VALIDATION: Verify signature structure
+      console.log("[MINT] Signature received", {
+        hasSignature: !!signature,
+        hasVoucher: !!signature?.voucher,
+        hasSignatureField: !!signature?.signature,
+        voucherTo: signature?.voucher?.to,
+        voucherFid: signature?.voucher?.fid,
+      });
+
+      if (!signature || !signature.voucher || !signature.signature) {
+        throw new Error(
+          "Payment succeeded but no valid signature received. Please contact support."
+        );
+      }
+
       setSignatureData(signature);
 
+      // ✅ DEFENSIVE CHECK: Verify state was updated
+      if (!signatureData && signature) {
+        console.warn("[MINT] Signature state not immediately updated", {
+          signature,
+        });
+      }
+
       // Step 2: Mint
+      console.log("[MINT] Starting mint transaction", {
+        hasSignature: !!signature,
+        imageSize: generatedImage.length,
+      });
       setState("minting");
       await mintNFT(signature, generatedImage);
 
@@ -133,7 +164,8 @@ export function MintButton({
 
       if (abortControllerRef.current?.signal.aborted) return;
 
-      const errorMessage = error instanceof Error ? error.message : "Failed to mint";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to mint";
 
       // Handle specific errors
       if (errorMessage.toLowerCase().includes("already minted")) {
@@ -171,14 +203,29 @@ export function MintButton({
         return (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Initiating x402...
+            <RotatingText
+              messages={[
+                "Initiating x402...",
+                "Verifying payment...",
+                "Processing USDC...",
+              ]}
+              interval={1500}
+            />
           </>
         );
       case "minting":
         return (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            Delivering Geoplet...
+            <RotatingText
+              messages={[
+                "Minting on Base...",
+                "Writing to blockchain...",
+                "Immortalizing art...",
+                "Delivering Geoplet...",
+              ]}
+              interval={1500}
+            />
           </>
         );
       case "success":
@@ -207,7 +254,7 @@ export function MintButton({
     <Button
       onClick={handleMint}
       disabled={isDisabled}
-      className="w-full max-w-xs bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+      className="w-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
       size="lg"
       aria-label="Mint Geoplet for $2"
     >

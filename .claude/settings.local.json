@@ -41,7 +41,9 @@
       "Bash(git fetch:*)",
       "Bash(git checkout:*)",
       "Bash(git pull:*)",
-      "Bash(del componentsHeader.tsx)"
+      "Bash(del componentsHeader.tsx)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "Bash(pnpm dlx:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

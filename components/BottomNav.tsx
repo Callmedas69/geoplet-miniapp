@@ -3,7 +3,7 @@
 /**
  * BottomNav Component
  *
- * Fixed bottom navigation bar with Home and Gallery icons
+ * Fixed bottom navigation bar with Home, Gallery, and Wallet icons
  * - Modern, minimal design with balanced spacing
  * - Mobile-optimized touch targets (52x52px with 28px icons)
  * - Subtle active state indicator (dot below icon)
@@ -12,9 +12,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid } from "lucide-react";
+import { Home, LayoutGrid, Wallet } from "lucide-react";
 
-export function BottomNav() {
+interface BottomNavProps {
+  onWalletClick?: () => void;
+}
+
+export function BottomNav({ onWalletClick }: BottomNavProps) {
   const pathname = usePathname();
 
   const navItems = [
@@ -23,12 +27,21 @@ export function BottomNav() {
       icon: Home,
       label: "Home",
       isActive: pathname === "/",
+      type: "link" as const,
     },
     {
       href: "/gallery",
       icon: LayoutGrid,
       label: "Gallery",
       isActive: pathname === "/gallery",
+      type: "link" as const,
+    },
+    {
+      icon: Wallet,
+      label: "Wallet",
+      isActive: false,
+      type: "button" as const,
+      onClick: onWalletClick,
     },
   ];
 
@@ -38,35 +51,58 @@ export function BottomNav() {
       aria-label="Main navigation"
     >
       <div className="flex justify-center items-center h-14 gap-16">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`
-              flex flex-col items-center justify-center
-              min-w-[52px] min-h-[52px] px-3
-              rounded-xl
-              active:scale-95 active:bg-black/5
-              transition-all duration-150
-              ${item.isActive ? "text-black" : "text-black/40"}
-            `}
-            aria-label={item.label}
-            aria-current={item.isActive ? "page" : undefined}
-          >
-            <item.icon
-              className="w-5 h-5"
-              strokeWidth={item.isActive ? 2 : 2}
-              aria-hidden="true"
-            />
-            {item.isActive && (
-              <div
-                className="w-1 h-1 rounded-full bg-black mt-1.5"
+        {navItems.map((item, index) => {
+          const content = (
+            <>
+              <item.icon
+                className="w-5 h-5"
+                strokeWidth={item.isActive ? 2 : 2}
                 aria-hidden="true"
               />
-            )}
-            <span className="sr-only">{item.label}</span>
-          </Link>
-        ))}
+              {item.isActive && (
+                <div
+                  className="w-1 h-1 rounded-full bg-black mt-1.5"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="sr-only">{item.label}</span>
+            </>
+          );
+
+          const className = `
+            flex flex-col items-center justify-center
+            min-w-[52px] min-h-[52px] px-3
+            rounded-xl
+            active:scale-95 active:bg-black/5
+            transition-all duration-150
+            ${item.isActive ? "text-black" : "text-black/40"}
+          `;
+
+          if (item.type === "link") {
+            return (
+              <Link
+                key={item.href}
+                href={item.href!}
+                className={className}
+                aria-label={item.label}
+                aria-current={item.isActive ? "page" : undefined}
+              >
+                {content}
+              </Link>
+            );
+          }
+
+          return (
+            <button
+              key={`button-${index}`}
+              onClick={item.onClick}
+              className={className}
+              aria-label={item.label}
+            >
+              {content}
+            </button>
+          );
+        })}
       </div>
     </nav>
   );

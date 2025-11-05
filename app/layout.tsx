@@ -4,7 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Toaster } from "@/components/ui/sonner";
 import { Footer } from "@/components/Footer";
-import { BottomNav } from "@/components/BottomNav";
+import { ClientLayout } from "@/components/ClientLayout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -78,13 +78,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          <div className="flex min-h-screen flex-col bg-[#fff3d6] mobile-safe-area">
-            {children}
-            <Footer />
-          </div>
+          <ClientLayout>
+            <div className="flex min-h-screen flex-col bg-[#fff3d6] mobile-safe-area">
+              {children}
+              <Footer />
+            </div>
+          </ClientLayout>
         </Providers>
         <Toaster />
-        <BottomNav />
       </body>
     </html>
   );
