@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
 import sharp from 'sharp';
+import { checkOpenAIAvailability } from '@/lib/openai-health';
 
 // x402 Payment Configuration
 const ONCHAIN_API_URL = 'https://api.onchain.fi/v1';
@@ -269,6 +270,27 @@ export async function POST(request: NextRequest) {
         }
       );
     }
+
+    // Pre-check OpenAI availability BEFORE settling payment
+    console.log('[OPENAI-PRECHECK] Checking service availability before payment...');
+    const health = await checkOpenAIAvailability();
+
+    if (!health.available) {
+      console.error('[OPENAI-PRECHECK] ❌ Service unavailable:', health.reason);
+      return NextResponse.json(
+        {
+          error: health.reason || 'OpenAI service temporarily unavailable',
+          success: false,
+          code: 'OPENAI_UNAVAILABLE',
+        },
+        {
+          status: 503,
+          headers: corsHeaders,
+        }
+      );
+    }
+
+    console.log('[OPENAI-PRECHECK] ✅ Service available, proceeding with payment...');
 
     // Verify and settle payment via Onchain.fi
     console.log('[ONCHAIN.FI] Verifying and settling x402 payment...');

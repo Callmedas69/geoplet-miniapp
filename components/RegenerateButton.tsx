@@ -96,10 +96,28 @@ export function RegenerateButton({
     abortControllerRef.current = new AbortController();
 
     try {
+      // Step 0: Pre-check OpenAI availability
       setState("paying");
-      console.log(`[x402 Regenerate] Step 1: Requesting payment terms...`);
+      console.log(`[Regenerate] Step 0: Checking OpenAI availability...`);
+
+      const precheckResponse = await fetch(`${API_BASE_URL}/api/openai-precheck`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: abortControllerRef.current.signal,
+      });
+
+      const precheckData = await precheckResponse.json();
+
+      if (!precheckResponse.ok || !precheckData.available) {
+        throw new Error(precheckData.reason || 'OpenAI service temporarily unavailable');
+      }
+
+      console.log(`[Regenerate] ✅ OpenAI service available, proceeding with payment...`);
 
       // Step 1: Make initial request without payment header (expect 402)
+      console.log(`[x402 Regenerate] Step 1: Requesting payment terms...`);
       const initialResponse = await fetch(`${API_BASE_URL}/api/generate-image`, {
         method: 'POST',
         headers: {

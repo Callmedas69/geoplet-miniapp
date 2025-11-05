@@ -72,6 +72,7 @@ export interface MintSignatureResponse {
     deadline: string;
   };
   signature: string;
+  paymentHeader: string; // Added for settlement after simulation
 }
 
 export function usePayment(config: PaymentConfig) {

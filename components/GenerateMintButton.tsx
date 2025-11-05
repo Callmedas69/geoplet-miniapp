@@ -52,6 +52,7 @@ import {
 } from "@/types/errors";
 import { TokenUSDC } from "@web3icons/react";
 import { PAYMENT_CONFIG } from "@/lib/payment-config";
+import { useContractSimulation } from "@/hooks/useContractSimulation";
 
 type ButtonState =
   | "idle" // Check USDC balance
@@ -60,6 +61,8 @@ type ButtonState =
   | "paid" // Payment complete, ready to generate
   | "generating" // Creating geometric image
   | "ready_to_mint" // Image generated, ready to mint
+  | "simulating" // Simulating contract call
+  | "settling" // Settling payment onchain
   | "minting" // Submitting mint transaction
   | "success" // NFT minted!
   | "already_minted"; // FID already used
@@ -83,6 +86,7 @@ function GenerateMintButtonInner({
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
   const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
   const { hasEnoughUSDC, balance, mintPrice } = useUSDCBalance();
+  const { simulateMint } = useContractSimulation();
 
   const [state, setState] = useState<ButtonState>("idle");
   const [signatureData, setSignatureData] =
@@ -157,6 +161,56 @@ function GenerateMintButtonInner({
         return;
       }
 
+      // Step 1: Simulate contract call (per LOG.md)
+      console.log("[GENERATE-MINT] Step 1: Simulating contract call");
+      setState("simulating");
+
+      const simulationResult = await simulateMint(
+        signatureData.voucher,
+        generatedImage,
+        signatureData.signature
+      );
+
+      if (!simulationResult.success) {
+        throw new Error(simulationResult.error || "Contract simulation failed");
+      }
+
+      console.log("[GENERATE-MINT] ✅ Simulation passed");
+
+      // Check if aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        return;
+      }
+
+      // Step 2: Settle payment (per LOG.md)
+      console.log("[GENERATE-MINT] Step 2: Settling payment onchain");
+      setState("settling");
+
+      const settleResponse = await fetch("/api/settle-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paymentHeader: signatureData.paymentHeader,
+        }),
+      });
+
+      const settleData = await settleResponse.json();
+
+      if (!settleResponse.ok || !settleData.success) {
+        throw new Error(settleData.error || "Payment settlement failed");
+      }
+
+      console.log("[GENERATE-MINT] ✅ Payment settled:", settleData.txHash);
+
+      // Check if aborted
+      if (abortControllerRef.current?.signal.aborted) {
+        return;
+      }
+
+      // Step 3: Execute mint transaction
+      console.log("[GENERATE-MINT] Step 3: Executing mint transaction");
       setState("minting");
       await mintNFT(signatureData, generatedImage);
       // Success state - mint completed successfully
@@ -418,6 +472,20 @@ function GenerateMintButtonInner({
         );
       case "ready_to_mint":
         return "Retry Mint";
+      case "simulating":
+        return (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            <span>simulating...</span>
+          </span>
+        );
+      case "settling":
+        return (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            <span>settling payment...</span>
+          </span>
+        );
       case "minting":
         return (
           <span className="flex items-center justify-center gap-2">
@@ -444,15 +512,19 @@ function GenerateMintButtonInner({
       case "insufficient_usdc":
         return `Get USDC - You need ${mintPrice} but only have ${balance}`;
       case "paying":
-        return "Step 1 of 3: Processing payment, please wait";
+        return "Step 1 of 5: Processing payment, please wait";
       case "paid":
         return "Retry generating your Geoplet artwork";
       case "generating":
-        return "Step 2 of 3: Creating your Geoplet image, please wait";
+        return "Step 2 of 5: Creating your Geoplet image, please wait";
       case "ready_to_mint":
         return "Retry minting your Geoplet NFT";
+      case "simulating":
+        return "Step 3 of 5: Simulating contract call, please wait";
+      case "settling":
+        return "Step 4 of 5: Settling payment onchain, please wait";
       case "minting":
-        return "Step 3 of 3: Minting your NFT, please wait for blockchain confirmation";
+        return "Step 5 of 5: Minting your NFT, please wait for blockchain confirmation";
       case "success":
         return "Your Geoplet NFT has been minted successfully";
       case "already_minted":

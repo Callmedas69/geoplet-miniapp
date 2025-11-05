@@ -1,7 +1,9 @@
-// TestPlet ERC721 with EIP-712 Signature Validation
-// Generated from: TestPlet (Geoplet.sol) v2.0.0 - Security Hardened
-// Deployed: 2025-11-02
-// Contract: 0x05D92966dE85d656Ae52E2b6C13b55c7cCc97522
+// GeoPlet ERC721 with EIP-712 Signature Validation
+// Generated from: GeoPlet (Geoplet.sol) - Production Version
+// Deployed: 2025-01-05
+// Contract: 0xB4d57a91DFD21CEe700cD4b63AEB4B4b49a456B9
+// Network: Base Mainnet (Chain ID: 8453)
+// Security: Critical bug fixed, all tests passing
 
 export const GeopletABI = [
   {
@@ -12,19 +14,6 @@ export const GeopletABI = [
   {
     "type": "function",
     "name": "MAX_SIGNATURE_VALIDITY",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "MIN_SIGNATURE_VALIDITY",
     "inputs": [],
     "outputs": [
       {
@@ -197,6 +186,11 @@ export const GeopletABI = [
         "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "tokenIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
       }
     ],
     "outputs": [],
@@ -327,7 +321,7 @@ export const GeopletABI = [
       {
         "name": "voucher",
         "type": "tuple",
-        "internalType": "struct TestPlet.MintVoucher",
+        "internalType": "struct GeoPlet.MintVoucher",
         "components": [
           {
             "name": "to",
@@ -1192,6 +1186,22 @@ export const GeopletABI = [
         "internalType": "string"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "StringsInsufficientHexLength",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   }
 ] as const;
 
@@ -1206,17 +1216,14 @@ export type MintVoucher = {
 
 // ============ Contract Addresses ============
 
-export const TESTPLET_ADDRESSES = {
-  baseMainnet: "0x05D92966dE85d656Ae52E2b6C13b55c7cCc97522" as `0x${string}`, // Security hardened v2
+export const GEOPLET_ADDRESSES = {
+  baseMainnet: "0xB4d57a91DFD21CEe700cD4b63AEB4B4b49a456B9" as `0x${string}`, // Production deployment - 2025-01-05
 } as const;
-
-// Alias for backwards compatibility
-export const GEOPLET_ADDRESSES = TESTPLET_ADDRESSES;
 
 // ============ EIP-712 Configuration ============
 
 export const EIP712_DOMAIN = {
-  name: "TestPlet",
+  name: "GeoPlet",
   version: "1",
   chainId: 8453, // Base Mainnet
 } as const;
@@ -1232,31 +1239,27 @@ export const EIP712_TYPES = {
 
 // ============ Security Constants ============
 
-export const MIN_SIGNATURE_VALIDITY = 60; // 1 minute (matches contract constant)
-export const MAX_SIGNATURE_VALIDITY = 600; // 10 minutes (matches contract constant)
+export const MAX_SIGNATURE_VALIDITY = 3600; // 1 hour (matches contract constant)
 
 // ============ Helper Functions ============
 
 /**
- * Get TestPlet contract address for a given chain ID
+ * Get GeoPlet contract address for a given chain ID
  * @param chainId The chain ID (8453 for Base Mainnet)
  * @returns Contract address
  */
-export function getTestPletAddress(chainId: number): `0x${string}` {
+export function getGeopletAddress(chainId: number): `0x${string}` {
   if (chainId === 8453) {
-    return TESTPLET_ADDRESSES.baseMainnet;
+    return GEOPLET_ADDRESSES.baseMainnet;
   }
-  throw new Error(`TestPlet not deployed to chain ${chainId}`);
+  throw new Error(`GeoPlet not deployed to chain ${chainId}`);
 }
 
-// Alias for backwards compatibility
-export const getGeopletAddress = getTestPletAddress;
-
 /**
- * Check if TestPlet is deployed on the given chain
+ * Check if GeoPlet is deployed on the given chain
  * @param chainId The chain ID to check
  * @returns True if deployed, false otherwise
  */
-export function isTestPletDeployed(chainId: number): boolean {
+export function isGeopletDeployed(chainId: number): boolean {
   return chainId === 8453; // Base Mainnet only
 }

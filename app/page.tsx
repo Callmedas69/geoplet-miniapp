@@ -157,6 +157,21 @@ export default function Home() {
         console.log("[AUTO-GEN] FID not minted, proceeding with auto-generation...");
         setIsMinted(false);
 
+        // Pre-check OpenAI availability
+        console.log("[AUTO-GEN] Step 0: Checking OpenAI availability...");
+        const precheckResponse = await fetch("/api/openai-precheck", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        const precheckData = await precheckResponse.json();
+
+        if (!precheckResponse.ok || !precheckData.available) {
+          throw new Error(precheckData.reason || "OpenAI service temporarily unavailable");
+        }
+
+        console.log("[AUTO-GEN] ✅ OpenAI service available");
+
         // Call generation API
         const response = await fetch("/api/generate-image", {
           method: "POST",

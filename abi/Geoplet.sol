@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "solady/utils/SSTORE2.sol";
 
 /**
- * @title TestPlet
+ * @title GeoPlet
  * @notice ERC721 NFT with built-in ERC20 treasury and EIP-712 signature-based payment validation
  * @dev Each NFT can hold balances of multiple ERC20 tokens that owners can claim
  *
@@ -27,15 +27,14 @@ import "solady/utils/SSTORE2.sol";
  * - Transferable balances - ERC20 balances transfer with NFT ownership
  * - SSTORE2 for gas-efficient on-chain image storage (~70% cheaper than SSTORE)
  */
-contract TestPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
+contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
     using Strings for uint256;
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
 
     // ============ Constants ============
 
-    uint256 public constant MIN_SIGNATURE_VALIDITY = 60;    // 1 minute minimum
-    uint256 public constant MAX_SIGNATURE_VALIDITY = 600;   // 10 minutes maximum
+    uint256 public constant MAX_SIGNATURE_VALIDITY = 3600; // 1 hour maximum
 
     // ============ State Variables ============
 
@@ -108,8 +107,8 @@ contract TestPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
     // ============ Constructor ============
 
     constructor()
-        ERC721("TestPlet", "TESTPLET")
-        EIP712("TestPlet", "1")
+        ERC721("GeoPlet", "GEOPLET")
+        EIP712("GeoPlet", "1")
         Ownable(msg.sender)
     {
         signerWallet = msg.sender; // Owner is initial signer
@@ -134,8 +133,10 @@ contract TestPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
 
         // 2. Verify signature deadline bounds
         require(block.timestamp <= voucher.deadline, "Signature expired");
-        require(voucher.deadline >= block.timestamp + MIN_SIGNATURE_VALIDITY, "Deadline too short");
-        require(voucher.deadline <= block.timestamp + MAX_SIGNATURE_VALIDITY, "Deadline too long");
+        require(
+            voucher.deadline <= block.timestamp + MAX_SIGNATURE_VALIDITY,
+            "Deadline too long"
+        );
 
         // 3. Verify caller matches voucher recipient
         require(msg.sender == voucher.to, "Caller mismatch");
@@ -217,7 +218,7 @@ contract TestPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
     function _buildMetadata(
         uint256 tokenId,
         string memory imageData
-    ) private pure returns (string memory) {
+    ) private view returns (string memory) {
         return
             string(
                 abi.encodePacked(
@@ -227,13 +228,26 @@ contract TestPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
                     tokenId.toString(),
                     '",',
                     '"description":"Geoplets: When Geometric Art meets Warplet, a fusion of form and frequency. Powered by $GEOPLET, integrated with onchain.fi (x402 Aggregator). Produced by GeoArt.Studio, where creativity lives fully on-chain.",',
-                    '"type":"image",',
+                    '"token_id":',
+                    tokenId.toString(),
+                    ",",
                     '"image":"',
                     imageData,
                     '",',
+                    '"animation_url":"https://geoplet.geoart.studio/og-image.webp",',
                     '"attributes":[',
-                    '{"trait_type":"Collection","value":"Geoplet"}',
-                    "]",
+                    '{"trait_type":"Token ID","value":"',
+                    tokenId.toString(),
+                    '"},',
+                    '{"trait_type":"Collection","value":"Geoplet"},',
+                    '{"trait_type":"Creator","value":"0xdas"},',
+                    '{"trait_type":"OnchainChecker","value":"https://onchainchecker.xyz/collection/base/',
+                    Strings.toHexString(uint160(address(this)), 20),
+                    "/",
+                    tokenId.toString(),
+                    '"}',
+                    "],",
+                    '"external_url":"https://geoplet.geoart.studio"',
                     "}"
                 )
             );
@@ -450,18 +464,20 @@ contract TestPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
      * @dev Only withdraws funds not allocated to any NFT holder
      * @param erc20Token Token address to withdraw
      * @param amount Amount to withdraw (must be <= excess)
+     * @param tokenIds Array of all minted token IDs (owner must provide)
      */
     function emergencyWithdrawExcess(
         address erc20Token,
-        uint256 amount
+        uint256 amount,
+        uint256[] calldata tokenIds
     ) external onlyOwner {
         require(erc20Token != address(0), "Invalid token");
 
-        // Calculate total allocated to NFT holders
+        // Calculate total allocated to NFT holders using provided token IDs
         uint256 totalAllocated = 0;
-        for (uint256 i = 0; i < _mintedCount; i++) {
-            if (_ownerOf(i) != address(0)) {
-                totalAllocated += tokenBalances[i][erc20Token];
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            if (_ownerOf(tokenIds[i]) != address(0)) {
+                totalAllocated += tokenBalances[tokenIds[i]][erc20Token];
             }
         }
 

@@ -24,11 +24,14 @@ import { toast } from "sonner";
 import { TokenUSDC } from "@web3icons/react";
 import { RotatingText } from "./RotatingText";
 import { PAYMENT_CONFIG } from "@/lib/payment-config";
+import { useContractSimulation } from "@/hooks/useContractSimulation";
 
 type ButtonState =
   | "idle"
   | "insufficient_usdc"
   | "paying"
+  | "simulating"
+  | "settling"
   | "minting"
   | "success"
   | "already_minted";
@@ -51,6 +54,7 @@ export function MintButton({
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
   const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
   const { hasEnoughUSDC, balance, mintPrice } = useUSDCBalance();
+  const { simulateMint } = useContractSimulation();
 
   const [state, setState] = useState<ButtonState>("idle");
   const [signatureData, setSignatureData] =
@@ -120,8 +124,8 @@ export function MintButton({
         return;
       }
 
-      // Step 1: Payment
-      console.log("[MINT] Starting payment flow", { fid, address });
+      // Step 1: Payment (verify only, no settlement yet - per LOG.md)
+      console.log("[MINT] Step 1: Starting payment verification", { fid, address });
       setState("paying");
       const signature = await requestMintSignature(fid.toString());
 
@@ -132,27 +136,63 @@ export function MintButton({
         hasSignature: !!signature,
         hasVoucher: !!signature?.voucher,
         hasSignatureField: !!signature?.signature,
+        hasPaymentHeader: !!signature?.paymentHeader,
         voucherTo: signature?.voucher?.to,
         voucherFid: signature?.voucher?.fid,
       });
 
-      if (!signature || !signature.voucher || !signature.signature) {
+      if (!signature || !signature.voucher || !signature.signature || !signature.paymentHeader) {
         throw new Error(
-          "Payment succeeded but no valid signature received. Please contact support."
+          "Payment verification succeeded but incomplete response received. Please contact support."
         );
       }
 
       setSignatureData(signature);
 
-      // ✅ DEFENSIVE CHECK: Verify state was updated
-      if (!signatureData && signature) {
-        console.warn("[MINT] Signature state not immediately updated", {
-          signature,
-        });
+      // Step 2: Parallel checks (per LOG.md)
+      console.log("[MINT] Step 2: Running parallel simulation + verification");
+      setState("simulating");
+
+      const simulationResult = await simulateMint(
+        signature.voucher,
+        generatedImage,
+        signature.signature
+      );
+
+      if (!simulationResult.success) {
+        throw new Error(simulationResult.error || "Contract simulation failed");
       }
 
-      // Step 2: Mint
-      console.log("[MINT] Starting mint transaction", {
+      console.log("[MINT] ✅ Simulation passed");
+
+      if (abortControllerRef.current.signal.aborted) return;
+
+      // Step 3: Settle payment (per LOG.md)
+      console.log("[MINT] Step 3: Settling payment onchain");
+      setState("settling");
+
+      const settleResponse = await fetch("/api/settle-payment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          paymentHeader: signature.paymentHeader,
+        }),
+      });
+
+      const settleData = await settleResponse.json();
+
+      if (!settleResponse.ok || !settleData.success) {
+        throw new Error(settleData.error || "Payment settlement failed");
+      }
+
+      console.log("[MINT] ✅ Payment settled:", settleData.txHash);
+
+      if (abortControllerRef.current.signal.aborted) return;
+
+      // Step 4: Execute mint transaction
+      console.log("[MINT] Step 4: Executing mint transaction", {
         hasSignature: !!signature,
         imageSize: generatedImage.length,
       });
@@ -214,6 +254,34 @@ export function MintButton({
             />
           </>
         );
+      case "simulating":
+        return (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <RotatingText
+              messages={[
+                "Simulating contract...",
+                "Checking eligibility...",
+                "Validating transaction...",
+              ]}
+              interval={1500}
+            />
+          </>
+        );
+      case "settling":
+        return (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <RotatingText
+              messages={[
+                "Settling payment...",
+                "Transferring USDC...",
+                "Confirming onchain...",
+              ]}
+              interval={1500}
+            />
+          </>
+        );
       case "minting":
         return (
           <>
@@ -243,7 +311,7 @@ export function MintButton({
     }
   };
 
-  const isLoading = state === "paying" || state === "minting";
+  const isLoading = state === "paying" || state === "simulating" || state === "settling" || state === "minting";
   const isDisabled =
     disabled ||
     !generatedImage ||

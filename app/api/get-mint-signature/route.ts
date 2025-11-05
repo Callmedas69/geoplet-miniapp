@@ -46,7 +46,7 @@ const corsHeaders = {
 const MINT_PRICE = '2.00'; // $2.00 USDC
 
 // Signer configuration
-const PRIVATE_KEY = process.env.PRIVATE_KEY as string;
+const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY as string;
 const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS as string;
 
 // Mint voucher type
@@ -60,7 +60,7 @@ interface MintVoucher {
 // Validate environment variables
 function validateEnv() {
   const required = {
-    PRIVATE_KEY: PRIVATE_KEY,
+    SIGNER_PRIVATE_KEY: PRIVATE_KEY,
     RECIPIENT_ADDRESS: RECIPIENT_ADDRESS,
     ONCHAIN_FI_API_KEY: process.env.ONCHAIN_FI_API_KEY,
     BASE_USDC_ADDRESS: process.env.BASE_USDC_ADDRESS,
@@ -120,18 +120,21 @@ function getErrorCodeForEndpoint(error: AppError): PaymentErrorCode | MintErrorC
 }
 
 /**
- * Verify and settle x402 payment via Onchain.fi API (Direct API calls)
+ * Verify x402 payment via Onchain.fi API (WITHOUT settling)
  *
- * This function makes direct API calls (same as Onchain UI):
- * 1. POST /v1/verify - Verifies the EIP-3009 payment signature
- * 2. POST /v1/settle - Settles payment on-chain (USDC transfers to treasury)
- * 
- * Replaces SDK to avoid timeout/retry issues
+ * This function ONLY verifies the EIP-3009 payment signature.
+ * Settlement happens separately after contract simulation passes.
+ *
+ * Flow (per LOG.md):
+ * 1. Verify payment (this function)
+ * 2. Simulate contract call (frontend)
+ * 3. Settle payment (separate endpoint)
+ * 4. Execute mint transaction
  *
  * @param paymentHeader - Base64-encoded x402 payment authorization
- * @returns true if payment verified AND settled successfully
+ * @returns true if payment verified successfully
  */
-async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
+async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
   try {
     // Decode payment header to log details
     try {
@@ -179,40 +182,8 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
       return false;
     }
 
-    console.log('[ONCHAIN.FI] ✅ Payment verified');
-    console.log('[ONCHAIN.FI] Step 2: Settling payment...');
+    console.log('[ONCHAIN.FI] ✅ Payment verified (settlement deferred until simulation passes)');
 
-    // Step 2: Settle payment
-    const settleResponse = await fetch(`${ONCHAIN_API_URL}/settle`, {
-      method: 'POST',
-      headers: {
-        'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        paymentHeader,
-        network: 'base',
-        priority: 'balanced',
-      }),
-    });
-
-    const settleData = await settleResponse.json();
-
-    console.log('[ONCHAIN.FI] Settle response:', {
-      status: settleResponse.status,
-      settled: settleData.data?.settled,
-      txHash: settleData.data?.txHash,
-    });
-
-    if (!settleResponse.ok || settleData.status !== 'success' || !settleData.data?.settled) {
-      console.error('[ONCHAIN.FI] ❌ Settlement failed:', settleData.data?.reason);
-      return false;
-    }
-
-    console.log('[ONCHAIN.FI] ✅ Payment settled successfully!');
-    console.log('[ONCHAIN.FI] Transaction hash:', settleData.data.txHash);
-    console.log('[ONCHAIN.FI] Treasury address:', RECIPIENT_ADDRESS);
-    
     return true;
   } catch (error: unknown) {
     console.error('[ONCHAIN.FI] Payment error:', {
@@ -242,7 +213,7 @@ async function generateMintSignature(
 
   // Generate voucher
   const nonce = Date.now(); // Unique timestamp
-  const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes from now
+  const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now (matches MAX_SIGNATURE_VALIDITY)
 
   const voucher = {
     to,
@@ -461,31 +432,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify and settle payment via Onchain.fi
-    console.log('[ONCHAIN.FI] Verifying and settling x402 payment...');
-    const paymentValid = await verifyX402Payment(paymentHeader);
+    // Verify payment via Onchain.fi (NO settlement yet - per LOG.md)
+    console.log('[ONCHAIN.FI] Verifying payment (settlement deferred)...');
+    const paymentValid = await verifyPaymentOnly(paymentHeader);
 
     if (!paymentValid) {
       return createErrorResponse(
         PaymentErrorCode.PAYMENT_VERIFICATION_FAILED,
-        'Payment verification/settlement failed - Invalid or insufficient payment',
+        'Payment verification failed - Invalid or insufficient payment',
         402
       );
     }
 
-    console.log('Payment verified and settled successfully');
+    console.log('[ONCHAIN.FI] Payment verified successfully (will settle after simulation)');
 
     // Generate EIP-712 signature
     console.log('Generating mint signature for:', { userAddress, fid });
     const { voucher, signature } = await generateMintSignature(userAddress as Address, fid);
 
-    // Return success response
+    // Return success response with payment header for settlement
     return NextResponse.json(
       {
         success: true,
         voucher,
         signature,
-        message: 'Mint signature generated successfully',
+        paymentHeader, // Return to frontend for settlement after simulation
+        message: 'Mint signature generated successfully (payment verified, not settled yet)',
       },
       {
         status: 200,
