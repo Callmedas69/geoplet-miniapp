@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Toaster } from "@/components/ui/sonner";
-import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BottomNav } from "@/components/BottomNav";
 
@@ -80,7 +79,6 @@ export default function RootLayout({
       >
         <Providers>
           <div className="flex min-h-screen flex-col bg-[#fff3d6] mobile-safe-area">
-            <Header />
             {children}
             <Footer />
           </div>

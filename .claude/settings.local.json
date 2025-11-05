@@ -40,7 +40,8 @@
       "WebFetch(domain:www.radix-ui.com)",
       "Bash(git fetch:*)",
       "Bash(git checkout:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(del componentsHeader.tsx)"
     ]
   },
   "enableAllProjectMcpServers": true,
