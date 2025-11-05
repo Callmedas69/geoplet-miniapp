@@ -3,6 +3,18 @@ import OpenAI from 'openai';
 import { toFile } from 'openai/uploads';
 import sharp from 'sharp';
 
+// x402 Payment Configuration
+const ONCHAIN_API_URL = 'https://api.onchain.fi/v1';
+const REGENERATE_PRICE = '3.00'; // $3.00 USDC
+const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS as string;
+
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_APP_URL || '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Payment',
+};
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -15,6 +27,86 @@ const log = (...args: unknown[]) => {
     console.log(...args);
   }
 };
+
+/**
+ * Verify and settle x402 payment via Onchain.fi API
+ * (Same implementation as get-mint-signature route)
+ */
+async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
+  try {
+    console.log('[ONCHAIN.FI] Step 1: Verifying payment...');
+
+    // Step 1: Verify payment
+    const verifyResponse = await fetch(`${ONCHAIN_API_URL}/verify`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        paymentHeader,
+        network: 'base',
+        expectedAmount: REGENERATE_PRICE,
+        expectedToken: 'USDC',
+        recipientAddress: RECIPIENT_ADDRESS,
+        priority: 'balanced',
+      }),
+    });
+
+    const verifyData = await verifyResponse.json();
+
+    console.log('[ONCHAIN.FI] Verify response:', {
+      status: verifyResponse.status,
+      valid: verifyData.data?.valid,
+    });
+
+    if (!verifyResponse.ok || verifyData.status !== 'success' || !verifyData.data?.valid) {
+      console.error('[ONCHAIN.FI] ❌ Verification failed:', verifyData.data?.reason);
+      return false;
+    }
+
+    console.log('[ONCHAIN.FI] ✅ Payment verified');
+    console.log('[ONCHAIN.FI] Step 2: Settling payment...');
+
+    // Step 2: Settle payment
+    const settleResponse = await fetch(`${ONCHAIN_API_URL}/settle`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        paymentHeader,
+        network: 'base',
+        priority: 'balanced',
+      }),
+    });
+
+    const settleData = await settleResponse.json();
+
+    console.log('[ONCHAIN.FI] Settle response:', {
+      status: settleResponse.status,
+      settled: settleData.data?.settled,
+      txHash: settleData.data?.txHash,
+    });
+
+    if (!settleResponse.ok || settleData.status !== 'success' || !settleData.data?.settled) {
+      console.error('[ONCHAIN.FI] ❌ Settlement failed:', settleData.data?.reason);
+      return false;
+    }
+
+    console.log('[ONCHAIN.FI] ✅ Payment settled successfully!');
+    console.log('[ONCHAIN.FI] Transaction hash:', settleData.data.txHash);
+
+    return true;
+  } catch (error: unknown) {
+    console.error('[ONCHAIN.FI] Payment error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      error: error,
+    });
+    return false;
+  }
+}
 
 /**
  * Generate geometric art using gpt-image-1 with direct image-to-image transformation
@@ -111,9 +203,14 @@ async function generateGeometricArt(
   }
 }
 
+// Handle OPTIONS preflight
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
 /**
  * POST /api/generate-image
- * Generate geometric art from Warplet NFT (FREE)
+ * Generate geometric art from Warplet NFT ($3 USDC via x402)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -124,7 +221,7 @@ export async function POST(request: NextRequest) {
     if (!imageUrl || !tokenId) {
       return NextResponse.json(
         { error: 'Missing required fields: imageUrl, tokenId' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -132,30 +229,95 @@ export async function POST(request: NextRequest) {
     if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
       return NextResponse.json(
         { error: 'Invalid image URL format' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
+
+    // Get x402 payment header
+    const paymentHeader = request.headers.get('X-Payment');
+    if (!paymentHeader) {
+      // Return x402-compliant 402 response
+      console.log('[X402] No X-Payment header found, returning 402 Payment Required');
+
+      const amountInAtomicUnits = (parseFloat(REGENERATE_PRICE) * 1e6).toString();
+
+      return NextResponse.json(
+        {
+          x402Version: 1,
+          accepts: [
+            {
+              scheme: 'exact',
+              network: 'base',
+              maxAmountRequired: amountInAtomicUnits,
+              asset: process.env.BASE_USDC_ADDRESS!,
+              payTo: RECIPIENT_ADDRESS,
+              resource: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/generate-image`,
+              description: `Generate a new Geoplet artwork for ${REGENERATE_PRICE} USDC`,
+              mimeType: 'application/json',
+              maxTimeoutSeconds: 300,
+              extra: {
+                name: 'USD Coin',
+                version: '2',
+              },
+            },
+          ],
+          error: 'Payment Required',
+        },
+        {
+          status: 402,
+          headers: corsHeaders,
+        }
+      );
+    }
+
+    // Verify and settle payment via Onchain.fi
+    console.log('[ONCHAIN.FI] Verifying and settling x402 payment...');
+    const paymentValid = await verifyX402Payment(paymentHeader);
+
+    if (!paymentValid) {
+      return NextResponse.json(
+        {
+          error: 'Payment verification/settlement failed - Invalid or insufficient payment',
+          success: false,
+        },
+        {
+          status: 402,
+          headers: corsHeaders,
+        }
+      );
+    }
+
+    console.log('Payment verified and settled successfully');
 
     log(`\n🎨 Starting generation for Warplet #${tokenId}`);
     log(`📷 Image URL: ${imageUrl}`);
 
-    // Generate geometric art (FREE - no payment required)
+    // Generate geometric art (payment verified)
     const result = await generateGeometricArt(imageUrl, tokenId, name || `Warplet #${tokenId}`);
 
     log(`✅ Generation successful for Warplet #${tokenId}\n`);
 
-    return NextResponse.json({
-      success: true,
-      imageData: result.imageData, // Base64 for download and future onchain storage
-      metadata: {
-        tokenId,
-        name: name || `Warplet #${tokenId}`,
-        model: 'gpt-image-1',
-        prompt: result.prompt,
-        size: '1024x1024',
-        timestamp: new Date().toISOString(),
+    return NextResponse.json(
+      {
+        success: true,
+        imageData: result.imageData, // Base64 for download and future onchain storage
+        metadata: {
+          tokenId,
+          name: name || `Warplet #${tokenId}`,
+          model: 'gpt-image-1',
+          prompt: result.prompt,
+          size: '1024x1024',
+          timestamp: new Date().toISOString(),
+        },
       },
-    });
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Access-Control-Expose-Headers': 'X-PAYMENT-RESPONSE',
+        },
+      }
+    );
   } catch (error: unknown) {
     console.error('❌ API Error:', error);
 
@@ -166,7 +328,7 @@ export async function POST(request: NextRequest) {
         error: errorMessage,
         success: false,
       },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -179,8 +341,9 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     service: 'geometric-art-generation',
-    price: 'FREE (testing)',
+    price: `${REGENERATE_PRICE} USDC (x402)`,
     network: 'base',
     provider: 'OpenAI gpt-image-1',
+    paymentProtocol: 'x402 (onchain.fi)',
   });
 }

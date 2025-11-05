@@ -4,6 +4,7 @@ interface WarpletDisplayProps {
   imageUrl: string;
   tokenId: string;
   generatedImage?: string | null;
+  isMinted?: boolean;
   alt?: string;
 }
 
@@ -11,6 +12,7 @@ export function WarpletDisplay({
   imageUrl,
   tokenId,
   generatedImage,
+  isMinted = false,
   alt = "Warplet NFT",
 }: WarpletDisplayProps) {
   const displayImage = generatedImage || imageUrl;
@@ -31,10 +33,12 @@ export function WarpletDisplay({
           <span className="text-gray-400 text-xs">thumbnail here</span>
         )}
 
-        {/* Generated indicator */}
+        {/* Generated/Minted indicator */}
         {generatedImage && (
-          <div className="absolute top-2 left-2 bg-green-500/90 px-2 py-1 rounded text-xs text-white font-medium">
-            ✨ Generated
+          <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs text-white font-medium ${
+            isMinted ? 'bg-purple-600/90' : 'bg-green-500/90'
+          }`}>
+            {isMinted ? '🎨 Minted' : '✨ Generated'}
           </div>
         )}
       </div>

@@ -1,7 +1,9 @@
 /**
- * usePayment Hook - Manual x402 Payment Implementation (REFACTORED)
+ * usePayment Hook - Generic x402 Payment Implementation
  *
- * Flow: Pay $2 USDC → Get Signature → Generate Image → Mint
+ * Supports multiple payment flows:
+ * - Mint: $2 USDC → Get Signature → Mint NFT
+ * - Regenerate: $3 USDC → Generate Image
  *
  * Manual 402 Payment Flow:
  * 1. Make initial request to backend (no payment header)
@@ -9,7 +11,7 @@
  * 3. Prompt user to authorize USDC payment (EIP-3009 signature)
  * 4. Generate x402 payment header with signature
  * 5. Retry request with X-Payment header
- * 6. Backend verifies payment and returns mint signature
+ * 6. Backend verifies payment and returns response
  *
  * Benefits of manual implementation:
  * - Full control over payment header format
@@ -19,6 +21,7 @@
  * - KISS principle compliance
  *
  * REFACTOR IMPROVEMENTS:
+ * - Configurable for any endpoint/price (mint, regenerate, etc.)
  * - Handles structured error responses with error codes
  * - Better error type detection and handling
  * - Throws AppError with error codes
@@ -38,11 +41,19 @@ import {
   type APIError,
 } from '@/types/errors';
 
-const MINT_PRICE = '2.00'; // $2.00 USDC
-const MINT_PRICE_ATOMIC = '2000000'; // 2.00 USDC in atomic units (6 decimals)
 const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || '';
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_BASE_USDC_ADDRESS as `0x${string}`;
 const CHAIN_ID = 8453; // Base Mainnet
+
+/**
+ * Payment configuration for different flows
+ */
+export interface PaymentConfig {
+  endpoint: string;        // API endpoint (e.g., '/api/get-mint-signature')
+  price: string;          // Human-readable price (e.g., '2.00')
+  priceAtomic: string;    // USDC atomic units (e.g., '2000000' for 6 decimals)
+  label: string;          // Label for logging (e.g., 'Mint', 'Regenerate')
+}
 
 export type PaymentStatus =
   | 'idle'
@@ -63,7 +74,7 @@ export interface MintSignatureResponse {
   signature: string;
 }
 
-export function usePayment() {
+export function usePayment(config: PaymentConfig) {
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const [status, setStatus] = useState<PaymentStatus>('idle');
@@ -100,10 +111,10 @@ export function usePayment() {
       setStatus('fetching_terms');
       setError(null);
 
-      console.log('[x402] Step 1: Requesting payment terms...');
+      console.log(`[x402 ${config.label}] Step 1: Requesting payment terms...`);
 
       // Step 1: Make initial request without payment header
-      const initialResponse = await fetch(`${API_BASE_URL}/api/get-mint-signature`, {
+      const initialResponse = await fetch(`${API_BASE_URL}${config.endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +143,7 @@ export function usePayment() {
       const paymentTermsData = await initialResponse.json() as PaymentRequired402Response;
       setPaymentTerms(paymentTermsData);
 
-      console.log('[x402] Step 2: Received 402 Payment Required:', {
+      console.log(`[x402 ${config.label}] Step 2: Received 402 Payment Required:`, {
         amount: paymentTermsData.accepts[0]?.maxAmountRequired,
         recipient: paymentTermsData.accepts[0]?.payTo,
         description: paymentTermsData.accepts[0]?.description,
@@ -147,28 +158,28 @@ export function usePayment() {
 
       // Step 3: Prompt user to sign (UI will show modal)
       setStatus('awaiting_signature');
-      console.log('[x402] Step 3: Awaiting user signature for payment authorization...');
+      console.log(`[x402 ${config.label}] Step 3: Awaiting user signature for payment authorization...`);
 
       // Generate payment header with EIP-3009 signature
       setStatus('processing');
-      console.log('[x402] Step 4: Generating payment header...');
+      console.log(`[x402 ${config.label}] Step 4: Generating payment header...`);
 
       const paymentHeader = await generatePaymentHeader(walletClient, {
         from: address,
         to: terms.payTo as `0x${string}`,
-        value: MINT_PRICE_ATOMIC,
+        value: config.priceAtomic,
         validAfter: '0',
         usdcAddress: USDC_ADDRESS,
         chainId: CHAIN_ID,
       });
 
-      console.log('[x402] Payment header generated, length:', paymentHeader.length);
+      console.log(`[x402 ${config.label}] Payment header generated, length:`, paymentHeader.length);
 
       // Step 5: Retry request with X-Payment header
       setStatus('verifying');
-      console.log('[x402] Step 5: Retrying request with payment header...');
+      console.log(`[x402 ${config.label}] Step 5: Retrying request with payment header...`);
 
-      const paymentResponse = await fetch(`${API_BASE_URL}/api/get-mint-signature`, {
+      const paymentResponse = await fetch(`${API_BASE_URL}${config.endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,14 +210,14 @@ export function usePayment() {
         throw new AppError(PaymentErrorCode.API_ERROR, 'Invalid response from server');
       }
 
-      console.log('[x402] Payment verified and signature received!');
+      console.log(`[x402 ${config.label}] Payment verified and signature received!`);
 
       setSignatureData(data);
       setStatus('success');
 
       return data;
     } catch (err: unknown) {
-      console.error('[x402] Payment error:', err);
+      console.error(`[x402 ${config.label}] Payment error:`, err);
 
       // Handle AppError with error codes
       if (err instanceof AppError) {
@@ -259,7 +270,7 @@ export function usePayment() {
     paymentTerms,
     isConnected,
     address,
-    mintPrice: MINT_PRICE,
+    price: config.price,
 
     // Actions
     requestMintSignature,

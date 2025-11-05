@@ -7,6 +7,7 @@ interface HeroSectionProps {
   warpletTokenId: string | null;
   generatedImage: string | null;
   isGenerating?: boolean;
+  isMinted?: boolean;
 }
 
 export function HeroSection({
@@ -14,6 +15,7 @@ export function HeroSection({
   warpletTokenId,
   generatedImage,
   isGenerating = false,
+  isMinted = false,
 }: HeroSectionProps) {
   if (!warpletImage || !warpletTokenId) {
     return null;
@@ -59,6 +61,7 @@ export function HeroSection({
           imageUrl={warpletImage}
           tokenId={warpletTokenId}
           generatedImage={generatedImage}
+          isMinted={isMinted}
           alt={`Warplet #${warpletTokenId}`}
         />
       </div>

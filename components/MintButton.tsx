@@ -23,6 +23,7 @@ import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
 import { TokenUSDC } from "@web3icons/react";
 import { RotatingText } from "./RotatingText";
+import { PAYMENT_CONFIG } from "@/lib/payment-config";
 
 type ButtonState =
   | "idle"
@@ -48,7 +49,7 @@ export function MintButton({
   const { address } = useAccount();
   const { nft, fid } = useWarplets();
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
-  const { requestMintSignature } = usePayment();
+  const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
   const { hasEnoughUSDC, balance, mintPrice } = useUSDCBalance();
 
   const [state, setState] = useState<ButtonState>("idle");

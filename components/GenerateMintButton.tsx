@@ -51,6 +51,7 @@ import {
   getErrorMessage,
 } from "@/types/errors";
 import { TokenUSDC } from "@web3icons/react";
+import { PAYMENT_CONFIG } from "@/lib/payment-config";
 
 type ButtonState =
   | "idle" // Check USDC balance
@@ -80,7 +81,7 @@ function GenerateMintButtonInner({
 }: GenerateMintButtonProps) {
   const { nft, fid } = useWarplets();
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
-  const { requestMintSignature } = usePayment();
+  const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
   const { hasEnoughUSDC, balance, mintPrice } = useUSDCBalance();
 
   const [state, setState] = useState<ButtonState>("idle");

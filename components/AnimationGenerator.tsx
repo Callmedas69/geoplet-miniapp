@@ -2,10 +2,9 @@
 
 import { useState, useRef } from 'react';
 import { usePayment } from '@/hooks/usePayment';
+import { PAYMENT_CONFIG } from '@/lib/payment-config';
 import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
-
-const PRICE = '5.00'; // $5 USDC
 
 export function AnimationGenerator() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -14,7 +13,7 @@ export function AnimationGenerator() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const payment = usePayment();
+  const payment = usePayment(PAYMENT_CONFIG.ANIMATION);
 
   /**
    * Handle image upload
@@ -137,7 +136,7 @@ export function AnimationGenerator() {
     <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-white border border-white/20">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">🎥 Animation Generator</h3>
-        <span className="text-sm bg-white/20 px-3 py-1 rounded-full">${PRICE} USDC</span>
+        <span className="text-sm bg-white/20 px-3 py-1 rounded-full">${PAYMENT_CONFIG.ANIMATION.price} USDC</span>
       </div>
 
       {/* Upload Section */}
@@ -177,7 +176,7 @@ export function AnimationGenerator() {
           {payment.isConnected && (
             <div className="text-xs text-indigo-100 space-y-1">
               <p>Payment Status: {payment.status}</p>
-              <p>Price: {payment.mintPrice} USDC</p>
+              <p>Price: {payment.price} USDC</p>
             </div>
           )}
 
@@ -196,7 +195,7 @@ export function AnimationGenerator() {
                 {payment.status === 'idle' && 'Generating animation...'}
               </span>
             ) : (
-              `Animate for ${PRICE} USDC`
+              `Animate for ${PAYMENT_CONFIG.ANIMATION.price} USDC`
             )}
           </button>
         </div>

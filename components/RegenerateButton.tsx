@@ -11,17 +11,21 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useAccount, useWalletClient } from "wagmi";
 import { Button } from "./ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useUSDCBalance } from "@/hooks/useUSDCBalance";
-import { generateImage, validateImageSize } from "@/lib/generators";
+import { generatePaymentHeader } from "@/lib/payment-header";
+import { validateImageSize } from "@/lib/generators";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
 import { TokenUSDC } from "@web3icons/react";
 import { RotatingText } from "./RotatingText";
+import { PAYMENT_CONFIG } from "@/lib/payment-config";
+import type { PaymentRequired402Response } from "@/types/x402";
 
-type ButtonState = "idle" | "insufficient_usdc" | "generating" | "success";
+type ButtonState = "idle" | "insufficient_usdc" | "paying" | "generating" | "success";
 
 interface RegenerateButtonProps {
   disabled?: boolean;
@@ -29,11 +33,17 @@ interface RegenerateButtonProps {
   onSaveToSupabase: (imageData: string) => Promise<boolean>;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || '';
+const USDC_ADDRESS = process.env.NEXT_PUBLIC_BASE_USDC_ADDRESS as `0x${string}`;
+const CHAIN_ID = 8453; // Base Mainnet
+
 export function RegenerateButton({
   disabled = false,
   onRegenerate,
   onSaveToSupabase,
 }: RegenerateButtonProps) {
+  const { address, isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const { nft, fid } = useWarplets();
   const { balance } = useUSDCBalance();
 
@@ -41,7 +51,7 @@ export function RegenerateButton({
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Check USDC balance (need $3 for regenerate)
-  const regeneratePrice = 3;
+  const regeneratePrice = parseFloat(PAYMENT_CONFIG.REGENERATE.price);
   const balanceNum = balance ? parseFloat(balance) : 0;
   const hasEnoughUSDC = balanceNum >= regeneratePrice;
 
@@ -63,8 +73,13 @@ export function RegenerateButton({
   }, []);
 
   const handleRegenerate = useCallback(async () => {
-    if (!fid || !nft) {
-      toast.error("Warplet not loaded");
+    if (!fid || !nft || !address || !isConnected) {
+      toast.error("Warplet not loaded or wallet not connected");
+      return;
+    }
+
+    if (!walletClient?.account) {
+      toast.error("Wallet client not available");
       return;
     }
 
@@ -73,15 +88,86 @@ export function RegenerateButton({
       return;
     }
 
+    if (!USDC_ADDRESS) {
+      toast.error("USDC address not configured");
+      return;
+    }
+
     abortControllerRef.current = new AbortController();
 
     try {
-      // For MVP: Just generate without payment
-      // TODO: Implement $3 payment via x402 when ready
-      setState("generating");
-      const imageData = await generateImage(nft);
+      setState("paying");
+      console.log(`[x402 Regenerate] Step 1: Requesting payment terms...`);
+
+      // Step 1: Make initial request without payment header (expect 402)
+      const initialResponse = await fetch(`${API_BASE_URL}/api/generate-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrl: nft.imageUrl,
+          tokenId: nft.tokenId,
+          name: nft.name,
+        }),
+      });
+
+      // Step 2: Expect 402 Payment Required
+      if (initialResponse.status !== 402) {
+        throw new Error(`Unexpected status: ${initialResponse.status}`);
+      }
+
+      const paymentTermsData = await initialResponse.json() as PaymentRequired402Response;
+      console.log(`[x402 Regenerate] Step 2: Received 402 Payment Required`);
+
+      if (!paymentTermsData.accepts?.[0]) {
+        throw new Error('Invalid payment terms received');
+      }
+
+      const terms = paymentTermsData.accepts[0];
+
+      // Step 3: Generate payment header with EIP-3009 signature
+      console.log(`[x402 Regenerate] Step 3: Generating payment header...`);
+
+      const paymentHeader = await generatePaymentHeader(walletClient, {
+        from: address,
+        to: terms.payTo as `0x${string}`,
+        value: PAYMENT_CONFIG.REGENERATE.priceAtomic,
+        validAfter: '0',
+        usdcAddress: USDC_ADDRESS,
+        chainId: CHAIN_ID,
+      });
 
       if (abortControllerRef.current.signal.aborted) return;
+
+      // Step 4: Retry request with X-Payment header
+      console.log(`[x402 Regenerate] Step 4: Retrying with payment header...`);
+      setState("generating");
+
+      const paymentResponse = await fetch(`${API_BASE_URL}/api/generate-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Payment': paymentHeader,
+        },
+        body: JSON.stringify({
+          imageUrl: nft.imageUrl,
+          tokenId: nft.tokenId,
+          name: nft.name,
+        }),
+      });
+
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json();
+        throw new Error(errorData.error || 'Generation failed');
+      }
+
+      const result = await paymentResponse.json();
+      const imageData = result.imageData;
+
+      if (abortControllerRef.current.signal.aborted) return;
+
+      console.log(`[x402 Regenerate] Payment verified and image generated!`);
 
       // Validate size
       const validation = validateImageSize(imageData);
@@ -113,11 +199,20 @@ export function RegenerateButton({
 
       const errorMessage =
         error instanceof Error ? error.message : "Failed to regenerate";
+
+      // Handle user rejection
+      if (errorMessage.toLowerCase().includes('user rejected') ||
+          errorMessage.toLowerCase().includes('user denied') ||
+          errorMessage.toLowerCase().includes('user cancelled')) {
+        toast.error("Payment cancelled");
+      } else {
+        toast.error(errorMessage);
+      }
+
       haptics.error();
-      toast.error(errorMessage);
       setState("idle");
     }
-  }, [fid, nft, hasEnoughUSDC, onRegenerate, onSaveToSupabase]);
+  }, [fid, nft, address, isConnected, walletClient, hasEnoughUSDC, onRegenerate, onSaveToSupabase]);
 
   // Button text and state
   const getButtonContent = () => {
@@ -133,6 +228,20 @@ export function RegenerateButton({
             <TokenUSDC className="w-5 h-5" variant="branded" />
             Get USDC
           </a>
+        );
+      case "paying":
+        return (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <RotatingText
+              messages={[
+                "Initiating x402...",
+                "Verifying payment...",
+                "Processing USDC...",
+              ]}
+              interval={1500}
+            />
+          </>
         );
       case "generating":
         return (
@@ -157,13 +266,13 @@ export function RegenerateButton({
         return (
           <>
             <RefreshCw className="w-5 h-5" />
-            REGENERATE
+            REGENERATE ($3)
           </>
         );
     }
   };
 
-  const isLoading = state === "generating";
+  const isLoading = state === "paying" || state === "generating";
   const isDisabled = disabled || isLoading || state === "success";
 
   return (

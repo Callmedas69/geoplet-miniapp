@@ -43,7 +43,9 @@
       "Bash(git pull:*)",
       "Bash(del componentsHeader.tsx)",
       "WebFetch(domain:ui.shadcn.com)",
-      "Bash(pnpm dlx:*)"
+      "Bash(pnpm dlx:*)",
+      "Bash(node -e:*)",
+      "Bash(cast call:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
