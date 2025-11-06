@@ -1,6 +1,9 @@
 import { WarpletDisplay } from "./WarpletDisplay";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useRef, useEffect } from "react";
+import { useGSAP } from "@gsap/react";
+import { gsap } from "gsap";
 
 interface HeroSectionProps {
   warpletImage: string | null;
@@ -17,27 +20,55 @@ export function HeroSection({
   isGenerating = false,
   isMinted = false,
 }: HeroSectionProps) {
+  const badgeContainerRef = useRef<HTMLDivElement>(null);
+  const displayRef = useRef<HTMLDivElement>(null);
+
   if (!warpletImage || !warpletTokenId) {
     return null;
   }
 
+  // Badge stagger animation on mount
+  useGSAP(() => {
+    if (badgeContainerRef.current) {
+      gsap.from(".badge-item", {
+        opacity: 0,
+        y: 10,
+        duration: 0.3,
+        stagger: 0.05,
+        ease: "power2.out"
+      });
+    }
+  }, { scope: badgeContainerRef });
+
+  // Image transformation animation when generated
+  useGSAP(() => {
+    if (generatedImage && displayRef.current) {
+      gsap.from(displayRef.current, {
+        scale: 0.95,
+        opacity: 0,
+        duration: 0.3,
+        ease: "power2.out"
+      });
+    }
+  }, { dependencies: [generatedImage], scope: displayRef });
+
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div id="hero-section" className="space-y-6 max-w-2xl mx-auto">
       {/* Badge Section - Above display, outside loading overlay */}
       <div className="text-center px-4">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <Badge variant="outline" className="text-xs font-medium">
+        <div ref={badgeContainerRef} className="flex flex-wrap items-center justify-center gap-2">
+          <Badge variant="outline" className="badge-item text-xs font-medium">
             ⚡ $GEOPLET
           </Badge>
-          <Badge variant="outline" className="text-xs font-medium">
+          <Badge variant="outline" className="badge-item text-xs font-medium">
             🔗 onchain.fi
           </Badge>
-          <Badge variant="outline" className="text-xs font-medium">
+          <Badge variant="outline" className="badge-item text-xs font-medium">
             🎨 GeoArt.Studio
           </Badge>
           <Badge
             variant="outline"
-            className="text-xs font-medium border-blue-600 text-blue-700"
+            className="badge-item text-xs font-medium border-blue-600 text-blue-700"
           >
             ✨ Fully On-Chain
           </Badge>
@@ -45,7 +76,7 @@ export function HeroSection({
       </div>
 
       {/* Display Area - Loading overlay only affects this section */}
-      <div className="relative px-4">
+      <div ref={displayRef} className="relative px-4">
         {/* Loading Overlay */}
         {isGenerating && (
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20">

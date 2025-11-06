@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Toaster } from "@/components/ui/sonner";
-import { Footer } from "@/components/Footer";
 import { ClientLayout } from "@/components/ClientLayout";
 
 const geistSans = Geist({
@@ -81,7 +80,6 @@ export default function RootLayout({
           <ClientLayout>
             <div className="flex min-h-screen flex-col bg-[#fff3d6] mobile-safe-area">
               {children}
-              <Footer />
             </div>
           </ClientLayout>
         </Providers>

@@ -45,7 +45,8 @@
       "WebFetch(domain:ui.shadcn.com)",
       "Bash(pnpm dlx:*)",
       "Bash(node -e:*)",
-      "Bash(cast call:*)"
+      "Bash(cast call:*)",
+      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\components\\Footer.tsx\")"
     ]
   },
   "enableAllProjectMcpServers": true,

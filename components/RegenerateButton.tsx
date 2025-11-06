@@ -24,6 +24,7 @@ import { TokenUSDC } from "@web3icons/react";
 import { RotatingText } from "./RotatingText";
 import { PAYMENT_CONFIG } from "@/lib/payment-config";
 import type { PaymentRequired402Response } from "@/types/x402";
+import { gsap } from "gsap";
 
 type ButtonState = "idle" | "insufficient_usdc" | "paying" | "generating" | "success";
 
@@ -49,6 +50,26 @@ export function RegenerateButton({
 
   const [state, setState] = useState<ButtonState>("idle");
   const abortControllerRef = useRef<AbortController | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Button hover/press animation
+  useEffect(() => {
+    const button = buttonRef.current;
+    if (!button) return;
+
+    const handlePointerDown = () => gsap.to(button, { scale: 0.95, duration: 0.1 });
+    const handlePointerUp = () => gsap.to(button, { scale: 1, duration: 0.15 });
+
+    button.addEventListener("pointerdown", handlePointerDown);
+    button.addEventListener("pointerup", handlePointerUp);
+    button.addEventListener("pointerleave", handlePointerUp);
+
+    return () => {
+      button.removeEventListener("pointerdown", handlePointerDown);
+      button.removeEventListener("pointerup", handlePointerUp);
+      button.removeEventListener("pointerleave", handlePointerUp);
+    };
+  }, []);
 
   // Check USDC balance (need $3 for regenerate)
   const regeneratePrice = parseFloat(PAYMENT_CONFIG.REGENERATE.price);
@@ -96,27 +117,9 @@ export function RegenerateButton({
     abortControllerRef.current = new AbortController();
 
     try {
-      // Step 0: Pre-check OpenAI availability
+      // SIMPLIFIED: Removed frontend precheck (KISS principle)
+      // Backend will check before settlement (redundant frontend check removed)
       setState("paying");
-      console.log(`[Regenerate] Step 0: Checking OpenAI availability...`);
-
-      const precheckResponse = await fetch(`${API_BASE_URL}/api/openai-precheck`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: abortControllerRef.current.signal,
-      });
-
-      const precheckData = await precheckResponse.json();
-
-      if (!precheckResponse.ok || !precheckData.available) {
-        throw new Error(precheckData.reason || 'OpenAI service temporarily unavailable');
-      }
-
-      console.log(`[Regenerate] ✅ OpenAI service available, proceeding with payment...`);
-
-      // Step 1: Make initial request without payment header (expect 402)
       console.log(`[x402 Regenerate] Step 1: Requesting payment terms...`);
       const initialResponse = await fetch(`${API_BASE_URL}/api/generate-image`, {
         method: 'POST',
@@ -127,6 +130,7 @@ export function RegenerateButton({
           imageUrl: nft.imageUrl,
           tokenId: nft.tokenId,
           name: nft.name,
+          fid: fid.toString(), // Add FID for generation check
         }),
       });
 
@@ -295,6 +299,7 @@ export function RegenerateButton({
 
   return (
     <Button
+      ref={buttonRef}
       onClick={handleRegenerate}
       disabled={isDisabled}
       className="w-full bg-black text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"

@@ -25,6 +25,7 @@ import { TokenUSDC } from "@web3icons/react";
 import { RotatingText } from "./RotatingText";
 import { PAYMENT_CONFIG } from "@/lib/payment-config";
 import { useContractSimulation } from "@/hooks/useContractSimulation";
+import { gsap } from "gsap";
 
 type ButtonState =
   | "idle"
@@ -61,6 +62,26 @@ export function MintButton({
     useState<MintSignatureResponse | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const successCalledRef = useRef(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Button hover/press animation
+  useEffect(() => {
+    const button = buttonRef.current;
+    if (!button) return;
+
+    const handlePointerDown = () => gsap.to(button, { scale: 0.95, duration: 0.1 });
+    const handlePointerUp = () => gsap.to(button, { scale: 1, duration: 0.15 });
+
+    button.addEventListener("pointerdown", handlePointerDown);
+    button.addEventListener("pointerup", handlePointerUp);
+    button.addEventListener("pointerleave", handlePointerUp);
+
+    return () => {
+      button.removeEventListener("pointerdown", handlePointerDown);
+      button.removeEventListener("pointerup", handlePointerUp);
+      button.removeEventListener("pointerleave", handlePointerUp);
+    };
+  }, []);
 
   // Check FID and USDC balance on mount
   useEffect(() => {
@@ -321,6 +342,7 @@ export function MintButton({
 
   return (
     <Button
+      ref={buttonRef}
       onClick={handleMint}
       disabled={isDisabled}
       className="w-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"

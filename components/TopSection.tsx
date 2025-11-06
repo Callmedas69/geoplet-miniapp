@@ -24,7 +24,7 @@ export function TopSection({ onFarcasterShare, onXShare }: TopSectionProps) {
   const showShareButtons = onFarcasterShare || onXShare;
 
   return (
-    <div className="flex flex-col items-center px-4 pt-8 shrink-0">
+    <div id="top-section" className="flex flex-col items-center px-4 pt-8 shrink-0">
       {/* Logo - Centered */}
       <h1
         className={`text-7xl font-semibold text-black leading-none ${schoolBell.className}`}

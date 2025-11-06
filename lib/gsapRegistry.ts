@@ -1,4 +1,5 @@
 import { gsap } from "gsap";
+// Note: useGSAP is a React hook from @gsap/react, not a plugin - registered automatically
 import { useGSAP } from "@gsap/react";
 
 import { CustomEase } from "gsap/CustomEase";
@@ -7,7 +8,7 @@ import { CustomBounce } from "gsap/CustomBounce";
 // CustomWiggle requires CustomEase
 import { CustomWiggle } from "gsap/CustomWiggle";
 import { RoughEase, ExpoScaleEase, SlowMo } from "gsap/EasePack";
-    
+
 import { Draggable } from "gsap/Draggable";
 import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
 import { EaselPlugin } from "gsap/EaselPlugin";
@@ -29,4 +30,7 @@ import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { SplitText } from "gsap/SplitText";
 import { TextPlugin } from "gsap/TextPlugin";
 
-gsap.registerPlugin(useGSAP,Draggable,DrawSVGPlugin,EaselPlugin,Flip,GSDevTools,InertiaPlugin,MotionPathHelper,MotionPathPlugin,MorphSVGPlugin,Observer,Physics2DPlugin,PhysicsPropsPlugin,PixiPlugin,ScrambleTextPlugin,ScrollTrigger,ScrollSmoother,ScrollToPlugin,SplitText,TextPlugin,RoughEase,ExpoScaleEase,SlowMo,CustomEase,CustomBounce,CustomWiggle);
+// Register GSAP plugins (useGSAP removed - it's a React hook, not a plugin)
+gsap.registerPlugin(Draggable,DrawSVGPlugin,EaselPlugin,Flip,GSDevTools,InertiaPlugin,MotionPathHelper,MotionPathPlugin,MorphSVGPlugin,Observer,Physics2DPlugin,PhysicsPropsPlugin,PixiPlugin,ScrambleTextPlugin,ScrollTrigger,ScrollSmoother,ScrollToPlugin,SplitText,TextPlugin,RoughEase,ExpoScaleEase,SlowMo,CustomEase,CustomBounce,CustomWiggle);
+
+export { useGSAP };
