@@ -1,25 +1,20 @@
 "use client";
 
 /**
- * SuccessModal Component (REFACTORED)
+ * SuccessModal Component
  *
  * Displays success message after NFT mint with share options
  *
- * REFACTOR IMPROVEMENTS:
- * - Removed emoji dependencies → Lucide icons
- * - Added comprehensive ARIA labels
- * - Added touch-target classes (44x44px minimum)
- * - Implemented loading states for async actions
- * - Added AbortController for cleanup
+ * FEATURES:
+ * - Lucide icons for visual feedback
+ * - Touch-target classes (44x44px minimum)
+ * - Loading states for async actions
  * - Responsive font sizing
- * - Extracted string constants
- * - Focus management
- * - Error boundary wrapper
- * - Consistent with GenerateMintButton patterns
+ * - KISS principle: Simple, secure, maintainable
  */
 
 import Image from "next/image";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import {
@@ -35,7 +30,6 @@ import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
 import { sdk } from "@farcaster/miniapp-sdk";
-import { ErrorBoundary } from "./ErrorBoundary";
 
 // Toast message constants
 const TOAST_MESSAGES = {
@@ -64,11 +58,7 @@ interface SuccessModalProps {
   tokenId: string | null;
 }
 
-/**
- * Inner component with all logic
- * Wrapped by ErrorBoundary for error handling
- */
-function SuccessModalInner({
+export function SuccessModal({
   isOpen,
   onClose,
   image,
@@ -78,28 +68,6 @@ function SuccessModalInner({
   const [isCopied, setIsCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isAddingToWarpcast, setIsAddingToWarpcast] = useState(false);
-
-  // Refs for focus management and abort controller
-  const shareFarcasterRef = useRef<HTMLButtonElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Focus primary CTA when modal opens
-  useEffect(() => {
-    if (isOpen && image && tokenId) {
-      setTimeout(() => {
-        shareFarcasterRef.current?.focus();
-      }, 100);
-    }
-  }, [isOpen, image, tokenId]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
 
   const handleCopyTxHash = useCallback(async () => {
     if (!txHash) return;
@@ -119,25 +87,11 @@ function SuccessModalInner({
   const handleShareFarcaster = useCallback(async () => {
     if (!image || !tokenId || isSharing) return;
 
-    // Create abort controller for this operation
-    abortControllerRef.current = new AbortController();
-
     try {
       setIsSharing(true);
       await shareToFarcaster(image, tokenId);
-
-      // Check if aborted
-      if (abortControllerRef.current.signal.aborted) {
-        return;
-      }
-
       haptics.success();
     } catch (error) {
-      // Check if aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
-      }
-
       console.error("Share error:", error);
       haptics.error();
       toast.error(TOAST_MESSAGES.FARCASTER_ERROR);
@@ -149,26 +103,12 @@ function SuccessModalInner({
   const handleAddToWarpcast = useCallback(async () => {
     if (isAddingToWarpcast) return;
 
-    // Create abort controller for this operation
-    abortControllerRef.current = new AbortController();
-
     try {
       setIsAddingToWarpcast(true);
       await sdk.actions.addMiniApp();
-
-      // Check if aborted
-      if (abortControllerRef.current.signal.aborted) {
-        return;
-      }
-
       haptics.success();
       toast.success(TOAST_MESSAGES.WARPCAST_ADDED);
     } catch (error: unknown) {
-      // Check if aborted
-      if (abortControllerRef.current?.signal.aborted) {
-        return;
-      }
-
       const errorMessage = error instanceof Error ? error.message : "";
 
       // Handle specific error codes
@@ -224,7 +164,7 @@ function SuccessModalInner({
             <div
               className="relative aspect-square w-full bg-white/5 rounded-xl border border-white/10 overflow-hidden"
               role="img"
-              aria-label={`Your minted Geoplet NFT number ${tokenId}`}
+              aria-label={`Geoplet NFT #${tokenId}`}
             >
               <Image
                 src={image}
@@ -257,11 +197,7 @@ function SuccessModalInner({
                   size="sm"
                   onClick={handleCopyTxHash}
                   className="text-xs touch-target"
-                  aria-label={
-                    isCopied
-                      ? "Transaction hash copied to clipboard"
-                      : "Copy transaction hash to clipboard"
-                  }
+                  aria-label={isCopied ? "Copied" : "Copy transaction hash"}
                   aria-live="polite"
                 >
                   {isCopied ? (
@@ -286,7 +222,7 @@ function SuccessModalInner({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs sm:text-sm text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
-                  aria-label={`View transaction ${txHash} on BaseScan blockchain explorer (opens in new tab)`}
+                  aria-label="View on BaseScan"
                 >
                   explorer
                   <ExternalLink className="w-3 h-3" aria-hidden="true" />
@@ -313,11 +249,10 @@ function SuccessModalInner({
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-3">
             <Button
-              ref={shareFarcasterRef}
               onClick={handleShareFarcaster}
               disabled={isSharing || !image || !tokenId}
               className="bg-purple-600 hover:bg-purple-700 text-white touch-target"
-              aria-label="Share your minted Geoplet NFT to Farcaster"
+              aria-label="Share to Farcaster"
               aria-disabled={isSharing || !image || !tokenId}
               aria-busy={isSharing}
             >
@@ -347,7 +282,7 @@ function SuccessModalInner({
                   href={openSeaUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={`View your Geoplet NFT number ${tokenId} on OpenSea marketplace (opens in new tab)`}
+                  aria-label="View on OpenSea"
                 >
                   <span className="flex items-center justify-center gap-2">
                     <ExternalLink className="w-4 h-4" aria-hidden="true" />
@@ -364,7 +299,7 @@ function SuccessModalInner({
             onClick={handleAddToWarpcast}
             disabled={isAddingToWarpcast}
             className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold touch-target"
-            aria-label="Add Geoplet miniapp to your Warpcast applications"
+            aria-label="Add to Warpcast"
             aria-busy={isAddingToWarpcast}
             aria-disabled={isAddingToWarpcast}
           >
@@ -386,27 +321,12 @@ function SuccessModalInner({
             onClick={onClose}
             variant="ghost"
             className="w-full text-gray-400 hover:text-white touch-target"
-            aria-label="Close success modal and return to main screen"
+            aria-label="Close modal"
           >
             Close
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * Exported component with ErrorBoundary wrapper
- */
-export function SuccessModal(props: SuccessModalProps) {
-  return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        console.error("SuccessModal error:", error, errorInfo);
-      }}
-    >
-      <SuccessModalInner {...props} />
-    </ErrorBoundary>
   );
 }

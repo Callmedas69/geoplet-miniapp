@@ -10,8 +10,8 @@
 
 import localfont from "next/font/local";
 
-const schoolBell = localfont({
-  src: "../public/font/Schoolbell-Regular.ttf",
+const spriteGraffity = localfont({
+  src: "../public/font/SpriteGraffiti-Shadow.otf",
   display: "swap",
 });
 
@@ -24,11 +24,12 @@ export function TopSection({ onFarcasterShare, onXShare }: TopSectionProps) {
   const showShareButtons = onFarcasterShare || onXShare;
 
   return (
-    <div id="top-section" className="flex flex-col items-center px-4 pt-8 shrink-0">
+    <div
+      id="top-section"
+      className="flex flex-col items-center px-4 pt-8 shrink-0"
+    >
       {/* Logo - Centered */}
-      <h1
-        className={`text-7xl font-semibold text-black leading-none ${schoolBell.className}`}
-      >
+      <h1 className={`text-7xl leading-none ${spriteGraffity.className}`}>
         GEOPLET
       </h1>
       <p className="italic text-sm">where geo meets warplets</p>

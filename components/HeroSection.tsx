@@ -23,10 +23,6 @@ export function HeroSection({
   const badgeContainerRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
 
-  if (!warpletImage || !warpletTokenId) {
-    return null;
-  }
-
   // Badge stagger animation on mount
   useGSAP(() => {
     if (badgeContainerRef.current) {
@@ -51,6 +47,11 @@ export function HeroSection({
       });
     }
   }, { dependencies: [generatedImage], scope: displayRef });
+
+  // Conditional rendering AFTER all hooks
+  if (!warpletImage || !warpletTokenId) {
+    return null;
+  }
 
   return (
     <div id="hero-section" className="space-y-6 max-w-2xl mx-auto">

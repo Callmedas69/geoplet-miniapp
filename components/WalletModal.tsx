@@ -48,11 +48,13 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
     onClose();
   };
 
-  const truncated = address ? `${address.slice(0, 8)}...${address.slice(-6)}` : "";
+  const truncated = address
+    ? `${address.slice(0, 8)}...${address.slice(-6)}`
+    : "";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-black/95 border-white/20 text-white max-w-sm mx-auto">
+      <DialogContent className="bg-black/80 border-white/20 text-white max-w-sm mx-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <Wallet className="w-5 h-5" />
@@ -69,7 +71,11 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
                 <span className="text-sm text-white/70">USDC</span>
               </div>
               <span className="font-semibold text-white">
-                {isLoading ? "..." : balance ? parseFloat(balance).toFixed(2) : "0.00"}
+                {isLoading
+                  ? "..."
+                  : balance
+                  ? parseFloat(balance).toFixed(2)
+                  : "0.00"}
               </span>
             </div>
           </div>

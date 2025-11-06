@@ -30,6 +30,7 @@ import { gsap } from "gsap";
 type ButtonState =
   | "idle"
   | "insufficient_usdc"
+  | "checking_eligibility"
   | "paying"
   | "simulating"
   | "settling"
@@ -55,7 +56,7 @@ export function MintButton({
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
   const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
   const { hasEnoughUSDC, balance, mintPrice } = useUSDCBalance();
-  const { simulateMint } = useContractSimulation();
+  const { checkEligibility, simulateMint } = useContractSimulation();
 
   const [state, setState] = useState<ButtonState>("idle");
   const [signatureData, setSignatureData] =
@@ -144,6 +145,20 @@ export function MintButton({
         toast.error(validation.error || "Image validation failed");
         return;
       }
+
+      // Step 0: Pre-flight eligibility check (BEFORE payment)
+      console.log("[MINT] Step 0: Checking eligibility before payment", { fid });
+      setState("checking_eligibility");
+
+      const eligibilityResult = await checkEligibility(fid.toString(), generatedImage);
+
+      if (!eligibilityResult.success) {
+        throw new Error(eligibilityResult.error || "Eligibility check failed");
+      }
+
+      console.log("[MINT] ✅ Eligibility check passed");
+
+      if (abortControllerRef.current.signal.aborted) return;
 
       // Step 1: Payment (verify only, no settlement yet - per LOG.md)
       console.log("[MINT] Step 1: Starting payment verification", { fid, address });
@@ -244,7 +259,7 @@ export function MintButton({
       haptics.error();
       toast.error(errorMessage);
     }
-  }, [fid, generatedImage, requestMintSignature, mintNFT]);
+  }, [fid, generatedImage, checkEligibility, requestMintSignature, simulateMint, mintNFT, address]);
 
   // Button content
   const getButtonContent = () => {
@@ -260,6 +275,20 @@ export function MintButton({
             <TokenUSDC className="w-5 h-5" variant="branded" />
             Get USDC
           </a>
+        );
+      case "checking_eligibility":
+        return (
+          <>
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <RotatingText
+              messages={[
+                "Checking eligibility...",
+                "Verifying FID status...",
+                "Validating image...",
+              ]}
+              interval={1500}
+            />
+          </>
         );
       case "paying":
         return (
@@ -332,7 +361,12 @@ export function MintButton({
     }
   };
 
-  const isLoading = state === "paying" || state === "simulating" || state === "settling" || state === "minting";
+  const isLoading =
+    state === "checking_eligibility" ||
+    state === "paying" ||
+    state === "simulating" ||
+    state === "settling" ||
+    state === "minting";
   const isDisabled =
     disabled ||
     !generatedImage ||

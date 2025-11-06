@@ -16,18 +16,23 @@ import { gsap } from "gsap";
 export function useSplashTransition(isLoading: boolean) {
   useEffect(() => {
     if (!isLoading) {
-      // Create GSAP timeline for smooth transition
-      const tl = gsap.timeline({
-        defaults: { ease: "power2.out" },
-      });
+      // Check if splash screen exists before animating
+      const splashScreen = document.getElementById("splash-screen");
+      const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
 
-      // Sequence: Splash fade-out → Main fade-in with stagger
-      tl.to("#splash-screen", { opacity: 0, duration: 0.3 })
-        .to("#main-content", { opacity: 1, duration: 0.3 }, "-=0.1")
-        .from("#top-section", { opacity: 0, y: -10, duration: 0.2 }, "-=0.2")
-        .from("#hero-section", { opacity: 0, y: 10, duration: 0.3 }, "-=0.15");
+      if (splashScreen) {
+        // Splash exists - do full transition
+        tl.to("#splash-screen", { opacity: 0, duration: 0.3 })
+          .to("#main-content", { opacity: 1, duration: 0.3 }, "-=0.1")
+          .from("#top-section", { opacity: 0, y: -10, duration: 0.2 }, "-=0.2")
+          .from("#hero-section", { opacity: 0, y: 10, duration: 0.3 }, "-=0.15");
+      } else {
+        // Splash already removed, just animate main content
+        tl.to("#main-content", { opacity: 1, duration: 0.3 })
+          .from("#top-section", { opacity: 0, y: -10, duration: 0.2 }, "-=0.2")
+          .from("#hero-section", { opacity: 0, y: 10, duration: 0.3 }, "-=0.15");
+      }
 
-      // Cleanup on unmount
       return () => {
         tl.kill();
       };

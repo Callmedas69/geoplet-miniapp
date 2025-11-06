@@ -3,7 +3,6 @@
 import { useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import { GeopletNFT } from "@/hooks/useGalleryNFTs";
-import { Card } from "./ui/card";
 import { useUserNFTs } from "@/hooks/useUserNFTs";
 
 interface NFTGalleryGridProps {
@@ -54,9 +53,8 @@ export function NFTGalleryGrid({
   if (nfts.length === 0 && !isLoading) {
     return (
       <div className="text-center py-20">
-        <div className="text-6xl mb-4">🖼️</div>
-        <p className="text-gray-700 text-lg">No Geoplets minted yet</p>
-        <p className="text-gray-500 text-sm mt-2">
+        <p className="text-gray-700 text-sm">No Geoplets minted yet</p>
+        <p className="text-gray-500 text-xs mt-2">
           Be the first to transform your Warplet!
         </p>
       </div>

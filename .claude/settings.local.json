@@ -46,7 +46,10 @@
       "Bash(pnpm dlx:*)",
       "Bash(node -e:*)",
       "Bash(cast call:*)",
-      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\components\\Footer.tsx\")"
+      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\components\\Footer.tsx\")",
+      "Bash(git log:*)",
+      "WebFetch(domain:wagmi.sh)",
+      "WebFetch(domain:viem.sh)"
     ]
   },
   "enableAllProjectMcpServers": true,

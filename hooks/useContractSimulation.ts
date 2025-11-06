@@ -1,9 +1,10 @@
 // hooks/useContractSimulation.ts
 //
 // Contract Simulation Hook
-// Simulates mint transaction BEFORE execution (per LOG.md)
+// Simulates mint transaction BEFORE payment (TRUE blockchain simulation)
 
-import { useSimulateContract } from 'wagmi';
+import { createPublicClient, http } from 'viem';
+import { base } from 'viem/chains';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
 
 /**
@@ -26,20 +27,119 @@ interface SimulationResult {
 }
 
 /**
- * Hook for simulating mint contract call
+ * Hook for TRUE contract simulation using viem
  *
- * Flow (per LOG.md):
- * 1. Payment verified (backend)
- * 2. Simulate mint (THIS HOOK)
- * 3. Settle payment (if simulation passes)
- * 4. Execute mint (if settlement passes)
+ * NEW Flow:
+ * 1. Simulate mint (THIS HOOK) ← BEFORE payment
+ * 2. Payment verification (only if simulation passes)
+ * 3. Payment settlement
+ * 4. Execute mint
  */
 export function useContractSimulation() {
   /**
-   * Simulate mint transaction
+   * Pre-flight eligibility check BEFORE payment
    *
-   * This is a simple wrapper that calls the contract's read functions
-   * to check if mint will succeed before executing the transaction.
+   * Checks basic eligibility without needing a signature:
+   * - FID not already minted
+   * - Contract not paused
+   * - Image size within limits
+   *
+   * This runs BEFORE payment to avoid charging users for guaranteed failures.
+   *
+   * @param fid - Farcaster ID
+   * @param imageData - Base64 image data
+   * @returns Simulation result
+   */
+  const checkEligibility = async (
+    fid: string,
+    imageData: string
+  ): Promise<SimulationResult> => {
+    try {
+      console.log('[PRE-FLIGHT] Checking eligibility before payment...');
+
+      // Create public client for Base network
+      const publicClient = createPublicClient({
+        chain: base,
+        transport: http(GEOPLET_CONFIG.rpc.alchemy),
+      });
+
+      // Check 1: FID already minted?
+      const isMinted = await publicClient.readContract({
+        address: GEOPLET_CONFIG.address,
+        abi: GEOPLET_CONFIG.abi,
+        functionName: 'isFidMinted',
+        args: [BigInt(fid)],
+      });
+
+      if (isMinted) {
+        return {
+          success: false,
+          error: 'This Farcaster ID has already minted a Geoplet',
+          canRetry: false,
+        };
+      }
+
+      console.log('[PRE-FLIGHT] ✅ FID not yet minted');
+
+      // Check 2: Minting paused?
+      const isPaused = await publicClient.readContract({
+        address: GEOPLET_CONFIG.address,
+        abi: GEOPLET_CONFIG.abi,
+        functionName: 'mintingPaused',
+      });
+
+      if (isPaused) {
+        return {
+          success: false,
+          error: 'Minting is temporarily paused. Please try again later.',
+          canRetry: true,
+        };
+      }
+
+      console.log('[PRE-FLIGHT] ✅ Minting not paused');
+
+      // Check 3: Image size within limits
+      const imageSize = (imageData.length * 3) / 4; // Base64 size estimate
+      const maxSize = 24 * 1024; // 24KB
+
+      if (imageSize > maxSize) {
+        return {
+          success: false,
+          error: 'Image exceeds 24KB limit. Please regenerate to get a smaller image.',
+          canRetry: true,
+        };
+      }
+
+      console.log('[PRE-FLIGHT] ✅ Image size valid');
+
+      console.log('[PRE-FLIGHT] ✅ All eligibility checks passed');
+
+      return {
+        success: true,
+      };
+    } catch (err: unknown) {
+      console.error('[PRE-FLIGHT] ❌ Eligibility check failed:', err);
+
+      const errorMessage = err instanceof Error ? err.message : 'Eligibility check failed';
+
+      return {
+        success: false,
+        error: `Unable to verify eligibility: ${errorMessage}`,
+        canRetry: true,
+      };
+    }
+  };
+
+  /**
+   * Simulate mint transaction using viem's simulateContract
+   *
+   * This performs TRUE blockchain simulation by calling eth_call
+   * to check if the mint will succeed after payment verification.
+   *
+   * Checks performed by blockchain:
+   * - Valid signature (EIP-712)
+   * - Deadline not expired
+   * - All Solidity require() statements
    *
    * @param voucher - Mint voucher from backend
    * @param imageData - Base64 image data
@@ -52,7 +152,7 @@ export function useContractSimulation() {
     signature: string
   ): Promise<SimulationResult> => {
     try {
-      console.log('[SIMULATION] Simulating mint transaction...');
+      console.log('[SIMULATION] Starting TRUE contract simulation...');
 
       // Prepare contract arguments (convert strings to BigInt for contract)
       const mintVoucher = {
@@ -69,52 +169,42 @@ export function useContractSimulation() {
         deadline: voucher.deadline,
       });
 
-      // For now, we'll use a simplified simulation approach
-      // In production, you can use viem's simulateContract directly
-      // or call publicClient.simulateContract()
+      // Create public client for Base network
+      const publicClient = createPublicClient({
+        chain: base,
+        transport: http(GEOPLET_CONFIG.rpc.alchemy),
+      });
 
-      // Basic validation checks
-      const now = Math.floor(Date.now() / 1000);
-      const deadline = Number(voucher.deadline);
+      // Simulate the mintGeoplet transaction
+      await publicClient.simulateContract({
+        address: GEOPLET_CONFIG.address,
+        abi: GEOPLET_CONFIG.abi,
+        functionName: 'mintGeoplet',
+        args: [mintVoucher, imageData, signature as `0x${string}`],
+        account: voucher.to as `0x${string}`,
+      });
 
-      if (deadline < now) {
-        return {
-          success: false,
-          error: 'Signature expired',
-          canRetry: true,
-        };
-      }
-
-      // Image size check
-      const imageSize = (imageData.length * 3) / 4; // Base64 size estimate
-      const maxSize = 24 * 1024; // 24KB
-
-      if (imageSize > maxSize) {
-        return {
-          success: false,
-          error: 'Image exceeds 24KB limit',
-          canRetry: true,
-        };
-      }
-
-      console.log('[SIMULATION] ✅ Basic checks passed');
+      console.log('[SIMULATION] ✅ Contract simulation passed');
 
       // Simulation successful
       return {
         success: true,
       };
     } catch (err: unknown) {
-      console.error('[SIMULATION] ❌ Unexpected error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Simulation failed';
+      console.error('[SIMULATION] ❌ Simulation failed:', err);
+
+      // Parse error and return user-friendly message
+      const parsed = parseContractError(err);
+
       return {
         success: false,
-        error: errorMessage,
-        canRetry: false,
+        error: parsed.message,
+        canRetry: parsed.canRetry,
       };
     }
   };
 
-  return { simulateMint };
+  return { checkEligibility, simulateMint };
 }
 
 /**
@@ -122,8 +212,9 @@ export function useContractSimulation() {
  *
  * Maps Solidity revert reasons to clear messages
  */
-function parseContractError(error: any): { message: string; canRetry: boolean } {
-  const errorStr = error?.message?.toLowerCase() || error?.toString()?.toLowerCase() || '';
+function parseContractError(error: unknown): { message: string; canRetry: boolean } {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorStr = errorMessage.toLowerCase();
 
   // Contract-specific errors (from Geoplet.sol)
   if (errorStr.includes('minting paused')) {
@@ -220,7 +311,7 @@ function parseContractError(error: any): { message: string; canRetry: boolean } 
 
   // Generic error
   return {
-    message: `Simulation failed: ${error?.message || 'Unknown error'}`,
+    message: `Simulation failed: ${errorMessage}`,
     canRetry: true,
   };
 }

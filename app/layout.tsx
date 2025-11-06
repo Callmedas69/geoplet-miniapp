@@ -78,7 +78,7 @@ export default function RootLayout({
       >
         <Providers>
           <ClientLayout>
-            <div className="flex min-h-screen flex-col bg-[#fff3d6] mobile-safe-area">
+            <div className="flex min-h-screen flex-col bg-[#fff3d6] mobile-safe-area text-amber-950">
               {children}
             </div>
           </ClientLayout>

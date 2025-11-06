@@ -35,10 +35,12 @@ export function WarpletDisplay({
 
         {/* Generated/Minted indicator */}
         {generatedImage && (
-          <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs text-white font-medium ${
-            isMinted ? 'bg-purple-600/90' : 'bg-green-500/90'
-          }`}>
-            {isMinted ? '🎨 Minted' : '✨ Generated'}
+          <div
+            className={`absolute top-2 left-2 px-2 py-1 rounded text-xs text-white font-medium ${
+              isMinted ? "bg-purple-600/90" : "bg-green-500/90"
+            }`}
+          >
+            {isMinted ? "🎨 Minted" : "✨ Generated"}
           </div>
         )}
       </div>
