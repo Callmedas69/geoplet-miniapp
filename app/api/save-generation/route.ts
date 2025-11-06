@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // UPSERT to database (insert or update if FID exists)
     const { data, error } = await supabaseAdmin
-      .from('unminted_geoplet')
+      .from('unminted_geoplets')
       .upsert(
         {
           fid,

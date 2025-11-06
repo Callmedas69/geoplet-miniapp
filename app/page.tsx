@@ -326,7 +326,7 @@ export default function Home() {
         {/* Split Buttons: Regenerate & Mint */}
         <div className="flex flex-col gap-4 justify-center items-center">
           <RegenerateButton
-            disabled={isGenerating}
+            disabled={isGenerating || isMinted}
             onRegenerate={(imageData) => {
               setGeneratedImage(imageData);
               setServiceError(null); // Clear error on successful regeneration

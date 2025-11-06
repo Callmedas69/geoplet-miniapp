@@ -50,6 +50,7 @@ export function RegenerateButton({
 
   const [state, setState] = useState<ButtonState>("idle");
   const abortControllerRef = useRef<AbortController | null>(null);
+  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Button hover/press animation
@@ -90,6 +91,10 @@ export function RegenerateButton({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
+      }
+      setState("idle");
     };
   }, []);
 
@@ -213,7 +218,7 @@ export function RegenerateButton({
       haptics.success();
 
       // Reset to idle after success
-      setTimeout(() => setState("idle"), 2000);
+      successTimeoutRef.current = setTimeout(() => setState("idle"), 2000);
     } catch (error) {
       console.error("Regenerate error:", error);
 

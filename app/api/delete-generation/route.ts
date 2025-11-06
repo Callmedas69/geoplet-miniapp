@@ -24,7 +24,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete from database
     const { error } = await supabaseAdmin
-      .from('unminted_geoplet')
+      .from('unminted_geoplets')
       .delete()
       .eq('fid', fidNumber);
 

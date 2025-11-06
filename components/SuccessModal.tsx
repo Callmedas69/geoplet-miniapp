@@ -22,33 +22,12 @@ import {
   Copy,
   ExternalLink,
   Share2,
-  Star,
   Loader2,
 } from "lucide-react";
 import { shareToFarcaster } from "@/lib/generators";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
-import { sdk } from "@farcaster/miniapp-sdk";
-
-// Toast message constants
-const TOAST_MESSAGES = {
-  COPY_SUCCESS: "Transaction hash copied!",
-  COPY_ERROR: "Failed to copy",
-  WARPCAST_ADDED:
-    "Added to Warpcast! You can now access Geoplet from your apps.",
-  WARPCAST_LATER:
-    "No problem! You can add Geoplet later from your Warpcast settings.",
-  WARPCAST_ERROR: "Unable to add app. Please try again later.",
-  WARPCAST_FAILED: "Failed to add to Warpcast",
-  FARCASTER_ERROR: "Failed to share to Farcaster",
-} as const;
-
-// Warpcast error codes
-enum WarpcastErrorCode {
-  REJECTED_BY_USER = "RejectedByUser",
-  INVALID_MANIFEST = "InvalidDomainManifestJson",
-}
 
 interface SuccessModalProps {
   isOpen: boolean;
@@ -67,7 +46,6 @@ export function SuccessModal({
 }: SuccessModalProps) {
   const [isCopied, setIsCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
-  const [isAddingToWarpcast, setIsAddingToWarpcast] = useState(false);
 
   const handleCopyTxHash = useCallback(async () => {
     if (!txHash) return;
@@ -76,11 +54,11 @@ export function SuccessModal({
       await navigator.clipboard.writeText(txHash);
       setIsCopied(true);
       haptics.success();
-      toast.success(TOAST_MESSAGES.COPY_SUCCESS);
+      toast.success("Transaction hash copied!");
       setTimeout(() => setIsCopied(false), 2000);
     } catch {
       haptics.error();
-      toast.error(TOAST_MESSAGES.COPY_ERROR);
+      toast.error("Failed to copy");
     }
   }, [txHash]);
 
@@ -94,47 +72,26 @@ export function SuccessModal({
     } catch (error) {
       console.error("Share error:", error);
       haptics.error();
-      toast.error(TOAST_MESSAGES.FARCASTER_ERROR);
+      toast.error("Failed to share to Farcaster");
     } finally {
       setIsSharing(false);
     }
   }, [image, tokenId, isSharing]);
 
-  const handleAddToWarpcast = useCallback(async () => {
-    if (isAddingToWarpcast) return;
+  const handleXShare = useCallback(() => {
+    if (!tokenId) return;
 
-    try {
-      setIsAddingToWarpcast(true);
-      await sdk.actions.addMiniApp();
-      haptics.success();
-      toast.success(TOAST_MESSAGES.WARPCAST_ADDED);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "";
+    const text = `Just minted my Geoplet NFT #${tokenId}! 🎨`;
+    const url = `https://geoplet.geoart.studio`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      text
+    )}&url=${encodeURIComponent(url)}`;
 
-      // Handle specific error codes
-      if (errorMessage === WarpcastErrorCode.REJECTED_BY_USER) {
-        toast.info(TOAST_MESSAGES.WARPCAST_LATER);
-        return; // User choice, no error haptic
-      }
+    window.open(twitterUrl, "_blank");
+    haptics.tap();
+  }, [tokenId]);
 
-      haptics.error();
-      const userMessage =
-        errorMessage === WarpcastErrorCode.INVALID_MANIFEST
-          ? TOAST_MESSAGES.WARPCAST_ERROR
-          : TOAST_MESSAGES.WARPCAST_FAILED;
-      toast.error(userMessage);
-
-      console.error("Failed to add mini app:", error);
-    } finally {
-      setIsAddingToWarpcast(false);
-    }
-  }, [isAddingToWarpcast]);
-
-  // Explorer URLs (Base Mainnet)
-  const openSeaUrl = tokenId
-    ? `${GEOPLET_CONFIG.explorers.opensea}/${GEOPLET_CONFIG.address}/${tokenId}`
-    : null;
-
+  // Explorer URL (Base Mainnet)
   const baseScanUrl = txHash
     ? `${GEOPLET_CONFIG.explorers.basescan}/tx/${txHash}`
     : null;
@@ -246,74 +203,55 @@ export function SuccessModal({
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              onClick={handleShareFarcaster}
-              disabled={isSharing || !image || !tokenId}
-              className="bg-purple-600 hover:bg-purple-700 text-white touch-target"
-              aria-label="Share to Farcaster"
-              aria-disabled={isSharing || !image || !tokenId}
-              aria-busy={isSharing}
-            >
-              {isSharing ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2
-                    className="w-4 h-4 animate-spin"
-                    aria-hidden="true"
-                  />
-                  <span>Sharing...</span>
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <Share2 className="w-4 h-4" aria-hidden="true" />
-                  <span>Farcaster</span>
-                </span>
-              )}
-            </Button>
-
-            {openSeaUrl && (
-              <Button
-                variant="outline"
-                className="bg-white/10 hover:bg-white/20 border-white/20 text-white touch-target"
-                asChild
-              >
-                <a
-                  href={openSeaUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="View on OpenSea"
-                >
-                  <span className="flex items-center justify-center gap-2">
-                    <ExternalLink className="w-4 h-4" aria-hidden="true" />
-                    <span>OpenSea</span>
-                  </span>
-                  <span className="sr-only">(opens in new window)</span>
-                </a>
-              </Button>
-            )}
-          </div>
-
-          {/* Add to Warpcast Button */}
+          {/* Share to Farcaster */}
           <Button
-            onClick={handleAddToWarpcast}
-            disabled={isAddingToWarpcast}
-            className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold touch-target"
-            aria-label="Add to Warpcast"
-            aria-busy={isAddingToWarpcast}
-            aria-disabled={isAddingToWarpcast}
+            onClick={handleShareFarcaster}
+            disabled={isSharing || !image || !tokenId}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white touch-target"
+            aria-label="Share to Farcaster"
+            aria-disabled={isSharing || !image || !tokenId}
+            aria-busy={isSharing}
           >
-            {isAddingToWarpcast ? (
+            {isSharing ? (
               <span className="flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
-                <span>Adding...</span>
+                <Loader2
+                  className="w-4 h-4 animate-spin"
+                  aria-hidden="true"
+                />
+                <span>Sharing...</span>
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
-                <Star className="w-4 h-4" aria-hidden="true" />
-                <span>Add Geoplet to Warpcast</span>
+                <Share2 className="w-4 h-4" aria-hidden="true" />
+                <span>Share to Farcaster</span>
               </span>
             )}
+          </Button>
+
+          {/* Share to X (Twitter) */}
+          <Button
+            onClick={handleXShare}
+            disabled={!tokenId}
+            className="w-full bg-black hover:bg-black/80 text-white touch-target"
+            aria-label="Share on X (Twitter)"
+            aria-disabled={!tokenId}
+          >
+            <span className="flex items-center justify-center gap-2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 1200 1227"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span>Share on X</span>
+            </span>
           </Button>
 
           {/* Close Button */}

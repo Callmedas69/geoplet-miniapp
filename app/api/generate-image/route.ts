@@ -12,7 +12,7 @@ const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS as string;
 
 // CORS headers
 const corsHeaders = {
-  'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_APP_URL || '*',
+  'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_APP_URL || 'https://geoplet.geoart.studio',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, X-Payment',
 };
@@ -122,6 +122,21 @@ async function generateGeometricArt(
   try {
     log(`\n🎨 Generating geometric art for ${name} (Token #${tokenId})`);
     log(`📷 Image URL: ${imageUrl}`);
+
+    // Whitelist allowed image domains (SSRF prevention)
+    const ALLOWED_DOMAINS = [
+      'base-mainnet.g.alchemy.com',
+      'nft-cdn.alchemy.com',
+      'ipfs.io',
+      'gateway.pinata.cloud',
+    ];
+
+    const url = new URL(imageUrl);
+    const isAllowed = ALLOWED_DOMAINS.some(domain => url.hostname.includes(domain));
+
+    if (!isAllowed) {
+      throw new Error(`Invalid image URL domain: ${url.hostname}. Only Alchemy and IPFS domains allowed.`);
+    }
 
     // Fetch the original Warplet image
     log(`📥 Fetching image from URL...`);

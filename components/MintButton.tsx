@@ -126,12 +126,18 @@ export function MintButton({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      setSignatureData(null);
+      setState("idle");
     };
   }, []);
 
   const handleMint = useCallback(async () => {
+    // Immediately disable button to prevent double-click
+    setState("checking_eligibility");
+
     if (!fid || !generatedImage) {
       toast.error("No image to mint");
+      setState("idle");
       return;
     }
 
@@ -143,12 +149,12 @@ export function MintButton({
       if (!validation.valid) {
         haptics.error();
         toast.error(validation.error || "Image validation failed");
+        setState("idle");
         return;
       }
 
       // Step 0: Pre-flight eligibility check (BEFORE payment)
       console.log("[MINT] Step 0: Checking eligibility before payment", { fid });
-      setState("checking_eligibility");
 
       const eligibilityResult = await checkEligibility(fid.toString(), generatedImage);
 
@@ -158,14 +164,22 @@ export function MintButton({
 
       console.log("[MINT] ✅ Eligibility check passed");
 
-      if (abortControllerRef.current.signal.aborted) return;
+      if (abortControllerRef.current.signal.aborted) {
+        setSignatureData(null);
+        setState("idle");
+        return;
+      }
 
       // Step 1: Payment (verify only, no settlement yet - per LOG.md)
       console.log("[MINT] Step 1: Starting payment verification", { fid, address });
       setState("paying");
       const signature = await requestMintSignature(fid.toString());
 
-      if (abortControllerRef.current.signal.aborted) return;
+      if (abortControllerRef.current.signal.aborted) {
+        setSignatureData(null);
+        setState("idle");
+        return;
+      }
 
       // ✅ DEFENSIVE VALIDATION: Verify signature structure
       console.log("[MINT] Signature received", {
@@ -201,7 +215,11 @@ export function MintButton({
 
       console.log("[MINT] ✅ Simulation passed");
 
-      if (abortControllerRef.current.signal.aborted) return;
+      if (abortControllerRef.current.signal.aborted) {
+        setSignatureData(null);
+        setState("idle");
+        return;
+      }
 
       // Step 3: Settle payment (per LOG.md)
       console.log("[MINT] Step 3: Settling payment onchain");
@@ -225,7 +243,11 @@ export function MintButton({
 
       console.log("[MINT] ✅ Payment settled:", settleData.txHash);
 
-      if (abortControllerRef.current.signal.aborted) return;
+      if (abortControllerRef.current.signal.aborted) {
+        setSignatureData(null);
+        setState("idle");
+        return;
+      }
 
       // Step 4: Execute mint transaction
       console.log("[MINT] Step 4: Executing mint transaction", {
@@ -239,7 +261,11 @@ export function MintButton({
     } catch (error) {
       console.error("Mint error:", error);
 
-      if (abortControllerRef.current?.signal.aborted) return;
+      if (abortControllerRef.current?.signal.aborted) {
+        setSignatureData(null);
+        setState("idle");
+        return;
+      }
 
       const errorMessage =
         error instanceof Error ? error.message : "Failed to mint";
@@ -252,8 +278,10 @@ export function MintButton({
         setSignatureData(null);
       } else if (errorMessage.toLowerCase().includes("rejected")) {
         setState("idle");
+        setSignatureData(null);
       } else {
         setState("idle");
+        setSignatureData(null);
       }
 
       haptics.error();

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Query database
     const { data, error } = await supabaseAdmin
-      .from('unminted_geoplet')
+      .from('unminted_geoplets')
       .select('*')
       .eq('fid', fidNumber)
       .single();
