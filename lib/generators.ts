@@ -45,7 +45,7 @@ export async function shareToFarcaster(
 
   await sdk.actions.composeCast({
     text: `Just minted my Geoplet NFT! 🎨 Transform your Warplet at Geoplet #Geoplet #BaseNetwork\n\nOriginal: ${nftName || `Warplet #${tokenId}`}`,
-    embeds: [imageData],
+    embeds: [imageData, 'https://geoplet.geoart.studio'],
   });
 
   haptics.success();

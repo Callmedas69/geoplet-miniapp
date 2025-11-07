@@ -129,13 +129,15 @@ async function generateGeometricArt(
       'nft-cdn.alchemy.com',
       'ipfs.io',
       'gateway.pinata.cloud',
+      'res.cloudinary.com',        // Cloudinary CDN (Warpcast/Farcaster images)
+      'imagedelivery.net',          // Cloudflare Images (Warpcast/Farcaster images)
     ];
 
     const url = new URL(imageUrl);
     const isAllowed = ALLOWED_DOMAINS.some(domain => url.hostname.includes(domain));
 
     if (!isAllowed) {
-      throw new Error(`Invalid image URL domain: ${url.hostname}. Only Alchemy and IPFS domains allowed.`);
+      throw new Error(`Invalid image URL domain: ${url.hostname}. Only whitelisted CDN domains allowed (Alchemy, IPFS, Cloudinary, Cloudflare).`);
     }
 
     // Fetch the original Warplet image
