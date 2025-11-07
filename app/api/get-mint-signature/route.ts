@@ -211,16 +211,28 @@ async function generateMintSignature(
     transport: http(),
   });
 
-  // Generate voucher
-  const nonce = Date.now(); // Unique timestamp
-  const deadline = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now (matches MAX_SIGNATURE_VALIDITY)
+  // ✅ Generate voucher with consistent time units (seconds)
+const now = Math.floor(Date.now() / 1000);
+const EXPIRY_WINDOW = 15 * 60; // 15 minutes validity (must be <= 3600s)
 
-  const voucher = {
-    to,
-    fid: BigInt(fid),
-    nonce: BigInt(nonce),
-    deadline: BigInt(deadline),
-  };
+const nonce = now;             // seconds, not milliseconds
+const deadline = now + EXPIRY_WINDOW; // expires in 15 minutes
+
+const voucher = {
+  to,
+  fid: BigInt(fid),
+  nonce: BigInt(nonce),
+  deadline: BigInt(deadline),
+};
+
+// 🧠 Debug log (optional, safe to keep)
+console.log("[VOUCHER TIMING]", {
+  now,
+  deadline,
+  secondsUntilExpiry: deadline - now,
+  nowISO: new Date(now * 1000).toISOString(),
+  deadlineISO: new Date(deadline * 1000).toISOString(),
+});
 
   // Create EIP-712 signature using viem (config from ABI)
   const signature = await walletClient.signTypedData({
