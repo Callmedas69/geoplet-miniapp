@@ -49,7 +49,16 @@
       "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\components\\Footer.tsx\")",
       "Bash(git log:*)",
       "WebFetch(domain:wagmi.sh)",
-      "WebFetch(domain:viem.sh)"
+      "WebFetch(domain:viem.sh)",
+      "Bash(nul)",
+      "Bash(taskkill:*)",
+      "Bash(if [ -d \".next\" ])",
+      "Bash(then rm -rf .next)",
+      "Bash(else echo \".next directory not found\")",
+      "Bash(fi)",
+      "Bash(if [ -d \"node_modules/.cache\" ])",
+      "Bash(then rm -rf node_modules/.cache)",
+      "Bash(else echo \"No node_modules cache found\")"
     ]
   },
   "enableAllProjectMcpServers": true,

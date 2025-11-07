@@ -153,20 +153,24 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
     console.log('[ONCHAIN.FI] Step 1: Verifying payment...');
 
     // Step 1: Verify payment
+    const requestBody = {
+      paymentHeader,
+      network: 'base',
+      expectedAmount: MINT_PRICE,
+      expectedToken: 'USDC',
+      recipientAddress: RECIPIENT_ADDRESS,
+      priority: 'balanced', // ✅ Required by official onchain.fi API docs
+    };
+
+    console.log('[ONCHAIN.FI] Request body:', JSON.stringify(requestBody, null, 2));
+
     const verifyResponse = await fetch(`${ONCHAIN_API_URL}/verify`, {
       method: 'POST',
       headers: {
         'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        paymentHeader,
-        network: 'base',
-        expectedAmount: MINT_PRICE,
-        expectedToken: 'USDC',
-        recipientAddress: RECIPIENT_ADDRESS,
-        // priority field removed - not in official onchain.fi documentation
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const verifyData = await verifyResponse.json();
