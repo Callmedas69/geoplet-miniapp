@@ -34,7 +34,9 @@ interface RegenerateButtonProps {
   onSaveToSupabase: (imageData: string) => Promise<boolean>;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || '';
+// Use empty string for relative paths in client-side fetch
+// This ensures same-origin requests with all headers preserved (including X-Payment)
+const API_BASE_URL = '';
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_BASE_USDC_ADDRESS as `0x${string}`;
 const CHAIN_ID = 8453; // Base Mainnet
 
