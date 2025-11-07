@@ -391,7 +391,7 @@ export async function POST(request: NextRequest) {
           name: name || `Warplet #${tokenId}`,
           model: 'gpt-image-1',
           prompt: result.prompt,
-          size: '1024x1024',
+          size: '512x512',
           timestamp: new Date().toISOString(),
         },
       },
