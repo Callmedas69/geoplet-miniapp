@@ -360,7 +360,7 @@ export async function POST(request: NextRequest) {
               resource: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/get-mint-signature`,
               description: `Mint your unique Geoplet NFT for ${MINT_PRICE} USDC`,
               mimeType: 'application/json',
-              maxTimeoutSeconds: 300,
+              maxTimeoutSeconds: 600,
               extra: {
                 name: 'USD Coin',
                 version: '2',

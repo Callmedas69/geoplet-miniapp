@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
               resource: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/generate-image`,
               description: `Generate a new Geoplet artwork for ${REGENERATE_PRICE} USDC`,
               mimeType: 'application/json',
-              maxTimeoutSeconds: 300,
+              maxTimeoutSeconds: 600,
               extra: {
                 name: 'USD Coin',
                 version: '2',

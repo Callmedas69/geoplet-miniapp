@@ -58,7 +58,8 @@
       "Bash(fi)",
       "Bash(if [ -d \"node_modules/.cache\" ])",
       "Bash(then rm -rf node_modules/.cache)",
-      "Bash(else echo \"No node_modules cache found\")"
+      "Bash(else echo \"No node_modules cache found\")",
+      "Bash(node --eval:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
