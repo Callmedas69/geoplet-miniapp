@@ -136,9 +136,34 @@ function getErrorCodeForEndpoint(error: AppError): PaymentErrorCode | MintErrorC
  */
 async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
   try {
-    // Decode payment header to log details
+    // Decode payment header to check expiration and log details
     try {
       const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
+      const validBefore = parseInt(decoded.payload?.authorization?.validBefore || '0');
+      const now = Math.floor(Date.now() / 1000);
+      const timeUntilExpiry = validBefore - now;
+
+      console.log('[PAYMENT-CHECK] Signature validity check:', {
+        validBefore: validBefore,
+        currentTime: now,
+        expiresIn: `${timeUntilExpiry}s`,
+        isExpired: now > validBefore,
+        validBeforeISO: new Date(validBefore * 1000).toISOString(),
+        currentTimeISO: new Date(now * 1000).toISOString(),
+      });
+
+      // Check if signature is already expired
+      if (now > validBefore) {
+        console.error('[PAYMENT-CHECK] ❌ Payment signature EXPIRED!');
+        console.error('[PAYMENT-CHECK] Expired since:', `${now - validBefore} seconds ago`);
+        return false;
+      }
+
+      // Warn if expiring soon (less than 60 seconds)
+      if (timeUntilExpiry < 60) {
+        console.warn('[PAYMENT-CHECK] ⚠️ Signature expiring soon:', `${timeUntilExpiry}s remaining`);
+      }
+
       console.log('[ONCHAIN.FI] Payment Details:', {
         from: decoded.payload?.authorization?.from,
         to: decoded.payload?.authorization?.to,
@@ -146,8 +171,9 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
         scheme: decoded.scheme,
         network: decoded.network,
       });
-    } catch {
-      console.log('[ONCHAIN.FI] Could not decode payment header');
+    } catch (decodeError) {
+      console.error('[ONCHAIN.FI] Could not decode payment header:', decodeError);
+      return false;
     }
 
     console.log('[ONCHAIN.FI] Step 1: Verifying payment...');
@@ -159,7 +185,7 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
       expectedAmount: MINT_PRICE,
       expectedToken: 'USDC',
       recipientAddress: RECIPIENT_ADDRESS,
-      priority: 'balanced', // ✅ Required by official onchain.fi API docs
+      priority: 'balanced',
     };
 
     console.log('[ONCHAIN.FI] Request body:', JSON.stringify(requestBody, null, 2));

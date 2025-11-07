@@ -36,6 +36,38 @@ const log = (...args: unknown[]) => {
  */
 async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
   try {
+    // Decode payment header to check expiration
+    try {
+      const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
+      const validBefore = parseInt(decoded.payload?.authorization?.validBefore || '0');
+      const now = Math.floor(Date.now() / 1000);
+      const timeUntilExpiry = validBefore - now;
+
+      console.log('[PAYMENT-CHECK] Signature validity check:', {
+        validBefore: validBefore,
+        currentTime: now,
+        expiresIn: `${timeUntilExpiry}s`,
+        isExpired: now > validBefore,
+        validBeforeISO: new Date(validBefore * 1000).toISOString(),
+        currentTimeISO: new Date(now * 1000).toISOString(),
+      });
+
+      // Check if signature is already expired
+      if (now > validBefore) {
+        console.error('[PAYMENT-CHECK] ❌ Payment signature EXPIRED!');
+        console.error('[PAYMENT-CHECK] Expired since:', `${now - validBefore} seconds ago`);
+        return false;
+      }
+
+      // Warn if expiring soon (less than 60 seconds)
+      if (timeUntilExpiry < 60) {
+        console.warn('[PAYMENT-CHECK] ⚠️ Signature expiring soon:', `${timeUntilExpiry}s remaining`);
+      }
+    } catch (decodeError) {
+      console.error('[PAYMENT-CHECK] Could not decode payment header:', decodeError);
+      return false;
+    }
+
     console.log('[ONCHAIN.FI] Step 1: Verifying payment...');
 
     // Step 1: Verify payment
