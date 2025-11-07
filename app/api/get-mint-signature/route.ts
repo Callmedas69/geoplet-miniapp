@@ -165,20 +165,33 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
         expectedAmount: MINT_PRICE,
         expectedToken: 'USDC',
         recipientAddress: RECIPIENT_ADDRESS,
-        priority: 'balanced',
+        // priority field removed - not in official onchain.fi documentation
       }),
     });
 
     const verifyData = await verifyResponse.json();
-    
-    console.log('[ONCHAIN.FI] Verify response:', {
+
+    // ✅ Comprehensive logging to diagnose issues
+    console.log('[ONCHAIN.FI] Full verify response:', JSON.stringify(verifyData, null, 2));
+    console.log('[ONCHAIN.FI] Response status:', verifyResponse.status);
+    console.log('[ONCHAIN.FI] Response statusText:', verifyResponse.statusText);
+
+    // Legacy logs for backward compatibility
+    console.log('[ONCHAIN.FI] Verify response summary:', {
       status: verifyResponse.status,
       valid: verifyData.data?.valid,
       facilitator: verifyData.data?.facilitator,
     });
 
     if (!verifyResponse.ok || verifyData.status !== 'success' || !verifyData.data?.valid) {
-      console.error('[ONCHAIN.FI] ❌ Verification failed:', verifyData.data?.reason);
+      console.error('[ONCHAIN.FI] ❌ Verification failed');
+      console.error('[ONCHAIN.FI] Error details:', {
+        status: verifyData.status,
+        message: verifyData.message,
+        error: verifyData.error,
+        reason: verifyData.data?.reason,
+        data: verifyData.data,
+      });
       return false;
     }
 
