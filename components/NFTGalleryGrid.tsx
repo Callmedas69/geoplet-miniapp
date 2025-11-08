@@ -4,12 +4,14 @@ import { useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import { GeopletNFT } from "@/hooks/useGalleryNFTs";
 import { useUserNFTs } from "@/hooks/useUserNFTs";
+import { GEOPLET_CONFIG } from "@/lib/contracts";
 
 interface NFTGalleryGridProps {
   nfts: GeopletNFT[];
   isLoading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
+  userFid?: number | null; // User's FID (equals their Geoplet tokenId in 1:1 mapping)
 }
 
 export function NFTGalleryGrid({
@@ -17,6 +19,7 @@ export function NFTGalleryGrid({
   isLoading,
   hasMore,
   onLoadMore,
+  userFid,
 }: NFTGalleryGridProps) {
   const observerRef = useRef<HTMLDivElement>(null);
   const { nfts: userNFTs, isConnected } = useUserNFTs();
@@ -64,10 +67,10 @@ export function NFTGalleryGrid({
   return (
     <div className="space-y-6 mb-safe mt-4">
       {/* Row 1: Featured Section (Featured NFT + Info Column) */}
-      <div className="grid grid-cols-2 gap-4 pb-6 border-b border-black/8">
+      <div className="grid grid-cols-2 gap-4 py-6 ">
         {/* Left: Featured "My Geoplet" Card - 2x bigger, sticky */}
         <div className="sticky top-20 z-10">
-          <div className="relative w-full aspect-square border-2 border-dashed border-black/8 rounded-3xl overflow-hidden p-4">
+          <div className="relative w-full aspect-square border-2 border-dashed border-black/8 overflow-hidden">
             {myGeoplet ? (
               // Show user's NFT
               <div className="relative w-full h-full">
@@ -75,7 +78,7 @@ export function NFTGalleryGrid({
                   src={myGeoplet.image}
                   alt={myGeoplet.name}
                   fill
-                  className="object-contain"
+                  className="object-contain rounded-xl"
                   priority
                 />
               </div>
@@ -95,20 +98,42 @@ export function NFTGalleryGrid({
           {myGeoplet ? (
             <>
               <div>
-                <p className="text-black/50 text-xs uppercase tracking-wide mb-1">
-                  Name
-                </p>
                 <p className="text-black text-lg font-medium">
                   {myGeoplet.name}
                 </p>
               </div>
               <div>
-                <p className="text-black/50 text-xs uppercase tracking-wide mb-1">
-                  Token ID
-                </p>
-                <p className="text-black text-lg font-medium">
-                  #{myGeoplet.tokenId}
-                </p>
+                {/* NFT Marketplace Links - Use FID directly since FID = tokenId (1:1 mapping) */}
+                <div className="flex gap-2">
+                  <a
+                    href={`https://opensea.io/assets/base/${GEOPLET_CONFIG.address}/${userFid}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <Image
+                      src="/Opensea.svg"
+                      alt="OpenSea"
+                      width={28}
+                      height={28}
+                      className="shrink-0"
+                    />
+                  </a>
+                  <a
+                    href={`https://onchainchecker.xyz/collection/base/${GEOPLET_CONFIG.address}/${userFid}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5"
+                  >
+                    <Image
+                      src="/Onchainchecker.png"
+                      alt="OnchainChecker"
+                      width={28}
+                      height={28}
+                      className="shrink-0"
+                    />
+                  </a>
+                </div>
               </div>
             </>
           ) : (
@@ -119,8 +144,12 @@ export function NFTGalleryGrid({
         </div>
       </div>
 
+      <div className="font-bold border-b border-black/8 pb-4">
+        <p>recently geofying</p>
+      </div>
+
       {/* Row 2: Pure 4-Column NFT Grid */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {/* Regular NFTs */}
         {sortedNFTs.map((nft) => (
           <div
@@ -136,11 +165,6 @@ export function NFTGalleryGrid({
                 className="object-contain"
                 loading="lazy"
               />
-            </div>
-
-            {/* Hover overlay with token ID */}
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <p className="text-white font-semibold text-sm">#{nft.tokenId}</p>
             </div>
           </div>
         ))}
@@ -162,13 +186,6 @@ export function NFTGalleryGrid({
           className="h-20 flex items-center justify-center"
         >
           <p className="text-gray-600 text-sm">Loading more...</p>
-        </div>
-      )}
-
-      {/* End message */}
-      {!hasMore && nfts.length > 0 && (
-        <div className="text-center py-8">
-          <p className="text-gray-600 text-sm">~ Geo ~</p>
         </div>
       )}
     </div>

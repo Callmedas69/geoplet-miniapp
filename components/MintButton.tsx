@@ -106,19 +106,19 @@ export function MintButton({
 
   // Handle mint success
   useEffect(() => {
-    if (isSuccess && txHash && nft && !successCalledRef.current) {
+    if (isSuccess && txHash && fid && !successCalledRef.current) {
       successCalledRef.current = true;
 
       // Delete from Supabase
       onDeleteFromSupabase().catch(console.error);
 
-      // Call success callback
-      onSuccess(txHash, nft.tokenId);
+      // Call success callback with FID (which equals Geoplet tokenId in 1:1 mapping)
+      onSuccess(txHash, fid.toString());
       toast.success("Geoplet NFT minted successfully!");
       haptics.success();
       setState("success");
     }
-  }, [isSuccess, txHash, nft, onSuccess, onDeleteFromSupabase]);
+  }, [isSuccess, txHash, fid, onSuccess, onDeleteFromSupabase]);
 
   // Cleanup on unmount
   useEffect(() => {

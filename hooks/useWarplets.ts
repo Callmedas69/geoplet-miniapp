@@ -69,6 +69,9 @@ export function useWarplets() {
           throw new Error('Unable to get Farcaster ID. Please ensure you are using this app within Farcaster.');
         }
 
+        // Retrieve FID (Farcaster ID) from SDK context
+        // This FID is used throughout the app as the user's unique identifier
+        // In Geoplet contract: FID = tokenId (1:1 mapping)
         const userFid = context.user.fid;
         setFid(userFid);
 
