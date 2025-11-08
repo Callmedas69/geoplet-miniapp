@@ -1,9 +1,9 @@
-// GeoPlet ERC721 with EIP-712 Signature Validation
-// Generated from: GeoPlet (Geoplet.sol) - Production Version
-// Deployed: 2025-01-05
-// Contract: 0xB4d57a91DFD21CEe700cD4b63AEB4B4b49a456B9
+// GeoPlet ERC721 with EIP-712 Signature Validation + Animation Upgrade
+// Generated from: GeoPlet (Geoplet.sol) - V2 with Animation Features
+// Deployed: 2025-11-07
+// Contract: 0x9F46DD5E1c1258Ca98b56cCE13A8D33b201D4622
 // Network: Base Mainnet (Chain ID: 8453)
-// Security: Critical bug fixed, all tests passing
+// Features: Static NFT minting + Animation upgrades via upgradeToAnimated()
 
 export const GeopletABI = [
   {
@@ -217,6 +217,25 @@ export const GeopletABI = [
   },
   {
     "type": "function",
+    "name": "getAnimationData",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getApproved",
     "inputs": [
       {
@@ -254,6 +273,25 @@ export const GeopletABI = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hasAnimation",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -697,6 +735,51 @@ export const GeopletABI = [
   },
   {
     "type": "function",
+    "name": "upgradeToAnimated",
+    "inputs": [
+      {
+        "name": "voucher",
+        "type": "tuple",
+        "internalType": "struct GeoPlet.UpgradeVoucher",
+        "components": [
+          {
+            "name": "to",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "nonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "deadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      },
+      {
+        "name": "base64HtmlAnimation",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "signature",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "usedSignatures",
     "inputs": [
       {
@@ -744,6 +827,25 @@ export const GeopletABI = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "AnimationUpgraded",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "upgrader",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -1205,19 +1307,10 @@ export const GeopletABI = [
   }
 ] as const;
 
-// ============ TypeScript Types ============
-
-export type MintVoucher = {
-  to: `0x${string}`;
-  fid: bigint;
-  nonce: bigint;
-  deadline: bigint;
-};
-
 // ============ Contract Addresses ============
 
 export const GEOPLET_ADDRESSES = {
-  baseMainnet: "0xB4d57a91DFD21CEe700cD4b63AEB4B4b49a456B9" as `0x${string}`, // Production deployment - 2025-01-05
+  baseMainnet: "0x9F46DD5E1c1258Ca98b56cCE13A8D33b201D4622" as `0x${string}`, // Production deployment - 2025-01-05
 } as const;
 
 // ============ EIP-712 Configuration ============
@@ -1263,3 +1356,16 @@ export function getGeopletAddress(chainId: number): `0x${string}` {
 export function isGeopletDeployed(chainId: number): boolean {
   return chainId === 8453; // Base Mainnet only
 }
+
+// ============ TypeScript Types ============
+
+/**
+ * MintVoucher type for EIP-712 signing
+ * Matches contract struct: MintVoucher(address to,uint256 fid,uint256 nonce,uint256 deadline)
+ */
+export type MintVoucher = {
+  to: `0x${string}`;
+  fid: bigint;
+  nonce: bigint;
+  deadline: bigint;
+};

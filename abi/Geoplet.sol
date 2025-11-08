@@ -47,6 +47,9 @@ contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
     // SSTORE2 pointers for base64 image data (stores contract address containing image bytecode)
     mapping(uint256 => address) private imagePointers;
 
+    // SSTORE2 pointers for base64 animation HTML data
+    mapping(uint256 => address) private animationPointers;
+
     // ERC20 Treasury: tokenId => ERC20 address => balance
     mapping(uint256 => mapping(address => uint256)) public tokenBalances;
 
@@ -68,15 +71,30 @@ contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
         uint256 deadline; // Expiration timestamp
     }
 
-    // EIP-712 type hash
+    // Animation upgrade authorization voucher
+    struct UpgradeVoucher {
+        address to; // NFT owner address
+        uint256 tokenId; // Token to upgrade
+        uint256 nonce; // Unique nonce (timestamp from backend)
+        uint256 deadline; // Expiration timestamp
+    }
+
+    // EIP-712 type hashes
     bytes32 private constant MINT_VOUCHER_TYPEHASH =
         keccak256(
             "MintVoucher(address to,uint256 fid,uint256 nonce,uint256 deadline)"
         );
 
+    bytes32 private constant UPGRADE_VOUCHER_TYPEHASH =
+        keccak256(
+            "UpgradeVoucher(address to,uint256 tokenId,uint256 nonce,uint256 deadline)"
+        );
+
     // ============ Events ============
 
     event GeopletMinted(uint256 indexed tokenId, address indexed owner);
+
+    event AnimationUpgraded(uint256 indexed tokenId, address indexed upgrader);
 
     event TokenDeposited(
         uint256 indexed tokenId,
@@ -208,8 +226,22 @@ contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
         bytes memory imageData = SSTORE2.read(imagePointer);
         string memory base64Image = string(imageData);
 
+        // Check for animation and build animation URL if exists
+        string memory animationUrl = "";
+        if (animationPointers[tokenId] != address(0)) {
+            bytes memory animationData = SSTORE2.read(
+                animationPointers[tokenId]
+            );
+            animationUrl = string(
+                abi.encodePacked(
+                    "data:text/html;base64,",
+                    string(animationData)
+                )
+            );
+        }
+
         // Build and return metadata JSON
-        return _buildMetadata(tokenId, base64Image);
+        return _buildMetadata(tokenId, base64Image, animationUrl);
     }
 
     /**
@@ -217,8 +249,14 @@ contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
      */
     function _buildMetadata(
         uint256 tokenId,
-        string memory imageData
+        string memory imageData,
+        string memory animationUrl
     ) private view returns (string memory) {
+        // Build animation_url field conditionally
+        string memory animationField = bytes(animationUrl).length > 0
+            ? string(abi.encodePacked('"animation_url":"', animationUrl, '",'))
+            : '"animation_url":"",';
+
         return
             string(
                 abi.encodePacked(
@@ -234,7 +272,7 @@ contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
                     '"image":"',
                     imageData,
                     '",',
-                    '"animation_url":"https://geoplet.geoart.studio/og-image.webp",',
+                    animationField,
                     '"attributes":[',
                     '{"trait_type":"Token ID","value":"',
                     tokenId.toString(),
@@ -251,6 +289,95 @@ contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
                     "}"
                 )
             );
+    }
+
+    // ============ Animation Upgrade Functions ============
+
+    /**
+     * @notice Upgrade NFT to animated version with EIP-712 signature verification
+     * @param voucher The upgrade authorization voucher signed by backend
+     * @param base64HtmlAnimation Base64-encoded HTML with embedded MP4 video
+     * @param signature EIP-712 signature from backend
+     */
+    function upgradeToAnimated(
+        UpgradeVoucher calldata voucher,
+        string calldata base64HtmlAnimation,
+        bytes calldata signature
+    ) external nonReentrant {
+        // 1. Verify ownership
+        require(ownerOf(voucher.tokenId) == msg.sender, "Not token owner");
+        require(msg.sender == voucher.to, "Caller mismatch");
+
+        // 2. Verify signature deadline bounds
+        require(block.timestamp <= voucher.deadline, "Signature expired");
+        require(
+            voucher.deadline <= block.timestamp + MAX_SIGNATURE_VALIDITY,
+            "Deadline too long"
+        );
+
+        // 3. Calculate EIP-712 digest
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    UPGRADE_VOUCHER_TYPEHASH,
+                    voucher.to,
+                    voucher.tokenId,
+                    voucher.nonce,
+                    voucher.deadline
+                )
+            )
+        );
+
+        // 4. Check digest not already used (replay protection)
+        require(!usedSignatures[digest], "Signature already used");
+
+        // 5. Verify EIP-712 signature
+        address recoveredSigner = ECDSA.recover(digest, signature);
+        require(recoveredSigner != address(0), "Invalid signature");
+        require(recoveredSigner == signerWallet, "Invalid signature");
+
+        // 6. Mark digest as used BEFORE storing (CEI pattern)
+        usedSignatures[digest] = true;
+
+        // 7. Validate animation data
+        require(bytes(base64HtmlAnimation).length > 0, "Empty animation data");
+        require(
+            bytes(base64HtmlAnimation).length <= 24576,
+            "Animation too large (24KB max)"
+        );
+
+        // 8. Store animation data in SSTORE2 contract bytecode
+        address animationPointer = SSTORE2.write(bytes(base64HtmlAnimation));
+        require(animationPointer != address(0), "SSTORE2 write failed");
+        require(animationPointer.code.length > 0, "Invalid storage pointer");
+        animationPointers[voucher.tokenId] = animationPointer;
+
+        emit AnimationUpgraded(voucher.tokenId, msg.sender);
+    }
+
+    /**
+     * @notice Check if a token has an animation
+     * @param tokenId The NFT token ID to check
+     * @return True if token has animation, false otherwise
+     */
+    function hasAnimation(uint256 tokenId) external view returns (bool) {
+        return animationPointers[tokenId] != address(0);
+    }
+
+    /**
+     * @notice Get animation HTML data for a token
+     * @param tokenId The NFT token ID
+     * @return The Base64-encoded HTML animation data
+     */
+    function getAnimationData(
+        uint256 tokenId
+    ) external view returns (string memory) {
+        require(
+            animationPointers[tokenId] != address(0),
+            "No animation for this token"
+        );
+        bytes memory animationData = SSTORE2.read(animationPointers[tokenId]);
+        return string(animationData);
     }
 
     // ============ ERC20 Treasury Functions ============

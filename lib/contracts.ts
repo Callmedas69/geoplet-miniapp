@@ -31,7 +31,10 @@ export const GEOPLET_CONFIG = {
 
   // EIP-712 Configuration (from ABI)
   eip712: {
-    domain: EIP712_DOMAIN,
+    domain: {
+      ...EIP712_DOMAIN,
+      verifyingContract: getGeopletAddress(CHAIN_ID),
+    },
     types: EIP712_TYPES,
   },
 
