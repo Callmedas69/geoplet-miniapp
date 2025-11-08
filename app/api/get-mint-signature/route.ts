@@ -181,8 +181,9 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
     // Step 1: Verify payment
     const requestBody = {
       paymentHeader,
-      network: 'base',
-      expectedAmount: MINT_PRICE,
+      sourceNetwork: 'base',      // New format (supports cross-chain)
+      destinationNetwork: 'base',  // New format (supports cross-chain)
+      expectedAmount: MINT_PRICE, // "2.00" - Decimal format per onchain.fi spec
       expectedToken: 'USDC',
       recipientAddress: RECIPIENT_ADDRESS,
       priority: 'balanced',

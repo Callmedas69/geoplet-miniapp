@@ -81,8 +81,9 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
     // Step 1: Verify payment
     const requestBody = {
       paymentHeader,
-      network: 'base',
-      expectedAmount: REGENERATE_PRICE,
+      sourceNetwork: 'base',      // New format (supports cross-chain)
+      destinationNetwork: 'base',  // New format (supports cross-chain)
+      expectedAmount: REGENERATE_PRICE, // "3.00" - Decimal format per onchain.fi spec
       expectedToken: 'USDC',
       recipientAddress: RECIPIENT_ADDRESS,
       priority: 'balanced',
@@ -137,7 +138,8 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
       },
       body: JSON.stringify({
         paymentHeader,
-        network: 'base',
+        sourceNetwork: 'base',      // New format (supports cross-chain)
+        destinationNetwork: 'base',  // New format (supports cross-chain)
         priority: 'balanced',
       }),
     });

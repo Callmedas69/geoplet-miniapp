@@ -84,7 +84,8 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         paymentHeader,
-        network: 'base',
+        sourceNetwork: 'base',      // New format (supports cross-chain)
+        destinationNetwork: 'base',  // New format (supports cross-chain)
         priority: 'balanced',
       }),
     });

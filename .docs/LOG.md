@@ -1,106 +1,200 @@
-# browser console
+# onchain.fi API Test Results
+# Test Run: 2025-11-08T11:47:17.566Z
 
-[LOAD-GEN] Loaded saved generation from Supabase
-baa25f7c04d2c7bc.js:3 [x402 Regenerate] Step 1: Requesting payment terms...
-baa25f7c04d2c7bc.js:3  POST https://geoplet.geoart.studio/api/generate-image 402 (Payment Required)
-(anonymous) @ baa25f7c04d2c7bc.js:3
-sW @ 73a330e38f4c895c.js:19
-(anonymous) @ 73a330e38f4c895c.js:19
-tI @ 73a330e38f4c895c.js:19
-sJ @ 73a330e38f4c895c.js:19
-fE @ 73a330e38f4c895c.js:19
-fk @ 73a330e38f4c895c.js:19Understand this error
-baa25f7c04d2c7bc.js:3 [x402 Regenerate] Step 2: Received 402 Payment Required
-baa25f7c04d2c7bc.js:3 [x402 Regenerate] Step 3: Generating payment header...
-baa25f7c04d2c7bc.js:3 Fetch failed loading: POST "https://geoplet.geoart.studio/api/generate-image".
-(anonymous) @ baa25f7c04d2c7bc.js:3
-sW @ 73a330e38f4c895c.js:19
-(anonymous) @ 73a330e38f4c895c.js:19
-tI @ 73a330e38f4c895c.js:19
-sJ @ 73a330e38f4c895c.js:19
-fE @ 73a330e38f4c895c.js:19
-fk @ 73a330e38f4c895c.js:19
-index-D0pKoqGq.js:370 [miniapp-host] eth provider req:  {id: 6, method: 'eth_accounts', jsonrpc: '2.0'}
-index-D0pKoqGq.js:370 [miniapp-host] eth provider res:  {result: Array(1), id: 6, jsonrpc: '2.0'}
-index-D0pKoqGq.js:370 [miniapp-host] eth provider req:  {id: 7, method: 'eth_chainId', jsonrpc: '2.0'}
-index-D0pKoqGq.js:370 [miniapp-host] eth provider res:  {result: '0x2105', id: 7, jsonrpc: '2.0'}
-index-D0pKoqGq.js:370 [miniapp-host] eth provider req:  {id: 8, method: 'eth_signTypedData_v4', params: Array(2), jsonrpc: '2.0'}
-index-D0pKoqGq.js:144 XHR finished loading: POST "https://client.farcaster.xyz/v2/amp/api".
-pe @ index-D0pKoqGq.js:144
-Request$1.send @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-logEvent @ index-D0pKoqGq.js:160
-(anonymous) @ index-D0pKoqGq.js:273
-(anonymous) @ index-D0pKoqGq.js:273
-(anonymous) @ index-D0pKoqGq.js:32
-an @ index-D0pKoqGq.js:1134
-request @ index-D0pKoqGq.js:1134
-(anonymous) @ index-D0pKoqGq.js:370
-(anonymous) @ index-D0pKoqGq.js:370
-ne @ index-D0pKoqGq.js:370
-index-D0pKoqGq.js:370 [miniapp-host] eth provider res:  {result: '0xb9c2428d8e48105495d2bcd65deeb06fe02260c926dfd52d…601a024de344976222033a8ab68ad91168ac9980cd623b71b', id: 8, jsonrpc: '2.0'}id: 8jsonrpc: "2.0"result: "0xb9c2428d8e48105495d2bcd65deeb06fe02260c926dfd52d97cc3390364c0a59536e0f2c80fde8b19601a024de344976222033a8ab68ad91168ac9980cd623b71b"[[Prototype]]: Object
-baa25f7c04d2c7bc.js:1 [EIP-3009] Generated signature: {from: '0x678170B0f3ad9aa98b000494Af32e4115a0f0f62', to: '0xFdF53De20f46bAE2Fa6414e6F25EF1654E68Acd0', value: '3000000', validAfter: '0', validBefore: 1762565931, …}from: "0x678170B0f3ad9aa98b000494Af32e4115a0f0f62"nonce: "0x4ec4663db50e33d24b704e953e78958b4d9ef5545c0f1dbd23d937901bccf16a"signature: "0xb9c2428d8e48105495d2bcd65deeb06fe02260c926dfd52d97cc3390364c0a59536e0f2c80fde8b19601a024de344976222033a8ab68ad91168ac9980cd623b71b"to: "0xFdF53De20f46bAE2Fa6414e6F25EF1654E68Acd0"validAfter: "0"validBefore: 1762565931value: "3000000"[[Prototype]]: Object
-baa25f7c04d2c7bc.js:1 [x402] Payment header generated: {authorization: {…}, signatureLength: 132, base64Length: 628}authorization: from: "0x678170B0f3ad9aa98b000494Af32e4115a0f0f62"nonce: "0x4ec4663db50e33d24b704e953e78958b4d9ef5545c0f1dbd23d937901bccf16a"to: "0xFdF53De20f46bAE2Fa6414e6F25EF1654E68Acd0"validAfter: "0"validBefore: "1762565931"value: "3000000"[[Prototype]]: Objectbase64Length: 628signatureLength: 132[[Prototype]]: Object
-baa25f7c04d2c7bc.js:3 [x402 Regenerate] Step 4: Retrying with payment header...
-index-D0pKoqGq.js:144 XHR finished loading: POST "https://client.farcaster.xyz/v2/amp/api".
-pe @ index-D0pKoqGq.js:144
-Request$1.send @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-G @ index-D0pKoqGq.js:160
-logEvent @ index-D0pKoqGq.js:160
-(anonymous) @ index-D0pKoqGq.js:273
-(anonymous) @ index-D0pKoqGq.js:273
-(anonymous) @ index-D0pKoqGq.js:32
-an @ index-D0pKoqGq.js:1134
-await in an
-request @ index-D0pKoqGq.js:1134
-(anonymous) @ index-D0pKoqGq.js:370
-(anonymous) @ index-D0pKoqGq.js:370
-ne @ index-D0pKoqGq.js:370
-baa25f7c04d2c7bc.js:3  POST https://geoplet.geoart.studio/api/generate-image 402 (Payment Required)
-(anonymous) @ baa25f7c04d2c7bc.js:3
-await in (anonymous)
-sW @ 73a330e38f4c895c.js:19
-(anonymous) @ 73a330e38f4c895c.js:19
-tI @ 73a330e38f4c895c.js:19
-sJ @ 73a330e38f4c895c.js:19
-fE @ 73a330e38f4c895c.js:19
-fk @ 73a330e38f4c895c.js:19Understand this error
-baa25f7c04d2c7bc.js:3 Regenerate error: Error: Payment verification/settlement failed - Invalid or insufficient payment
-    at baa25f7c04d2c7bc.js:3:3411
-(anonymous) @ baa25f7c04d2c7bc.js:3
-await in (anonymous)
-sW @ 73a330e38f4c895c.js:19
-(anonymous) @ 73a330e38f4c895c.js:19
-tI @ 73a330e38f4c895c.js:19
-sJ @ 73a330e38f4c895c.js:19
-fE @ 73a330e38f4c895c.js:19
-fk @ 73a330e38f4c895c.js:19Understand this error
-baa25f7c04d2c7bc.js:3 Fetch failed loading: POST "https://geoplet.geoart.studio/api/generate-image".
+## Summary
+- Total Tests: 5
+- Passed: 2 ✅
+- Failed: 3 ❌
+- Skipped: 0
 
+## Critical Finding
+**BOTH /verify AND /settle endpoints return the SAME error**: "Invalid request body" (400)
 
-# vercel log
-2025-11-08 01:29:05.397 [info] [GENERATION-TYPE] FID: undefined, First time: false
-2025-11-08 01:29:05.398 [info] [OPENAI-PRECHECK] Checking service availability before payment...
-2025-11-08 01:29:05.398 [info] [OPENAI-HEALTH] Checking API key configuration...
-2025-11-08 01:29:05.398 [info] [OPENAI-HEALTH] ✅ API key configured
-2025-11-08 01:29:05.399 [info] [OPENAI-PRECHECK] ✅ Service available
-2025-11-08 01:29:05.399 [info] [ONCHAIN.FI] Verifying and settling x402 payment...
-2025-11-08 01:29:05.400 [info] [PAYMENT-CHECK] Signature validity check: {
-  validBefore: 1762565931,
-  currentTime: 1762565345,
-  expiresIn: '586s',
-  isExpired: false,
-  validBeforeISO: '2025-11-08T01:38:51.000Z',
-  currentTimeISO: '2025-11-08T01:29:05.000Z'
+This indicates the issue is NOT with a specific endpoint but with how we're formatting the request body or payment header structure.
+
+## Test Results
+
+### ✅ Test 1: Supported Networks (PASSED)
+- **Status**: 200 OK
+- **Duration**: 91ms
+- **Endpoint**: GET /v1/supported
+- **Result**: Successfully retrieved list of 14 supported networks
+- **Networks**: abstract, abstract-testnet, avalanche, avalanche-fuji, **base**, **base-mainnet**, base-sepolia, iotex, peaq, polygon, polygon-amoy, sei, sei-testnet, solana, solana-devnet
+- **Conclusion**: API key is VALID ✅
+
+### ✅ Test 2: Get Facilitators (PASSED)
+- **Status**: 200 OK
+- **Duration**: 267ms
+- **Endpoint**: GET /v1/facilitators?network=base&token=USDC
+- **Result**: Successfully retrieved 7 facilitators
+- **Facilitators**:
+  1. OctonetAI (0% fees, 622ms latency)
+  2. Coinbase CDP (0.5% + $0.001)
+  3. x402.rs (0.3%)
+  4. Daydreams (0% fees, 260ms latency)
+  5. Aurracloud (0% fees, 750ms latency)
+  6. OpenX402 (0% fees, 388ms latency)
+  7. PayAI (0% fees, 310ms latency)
+- **Conclusion**: API key works, facilitators are available ✅
+
+### ❌ Test 3: Verify Payment (FAILED)
+- **Status**: 400 Bad Request
+- **Duration**: 32ms
+- **Endpoint**: POST /v1/verify
+- **Request Body**:
+```json
+{
+  "paymentHeader": "eyJ4NDAyVmVyc2lvbiI6MSwic2NoZW1lIjoiZXhhY3QiLCJuZXR3b3JrIjoiYmFzZSIsInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHg1ZTBmZTRjMDZkOTQ3OGU2YzE3MzkyZDhhYjA2NmYzZWYyZmM4NDBjMGZhZjVhZWM4MDEwZDg1MTAxYzNkOTI1NjkxMmQ2MDE1MGVkMDg0MDJkZmVkNGQ0NGZlMTM1ZTc5NzBlYTUxNzNjNDQwZDA5ODU3ZTk1MGQxMDdmZWRlMzFjIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg2NzgxNzBCMGYzYWQ5YWE5OGIwMDA0OTRBZjMyZTQxMTVhMGYwZjYyIiwidG8iOiIweEZkRjUzRGUyMGY0NmJBRTJGYTY0MTRlNkYyNUVGMTY1NEU2OEFjZDAiLCJ2YWx1ZSI6IjMwMDAwMDAiLCJ2YWxpZEFmdGVyIjoiMCIsInZhbGlkQmVmb3JlIjoiMTc2MjYwMjk0NSIsIm5vbmNlIjoiMHhkZDQzNTA5MjU2MzA0NDA0NzFkMTcyOGRjZjEyMTc0OGViOWMzODNiZTlhNmQ0MjkwM2ZkOTEzN2RkZThiNWRkIn19fQ==",
+  "network": "base",
+  "expectedAmount": "3.00",
+  "expectedToken": "USDC",
+  "recipientAddress": "0xFdF53De20f46bAE2Fa6414e6F25EF1654E68Acd0",
+  "priority": "balanced"
 }
-2025-11-08 01:29:05.400 [info] [ONCHAIN.FI] Step 1: Verifying payment...
-2025-11-08 01:29:06.006 [info] [ONCHAIN.FI] Verify response: { status: 400, valid: undefined }
-2025-11-08 01:29:06.006 [error] [ONCHAIN.FI] ❌ Verification failed: undefined
+```
+- **Response**:
+```json
+{
+  "status": "error",
+  "message": "Invalid request body"
+}
+```
+- **Conclusion**: Verify endpoint rejects our request ❌
+
+### ❌ Test 4: Settle Payment (FAILED)
+- **Status**: 400 Bad Request
+- **Duration**: 52ms
+- **Endpoint**: POST /v1/settle
+- **Request Body**:
+```json
+{
+  "paymentHeader": "eyJ4NDAyVmVyc2lvbiI6MSwic2NoZW1lIjoiZXhhY3QiLCJuZXR3b3JrIjoiYmFzZSIsInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHg1ZTBmZTRjMDZkOTQ3OGU2YzE3MzkyZDhhYjA2NmYzZWYyZmM4NDBjMGZhZjVhZWM4MDEwZDg1MTAxYzNkOTI1NjkxMmQ2MDE1MGVkMDg0MDJkZmVkNGQ0NGZlMTM1ZTc5NzBlYTUxNzNjNDQwZDA5ODU3ZTk1MGQxMDdmZWRlMzFjIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg2NzgxNzBCMGYzYWQ5YWE5OGIwMDA0OTRBZjMyZTQxMTVhMGYwZjYyIiwidG8iOiIweEZkRjUzRGUyMGY0NmJBRTJGYTY0MTRlNkYyNUVGMTY1NEU2OEFjZDAiLCJ2YWx1ZSI6IjMwMDAwMDAiLCJ2YWxpZEFmdGVyIjoiMCIsInZhbGlkQmVmb3JlIjoiMTc2MjYwMjk0NSIsIm5vbmNlIjoiMHhkZDQzNTA5MjU2MzA0NDA0NzFkMTcyOGRjZjEyMTc0OGViOWMzODNiZTlhNmQ0MjkwM2ZkOTEzN2RkZThiNWRkIn19fQ==",
+  "network": "base",
+  "priority": "balanced"
+}
+```
+- **Response**:
+```json
+{
+  "status": "error",
+  "message": "Invalid request body"
+}
+```
+- **Conclusion**: Settle endpoint also rejects our request ❌
+
+### ❌ Test 5: Verify + Settle (FAILED)
+- **Duration**: 31ms
+- **Error**: "Verify step failed: Invalid request body"
+- **Conclusion**: Cannot proceed to settle because verify fails ❌
+
+---
+
+## Analysis
+
+### What's Working ✅
+1. API key authentication
+2. GET endpoints (supported networks, facilitators)
+3. Network connectivity to onchain.fi
+
+### What's NOT Working ❌
+1. POST /v1/verify returns "Invalid request body"
+2. POST /v1/settle returns "Invalid request body"
+3. SAME error for BOTH endpoints
+
+### Key Observations
+
+1. **Both POST endpoints fail with identical error**
+   - This suggests a common issue with our request structure
+   - Not endpoint-specific validation
+
+2. **Payment Header Structure** (decoded):
+```json
+{
+  "x402Version": 1,
+  "scheme": "exact",
+  "network": "base",
+  "payload": {
+    "signature": "0x5e0fe4c06d9478e6c17392d8ab066f3ef2fc840c0faf5aec8010d85101c3d925691 2d60150ed08402dfed4d44fe135e7970ea5173c440d09857e950d107fede31c",
+    "authorization": {
+      "from": "0x678170B0f3ad9aa98b000494Af32e4115a0f0f62",
+      "to": "0xFdF53De20f46bAE2Fa6414e6F25EF1654E68Acd0",
+      "value": "3000000",
+      "validAfter": "0",
+      "validBefore": "1762602945",
+      "nonce": "0xdd43509256304404721d1728dcf121748eb9c383be9a6d42903fd9137dde8b5dd"
+    }
+  }
+}
+```
+
+3. **Payment header was NOT expired at test time**
+   - validBefore: 1762602945 (2025-11-08T11:55:45Z)
+   - Test ran at: 2025-11-08T11:47:17Z
+   - Time remaining: ~8 minutes ✅
+
+4. **Request body fields match documented API spec**
+   - paymentHeader: ✅ base64 string
+   - network: ✅ "base" (confirmed supported)
+   - expectedAmount: ✅ "3.00" (decimal format)
+   - expectedToken: ✅ "USDC"
+   - recipientAddress: ✅ valid address
+   - priority: ✅ "balanced"
+
+### Hypotheses
+
+#### Hypothesis 1: Payment Header Signature Invalid
+- onchain.fi might be validating the EIP-3009 signature cryptographically
+- Signature might not match the authorization data
+- **Test**: Verify signature locally using viem
+
+#### Hypothesis 2: Request Body Schema Change
+- onchain.fi API schema might have changed
+- Field order might matter
+- Field types might be strict
+- **Test**: Contact onchain.fi support for current schema
+
+#### Hypothesis 3: API Key Permissions
+- API key works for GET endpoints but not POST
+- Might need specific permissions for /verify and /settle
+- **Test**: Check API key settings on onchain.fi dashboard
+
+#### Hypothesis 4: Missing Required Field
+- Documentation might be outdated
+- New required field not documented
+- **Test**: Try minimal request, add fields one by one
+
+---
+
+## Recommended Next Steps
+
+1. **Contact onchain.fi Support** (HIGHEST PRIORITY)
+   - Provide them the exact request body from Test 3
+   - Ask for specific validation error details
+   - Request current API schema documentation
+
+2. **Verify Signature Locally**
+   - Use viem to verify the EIP-3009 signature
+   - Ensure signature matches authorization data
+   - Check if signature is cryptographically valid
+
+3. **Test with Different Payment Amounts**
+   - Try $1.00, $2.00, $5.00
+   - See if amount affects validation
+
+4. **Check API Key Permissions**
+   - Log into onchain.fi dashboard
+   - Verify API key has /verify and /settle permissions
+   - Generate new API key if needed
+
+5. **Try Removing Optional Fields**
+   - Remove `priority` field from verify request
+   - Remove other optional fields one by one
+   - Identify which field causes rejection
+
+---
+
+## Full Test Output
+
+API URL: https://api.onchain.fi/v1
+Test Timestamp: 2025-11-08T11:47:17.566Z
+Payment Header Expiry: 2025-11-08T11:55:45.000Z (still valid ✅)

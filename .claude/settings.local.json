@@ -59,7 +59,9 @@
       "Bash(if [ -d \"node_modules/.cache\" ])",
       "Bash(then rm -rf node_modules/.cache)",
       "Bash(else echo \"No node_modules cache found\")",
-      "Bash(node --eval:*)"
+      "Bash(node --eval:*)",
+      "Bash(powershell -Command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(''eyJ4NDAyVmVyc2lvbiI6MSwic2NoZW1lIjoiZXhhY3QiLCJuZXR3b3JrIjoiYmFzZSIsInBheWxvYWQiOnsic2lnbmF0dXJlIjoiMHhiOTRjYzA2MzYzY2ZlMGE5NmViNzc3ZWY3MTExMTViMjU3MjQxYjg5Y2I4MWM4ZTM5MTlhZDZlZmMxNzA1MmY1NzEyMzhkZWNjMWFhNjE1ZTU4Yjg5Y2UyNWE0NjkyMzgwMWI2MGQ3OGZjZDQwZTUyOWIxOTdmMjIxZmUwNjBmNzFiIiwiYXV0aG9yaXphdGlvbiI6eyJmcm9tIjoiMHg2NzgxNzBCMGYzYWQ5YWE5OGIwMDA0OTRBZjMyZTQxMTVhMGYwZjYyIiwidG8iOiIweEZkRjUzRGUyMGY0NmJBRTJGYTY0MTRlNkYyNUVGMTY1NEU2OEFjZDAiLCJ2YWx1ZSI6IjMwMDAwMDAiLCJ2YWxpZEFmdGVyIjoiMCIsInZhbGlkQmVmb3JlIjoiMTc2MjU2NzQ2MSIsIm5vbmNlIjoiMHg2Njg1NTc0ODg0ZmMwYzBmMjJkNDdhYTUxOTk5YTcwN2NjZmI1MDRhNmRmMDI4NDIwYTY5ZmE4NTdkMGRjMDgwIn19fQ==''))\")",
+      "Bash(echo:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
