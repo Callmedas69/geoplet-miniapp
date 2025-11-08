@@ -63,6 +63,14 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
       if (timeUntilExpiry < 60) {
         console.warn('[PAYMENT-CHECK] ⚠️ Signature expiring soon:', `${timeUntilExpiry}s remaining`);
       }
+
+      console.log('[ONCHAIN.FI] Payment Details:', {
+        from: decoded.payload?.authorization?.from,
+        to: decoded.payload?.authorization?.to,
+        value: decoded.payload?.authorization?.value,
+        scheme: decoded.scheme,
+        network: decoded.network,
+      });
     } catch (decodeError) {
       console.error('[PAYMENT-CHECK] Could not decode payment header:', decodeError);
       return false;
@@ -71,31 +79,49 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
     console.log('[ONCHAIN.FI] Step 1: Verifying payment...');
 
     // Step 1: Verify payment
+    const requestBody = {
+      paymentHeader,
+      network: 'base',
+      expectedAmount: REGENERATE_PRICE,
+      expectedToken: 'USDC',
+      recipientAddress: RECIPIENT_ADDRESS,
+      priority: 'balanced',
+    };
+
+    console.log('[ONCHAIN.FI] Request body:', JSON.stringify(requestBody, null, 2));
+
     const verifyResponse = await fetch(`${ONCHAIN_API_URL}/verify`, {
       method: 'POST',
       headers: {
         'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        paymentHeader,
-        network: 'base',
-        expectedAmount: REGENERATE_PRICE,
-        expectedToken: 'USDC',
-        recipientAddress: RECIPIENT_ADDRESS,
-        priority: 'balanced',
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     const verifyData = await verifyResponse.json();
 
-    console.log('[ONCHAIN.FI] Verify response:', {
+    // ✅ Comprehensive logging to diagnose issues
+    console.log('[ONCHAIN.FI] Full verify response:', JSON.stringify(verifyData, null, 2));
+    console.log('[ONCHAIN.FI] Response status:', verifyResponse.status);
+    console.log('[ONCHAIN.FI] Response statusText:', verifyResponse.statusText);
+
+    // Legacy logs for backward compatibility
+    console.log('[ONCHAIN.FI] Verify response summary:', {
       status: verifyResponse.status,
       valid: verifyData.data?.valid,
+      facilitator: verifyData.data?.facilitator,
     });
 
     if (!verifyResponse.ok || verifyData.status !== 'success' || !verifyData.data?.valid) {
-      console.error('[ONCHAIN.FI] ❌ Verification failed:', verifyData.data?.reason);
+      console.error('[ONCHAIN.FI] ❌ Verification failed');
+      console.error('[ONCHAIN.FI] Error details:', {
+        status: verifyData.status,
+        message: verifyData.message,
+        error: verifyData.error,
+        reason: verifyData.data?.reason,
+        data: verifyData.data,
+      });
       return false;
     }
 
