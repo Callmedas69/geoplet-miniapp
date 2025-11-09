@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createWalletClient, http, type Address, recoverTypedDataAddress, isAddressEqual } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
+import { PAYMENT_CONFIG } from '@/lib/payment-config';
 import {
   PaymentErrorCode,
   MintErrorCode,
@@ -41,9 +42,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, X-Payment',
 };
-
-// Payment configuration
-const MINT_PRICE = '1.00';
 
 // Signer configuration
 const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY as string;
@@ -183,7 +181,7 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
       paymentHeader,
       sourceNetwork: 'base',      // New format (supports cross-chain)
       destinationNetwork: 'base',  // New format (supports cross-chain)
-      expectedAmount: MINT_PRICE, // "2.00" - Decimal format per onchain.fi spec
+      expectedAmount: PAYMENT_CONFIG.MINT.price, // Decimal format per onchain.fi spec
       expectedToken: 'USDC',
       recipientAddress: RECIPIENT_ADDRESS,
       priority: 'balanced',
@@ -371,9 +369,7 @@ export async function POST(request: NextRequest) {
       console.log('[X402] No X-Payment header found, returning 402 Payment Required');
 
       // Return x402-compliant 402 response
-      // Convert amount to atomic units (USDC has 6 decimals)
-      const amountInAtomicUnits = (parseFloat(MINT_PRICE) * 1e6).toString();
-
+      // Use pre-calculated atomic units from PAYMENT_CONFIG (KISS principle)
       return NextResponse.json(
         {
           x402Version: 1,
@@ -381,11 +377,11 @@ export async function POST(request: NextRequest) {
             {
               scheme: 'exact',
               network: 'base',
-              maxAmountRequired: amountInAtomicUnits,
+              maxAmountRequired: PAYMENT_CONFIG.MINT.priceAtomic,
               asset: process.env.BASE_USDC_ADDRESS!,
               payTo: RECIPIENT_ADDRESS,
               resource: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/get-mint-signature`,
-              description: `Mint your unique Geoplet NFT for ${MINT_PRICE} USDC`,
+              description: `Mint your unique Geoplet NFT for ${PAYMENT_CONFIG.MINT.price} USDC`,
               mimeType: 'application/json',
               maxTimeoutSeconds: 600,
               extra: {
@@ -439,14 +435,17 @@ export async function POST(request: NextRequest) {
       // Validate authorization fields
       const auth = decoded.payload?.authorization;
       if (auth) {
+        // Use pre-calculated atomic value from PAYMENT_CONFIG (KISS principle - no manual calculation)
+        const expectedValue = PAYMENT_CONFIG.MINT.priceAtomic;
+
         if (!auth.from || !/^0x[a-fA-F0-9]{40}$/.test(auth.from)) {
           validationErrors.push('Invalid "from" address');
         }
         if (!auth.to || !/^0x[a-fA-F0-9]{40}$/.test(auth.to)) {
           validationErrors.push('Invalid "to" address');
         }
-        if (!auth.value || auth.value !== '2000000') {
-          validationErrors.push(`Invalid payment value (expected 2000000, got ${auth.value})`);
+        if (!auth.value || auth.value !== expectedValue) {
+          validationErrors.push(`Invalid payment value (expected ${expectedValue}, got ${auth.value})`);
         }
         if (!auth.validBefore) {
           validationErrors.push('Missing validBefore timestamp');

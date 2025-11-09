@@ -3,7 +3,7 @@
 /**
  * RegenerateButton Component
  *
- * Handles regeneration of Geoplet ($3 USDC)
+ * Handles regeneration of Geoplet ($0.90 USDC)
  * - Disabled until first auto-generation completes
  * - Integrates x402 payment (reuses existing pattern)
  * - Saves to Supabase after generation
@@ -26,7 +26,12 @@ import { PAYMENT_CONFIG } from "@/lib/payment-config";
 import type { PaymentRequired402Response } from "@/types/x402";
 import { gsap } from "gsap";
 
-type ButtonState = "idle" | "insufficient_usdc" | "paying" | "generating" | "success";
+type ButtonState =
+  | "idle"
+  | "insufficient_usdc"
+  | "paying"
+  | "generating"
+  | "success";
 
 interface RegenerateButtonProps {
   disabled?: boolean;
@@ -36,7 +41,7 @@ interface RegenerateButtonProps {
 
 // Use empty string for relative paths in client-side fetch
 // This ensures same-origin requests with all headers preserved (including X-Payment)
-const API_BASE_URL = '';
+const API_BASE_URL = "";
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_BASE_USDC_ADDRESS as `0x${string}`;
 const CHAIN_ID = 8453; // Base Mainnet
 
@@ -60,7 +65,8 @@ export function RegenerateButton({
     const button = buttonRef.current;
     if (!button) return;
 
-    const handlePointerDown = () => gsap.to(button, { scale: 0.95, duration: 0.1 });
+    const handlePointerDown = () =>
+      gsap.to(button, { scale: 0.95, duration: 0.1 });
     const handlePointerUp = () => gsap.to(button, { scale: 1, duration: 0.15 });
 
     button.addEventListener("pointerdown", handlePointerDown);
@@ -74,7 +80,7 @@ export function RegenerateButton({
     };
   }, []);
 
-  // Check USDC balance (need $3 for regenerate)
+  // Check USDC balance (need $0.9 for regenerate)
   const regeneratePrice = parseFloat(PAYMENT_CONFIG.REGENERATE.price);
   const balanceNum = balance ? parseFloat(balance) : 0;
   const hasEnoughUSDC = balanceNum >= regeneratePrice;
@@ -128,29 +134,33 @@ export function RegenerateButton({
       // Backend will check before settlement (redundant frontend check removed)
       setState("paying");
       console.log(`[x402 Regenerate] Step 1: Requesting payment terms...`);
-      const initialResponse = await fetch(`${API_BASE_URL}/api/generate-image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageUrl: nft.imageUrl,
-          tokenId: nft.tokenId,
-          name: nft.name,
-          fid: fid.toString(), // Add FID for generation check
-        }),
-      });
+      const initialResponse = await fetch(
+        `${API_BASE_URL}/api/generate-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            imageUrl: nft.imageUrl,
+            tokenId: nft.tokenId,
+            name: nft.name,
+            fid: fid.toString(), // Add FID for generation check
+          }),
+        }
+      );
 
       // Step 2: Expect 402 Payment Required
       if (initialResponse.status !== 402) {
         throw new Error(`Unexpected status: ${initialResponse.status}`);
       }
 
-      const paymentTermsData = await initialResponse.json() as PaymentRequired402Response;
+      const paymentTermsData =
+        (await initialResponse.json()) as PaymentRequired402Response;
       console.log(`[x402 Regenerate] Step 2: Received 402 Payment Required`);
 
       if (!paymentTermsData.accepts?.[0]) {
-        throw new Error('Invalid payment terms received');
+        throw new Error("Invalid payment terms received");
       }
 
       const terms = paymentTermsData.accepts[0];
@@ -162,7 +172,7 @@ export function RegenerateButton({
         from: address,
         to: terms.payTo as `0x${string}`,
         value: PAYMENT_CONFIG.REGENERATE.priceAtomic,
-        validAfter: '0',
+        validAfter: "0",
         usdcAddress: USDC_ADDRESS,
         chainId: CHAIN_ID,
       });
@@ -173,22 +183,25 @@ export function RegenerateButton({
       console.log(`[x402 Regenerate] Step 4: Retrying with payment header...`);
       setState("generating");
 
-      const paymentResponse = await fetch(`${API_BASE_URL}/api/generate-image`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Payment': paymentHeader,
-        },
-        body: JSON.stringify({
-          imageUrl: nft.imageUrl,
-          tokenId: nft.tokenId,
-          name: nft.name,
-        }),
-      });
+      const paymentResponse = await fetch(
+        `${API_BASE_URL}/api/generate-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Payment": paymentHeader,
+          },
+          body: JSON.stringify({
+            imageUrl: nft.imageUrl,
+            tokenId: nft.tokenId,
+            name: nft.name,
+          }),
+        }
+      );
 
       if (!paymentResponse.ok) {
         const errorData = await paymentResponse.json();
-        throw new Error(errorData.error || 'Generation failed');
+        throw new Error(errorData.error || "Generation failed");
       }
 
       const result = await paymentResponse.json();
@@ -230,9 +243,11 @@ export function RegenerateButton({
         error instanceof Error ? error.message : "Failed to regenerate";
 
       // Handle user rejection
-      if (errorMessage.toLowerCase().includes('user rejected') ||
-          errorMessage.toLowerCase().includes('user denied') ||
-          errorMessage.toLowerCase().includes('user cancelled')) {
+      if (
+        errorMessage.toLowerCase().includes("user rejected") ||
+        errorMessage.toLowerCase().includes("user denied") ||
+        errorMessage.toLowerCase().includes("user cancelled")
+      ) {
         toast.error("Payment cancelled");
       } else {
         toast.error(errorMessage);
@@ -241,22 +256,26 @@ export function RegenerateButton({
       haptics.error();
       setState("idle");
     }
-  }, [fid, nft, address, isConnected, walletClient, hasEnoughUSDC, onRegenerate, onSaveToSupabase]);
+  }, [
+    fid,
+    nft,
+    address,
+    isConnected,
+    walletClient,
+    hasEnoughUSDC,
+    onRegenerate,
+    onSaveToSupabase,
+  ]);
 
   // Button text and state
   const getButtonContent = () => {
     switch (state) {
       case "insufficient_usdc":
         return (
-          <a
-            href="https://app.uniswap.org/swap?outputCurrency=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913&chain=base"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2"
-          >
+          <p className="flex items-center gap-2">
             <TokenUSDC className="w-5 h-5" variant="branded" />
-            Get USDC
-          </a>
+            Insufficient Fund
+          </p>
         );
       case "paying":
         return (
@@ -295,7 +314,7 @@ export function RegenerateButton({
         return (
           <>
             <RefreshCw className="w-5 h-5" />
-            REGENERATE ($3)
+            REGENERATE (${PAYMENT_CONFIG.REGENERATE.price})
           </>
         );
     }
@@ -311,7 +330,7 @@ export function RegenerateButton({
       disabled={isDisabled}
       className="w-full bg-black text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
       size="lg"
-      aria-label="Regenerate Geoplet for $3"
+      aria-label={`Regenerate Geoplet for $${PAYMENT_CONFIG.REGENERATE.price}`}
     >
       {getButtonContent()}
     </Button>

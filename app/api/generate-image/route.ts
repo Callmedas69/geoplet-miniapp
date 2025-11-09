@@ -4,10 +4,10 @@ import { toFile } from 'openai/uploads';
 import sharp from 'sharp';
 import { checkOpenAIAvailability } from '@/lib/openai-health';
 import { supabaseAdmin } from '@/lib/supabase';
+import { PAYMENT_CONFIG } from '@/lib/payment-config';
 
 // x402 Payment Configuration
 const ONCHAIN_API_URL = 'https://api.onchain.fi/v1';
-const REGENERATE_PRICE = '0.90';
 const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS as string;
 
 // CORS headers
@@ -83,7 +83,7 @@ async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
       paymentHeader,
       sourceNetwork: 'base',      // New format (supports cross-chain)
       destinationNetwork: 'base',  // New format (supports cross-chain)
-      expectedAmount: REGENERATE_PRICE, // "3.00" - Decimal format per onchain.fi spec
+      expectedAmount: PAYMENT_CONFIG.REGENERATE.price, // Decimal format per onchain.fi spec
       expectedToken: 'USDC',
       recipientAddress: RECIPIENT_ADDRESS,
       priority: 'balanced',
@@ -319,7 +319,7 @@ export async function OPTIONS() {
  * POST /api/generate-image
  * Generate geometric art from Warplet NFT
  * - FREE for first-time generation (auto-gen)
- * - $3 USDC for regeneration (x402 payment required)
+ * - $0.90 USDC for regeneration (x402 payment required)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -355,8 +355,7 @@ export async function POST(request: NextRequest) {
       // Return x402-compliant 402 response
       console.log('[X402] No X-Payment header found, returning 402 Payment Required');
 
-      const amountInAtomicUnits = (parseFloat(REGENERATE_PRICE) * 1e6).toString();
-
+      // Use pre-calculated atomic units from PAYMENT_CONFIG (KISS principle)
       return NextResponse.json(
         {
           x402Version: 1,
@@ -364,11 +363,11 @@ export async function POST(request: NextRequest) {
             {
               scheme: 'exact',
               network: 'base',
-              maxAmountRequired: amountInAtomicUnits,
+              maxAmountRequired: PAYMENT_CONFIG.REGENERATE.priceAtomic,
               asset: process.env.BASE_USDC_ADDRESS!,
               payTo: RECIPIENT_ADDRESS,
               resource: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/generate-image`,
-              description: `Generate a new Geoplet artwork for ${REGENERATE_PRICE} USDC`,
+              description: `Generate a new Geoplet artwork for ${PAYMENT_CONFIG.REGENERATE.price} USDC`,
               mimeType: 'application/json',
               maxTimeoutSeconds: 600,
               extra: {
@@ -435,7 +434,7 @@ export async function POST(request: NextRequest) {
 
     log(`\n🎨 Starting generation for Warplet #${tokenId}`);
     log(`📷 Image URL: ${imageUrl}`);
-    log(`💰 Payment: ${isFirstTime ? 'FREE (first time)' : 'PAID ($3 USDC)'}`);
+    log(`💰 Payment: ${isFirstTime ? 'FREE (first time)' : `PAID ($${PAYMENT_CONFIG.REGENERATE.price} USDC)`}`);
 
     // Generate geometric art
     const result = await generateGeometricArt(imageUrl, tokenId, name || `Warplet #${tokenId}`);
@@ -486,7 +485,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     service: 'geometric-art-generation',
-    price: `${REGENERATE_PRICE} USDC (x402)`,
+    price: `${PAYMENT_CONFIG.REGENERATE.price} USDC (x402)`,
     network: 'base',
     provider: 'OpenAI gpt-image-1',
     paymentProtocol: 'x402 (onchain.fi)',

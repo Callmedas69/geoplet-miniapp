@@ -3,7 +3,7 @@
 /**
  * MintButton Component
  *
- * Handles minting of generated Geoplet ($2 USDC)
+ * Handles minting of generated Geoplet ($1 USDC)
  * - Enabled when generated image exists
  * - Integrates x402 payment (reuses existing pattern from GenerateMintButton)
  * - Deletes from Supabase after successful mint
@@ -70,7 +70,8 @@ export function MintButton({
     const button = buttonRef.current;
     if (!button) return;
 
-    const handlePointerDown = () => gsap.to(button, { scale: 0.95, duration: 0.1 });
+    const handlePointerDown = () =>
+      gsap.to(button, { scale: 0.95, duration: 0.1 });
     const handlePointerUp = () => gsap.to(button, { scale: 1, duration: 0.15 });
 
     button.addEventListener("pointerdown", handlePointerDown);
@@ -154,9 +155,14 @@ export function MintButton({
       }
 
       // Step 0: Pre-flight eligibility check (BEFORE payment)
-      console.log("[MINT] Step 0: Checking eligibility before payment", { fid });
+      console.log("[MINT] Step 0: Checking eligibility before payment", {
+        fid,
+      });
 
-      const eligibilityResult = await checkEligibility(fid.toString(), generatedImage);
+      const eligibilityResult = await checkEligibility(
+        fid.toString(),
+        generatedImage
+      );
 
       if (!eligibilityResult.success) {
         throw new Error(eligibilityResult.error || "Eligibility check failed");
@@ -171,7 +177,10 @@ export function MintButton({
       }
 
       // Step 1: Payment (verify only, no settlement yet - per LOG.md)
-      console.log("[MINT] Step 1: Starting payment verification", { fid, address });
+      console.log("[MINT] Step 1: Starting payment verification", {
+        fid,
+        address,
+      });
       setState("paying");
       const signature = await requestMintSignature(fid.toString());
 
@@ -191,7 +200,12 @@ export function MintButton({
         voucherFid: signature?.voucher?.fid,
       });
 
-      if (!signature || !signature.voucher || !signature.signature || !signature.paymentHeader) {
+      if (
+        !signature ||
+        !signature.voucher ||
+        !signature.signature ||
+        !signature.paymentHeader
+      ) {
         throw new Error(
           "Payment verification succeeded but incomplete response received. Please contact support."
         );
@@ -287,22 +301,25 @@ export function MintButton({
       haptics.error();
       toast.error(errorMessage);
     }
-  }, [fid, generatedImage, checkEligibility, requestMintSignature, simulateMint, mintNFT, address]);
+  }, [
+    fid,
+    generatedImage,
+    checkEligibility,
+    requestMintSignature,
+    simulateMint,
+    mintNFT,
+    address,
+  ]);
 
   // Button content
   const getButtonContent = () => {
     switch (state) {
       case "insufficient_usdc":
         return (
-          <a
-            href="https://app.uniswap.org/swap?outputCurrency=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913&chain=base"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2"
-          >
+          <p className="flex items-center gap-2">
             <TokenUSDC className="w-5 h-5" variant="branded" />
-            Get USDC
-          </a>
+            Insufficient Fund
+          </p>
         );
       case "checking_eligibility":
         return (
@@ -383,7 +400,7 @@ export function MintButton({
         return (
           <>
             <Sparkles className="w-5 h-5" />
-            MINT ($2)
+            MINT (${PAYMENT_CONFIG.MINT.price})
           </>
         );
     }
@@ -409,7 +426,7 @@ export function MintButton({
       disabled={isDisabled}
       className="w-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
       size="lg"
-      aria-label="Mint Geoplet for $2"
+      aria-label={`Mint Geoplet for $${PAYMENT_CONFIG.MINT.price}`}
     >
       {getButtonContent()}
     </Button>

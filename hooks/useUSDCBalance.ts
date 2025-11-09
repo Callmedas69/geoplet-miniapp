@@ -10,10 +10,10 @@
 import { useReadContract, useAccount } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
 import { base } from 'viem/chains';
+import { PAYMENT_CONFIG } from '@/lib/payment-config';
 
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Base Mainnet USDC
 const USDC_DECIMALS = 6;
-const MINT_PRICE = '1.00';
 
 const USDC_ABI = [
   {
@@ -40,7 +40,7 @@ export function useUSDCBalance() {
   const balanceFormatted = balance ? formatUnits(balance, USDC_DECIMALS) : '0';
 
   // Check if user has enough USDC
-  const requiredAmount = parseUnits(MINT_PRICE, USDC_DECIMALS);
+  const requiredAmount = parseUnits(PAYMENT_CONFIG.MINT.price, USDC_DECIMALS);
   const hasEnoughUSDC = balance ? balance >= requiredAmount : false;
 
   return {
@@ -48,6 +48,6 @@ export function useUSDCBalance() {
     hasEnoughUSDC,
     isLoading,
     refetch,
-    mintPrice: MINT_PRICE,
+    mintPrice: PAYMENT_CONFIG.MINT.price,
   };
 }

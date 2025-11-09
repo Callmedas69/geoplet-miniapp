@@ -2,8 +2,9 @@
  * Payment Configuration
  *
  * Centralized x402 payment settings for all payment flows
- * - Mint: $2 USDC (onchain NFT minting)
- * - Regenerate: $3 USDC (AI image generation)
+ * - Mint: $1.00 USDC (onchain NFT minting)
+ * - Regenerate: $0.90 USDC (AI image generation)
+ * - Animation: $5.00 USDC (animation generation)
  */
 
 export const PAYMENT_CONFIG = {

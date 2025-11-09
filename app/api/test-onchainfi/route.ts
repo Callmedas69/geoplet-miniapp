@@ -7,6 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import { PAYMENT_CONFIG } from '@/lib/payment-config';
 
 const ONCHAIN_API_URL = 'https://api.onchain.fi/v1';
 const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS || '0xFdF53De20f46bAE2Fa6414e6F25EF1654E68Acd0';
@@ -193,7 +194,7 @@ async function testVerifyPayment(paymentHeader?: string): Promise<TestResult> {
       paymentHeader,
       sourceNetwork: 'base',      // New format (supports cross-chain)
       destinationNetwork: 'base',  // New format (supports cross-chain)
-      expectedAmount: '3.00',
+      expectedAmount: PAYMENT_CONFIG.REGENERATE.price, // Use real regenerate price for testing
       expectedToken: 'USDC',
       recipientAddress: RECIPIENT_ADDRESS,
       priority: 'balanced',

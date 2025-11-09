@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createPublicClient, http, parseUnits } from 'viem';
 import { base } from 'viem/chains';
+import { PAYMENT_CONFIG } from '@/lib/payment-config';
 
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_BASE_USDC_ADDRESS as `0x${string}`;
 const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS as `0x${string}`;
-const EXPECTED_AMOUNT = '5.00'; // $5 USDC
 const USDC_DECIMALS = 6;
 const XAI_API_KEY = process.env.XAI_API_KEY;
 
@@ -45,7 +45,7 @@ async function verifyPayment(txHash: string, userAddress: string): Promise<boole
     const value = BigInt(transferLog.data);
 
     // Verify transfer details
-    const expectedAmount = parseUnits(EXPECTED_AMOUNT, USDC_DECIMALS);
+    const expectedAmount = parseUnits(PAYMENT_CONFIG.ANIMATION.price, USDC_DECIMALS);
     const isCorrectSender = from === userAddress.toLowerCase();
     const isCorrectRecipient = to === RECIPIENT_ADDRESS.toLowerCase();
     const isCorrectAmount = value >= expectedAmount;
@@ -59,7 +59,7 @@ async function verifyPayment(txHash: string, userAddress: string): Promise<boole
     }
 
     if (!isCorrectAmount) {
-      throw new Error(`Insufficient payment amount. Expected ${EXPECTED_AMOUNT} USDC`);
+      throw new Error(`Insufficient payment amount. Expected ${PAYMENT_CONFIG.ANIMATION.price} USDC`);
     }
 
     return true;
@@ -186,7 +186,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     service: 'animation-generation',
-    price: `${EXPECTED_AMOUNT} USDC`,
+    price: `${PAYMENT_CONFIG.ANIMATION.price} USDC`,
     network: 'base',
     note: 'xAI API key required - update XAI_API_KEY in .env.local',
   });
