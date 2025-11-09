@@ -7,9 +7,9 @@ export async function GET() {
 
   const manifest = {
     "accountAssociation": {
-      "header": "eyJmaWQiOjIyNDIwLCJ0eXBlIjoiYXV0aCIsImtleSI6IjB4ZGM0MWQ2REE2QmIyRDAyYjE5MzE2QjJiZkZGMENCYjQyNjA2NDg0ZCJ9",
-      "payload": "eyJkb21haW4iOiJiMjNmNmI2MDRhMzgubmdyb2stZnJlZS5hcHAifQ",
-      "signature": "7H6ioMCKjjc7g55X4nGqfvJjDsGPocm71Jr5VZMgKpofv8U5nZSh2KkH27pULsuOdnI3KmMBWjVqZgfKH+IBBxw="
+      "header": "eyJmaWQiOjIyNDIwLCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4NmU1RDE3NGQ3MjYxOUFFNDUxMzE2OThhZjMwREYxZDc3M0UwZENCMyJ9",
+      "payload": "eyJkb21haW4iOiJnZW9wbGV0Lmdlb2FydC5zdHVkaW8ifQ",
+      "signature": "xlNoFAc3t/QVMJDGg6CGZPY3OeeH+q8hmSj4g/IKBwQe5yHjod7CPhZt6G6J8cklP07DekpQjlBVEcvb4Yc6MRw="  
     },
     baseBuilder: {
       ownerAddress: ownerAddress

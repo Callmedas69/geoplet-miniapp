@@ -54,8 +54,8 @@ export async function generateEIP3009Signature(
 ): Promise<`0x${string}`> {
   const { from, to, value, validAfter = '0', validBefore, nonce, usdcAddress, chainId } = options;
 
-  // Calculate validBefore if not provided (10 minutes from now)
-  const validBeforeTimestamp = validBefore || Math.floor(Date.now() / 1000) + 600;
+  // Calculate validBefore if not provided (15 minutes from now - matches mint signature expiry)
+  const validBeforeTimestamp = validBefore || Math.floor(Date.now() / 1000) + 900;
 
   // Nonce must be provided by caller to ensure consistency
   if (!nonce) {
@@ -133,8 +133,8 @@ export async function generatePaymentHeader(
 ): Promise<string> {
   const { from, to, value, validAfter = '0', validBefore, usdcAddress, chainId } = options;
 
-  // Calculate validBefore if not provided (10 minutes from now)
-  const validBeforeTimestamp = validBefore || Math.floor(Date.now() / 1000) + 600;
+  // Calculate validBefore if not provided (15 minutes from now - matches mint signature expiry)
+  const validBeforeTimestamp = validBefore || Math.floor(Date.now() / 1000) + 900;
 
   // Generate nonce ONCE - this will be used for both signature and authorization
   const nonce = options.nonce || generateNonce();
