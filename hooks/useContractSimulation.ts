@@ -185,6 +185,12 @@ export function useContractSimulation() {
       });
 
       console.log('[SIMULATION] ✅ Contract simulation passed');
+      console.log('[SIMULATION] Voucher verified:', {
+        to: voucher.to,
+        fid: voucher.fid,
+        deadline: voucher.deadline,
+        timeUntilExpiry: Number(voucher.deadline) - Math.floor(Date.now() / 1000),
+      });
 
       // Simulation successful
       return {
@@ -192,6 +198,17 @@ export function useContractSimulation() {
       };
     } catch (err: unknown) {
       console.error('[SIMULATION] ❌ Simulation failed:', err);
+
+      // Enhanced error logging for debugging
+      console.error('[SIMULATION] Voucher details:', {
+        to: voucher.to,
+        fid: voucher.fid,
+        nonce: voucher.nonce,
+        deadline: voucher.deadline,
+        deadlineDate: new Date(Number(voucher.deadline) * 1000).toISOString(),
+        currentTime: Math.floor(Date.now() / 1000),
+        timeUntilExpiry: Number(voucher.deadline) - Math.floor(Date.now() / 1000),
+      });
 
       // Parse error and return user-friendly message
       const parsed = parseContractError(err);

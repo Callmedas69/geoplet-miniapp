@@ -68,12 +68,12 @@ export function SuccessModal({
     ? `https://opensea.io/assets/base/${GEOPLET_CONFIG.address}/${nftTokenId}`
     : null;
   const onchainCheckerUrl = nftTokenId
-    ? `https://onchainchecker.xyz/nft/base/${GEOPLET_CONFIG.address}/${nftTokenId}`
+    ? `https://onchainchecker.xyz/collection/base/${GEOPLET_CONFIG.address}/${nftTokenId}`
     : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-black/35 border-white/20 text-white max-w-sm sm:max-w-md">
+      <DialogContent className="bg-white border-white/20 text-amber-950 max-w-sm sm:max-w-md">
         <div className="space-y-4 sm:space-y-6">
           {/* Success Message */}
           <div className="text-center space-y-2">
@@ -133,42 +133,42 @@ export function SuccessModal({
 
           {/* Share Icons */}
           <div className="flex items-center justify-center gap-3 px-2">
-              {/* Farcaster Icon */}
-              <button
-                type="button"
-                onClick={handleShareFarcaster}
-                disabled={isSharing || !image || !tokenId}
-                className="touch-target p-2 rounded-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="Share to Farcaster"
-              >
-                {isSharing ? (
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
-                ) : (
-                  <Share2 className="w-5 h-5 text-white" />
-                )}
-              </button>
+            {/* Farcaster Icon */}
+            <button
+              type="button"
+              onClick={handleShareFarcaster}
+              disabled={isSharing || !image || !tokenId}
+              className="touch-target p-2 rounded-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              aria-label="Share to Farcaster"
+            >
+              {isSharing ? (
+                <Loader2 className="w-5 h-5 text-white animate-spin" />
+              ) : (
+                <Share2 className="w-5 h-5 text-white" />
+              )}
+            </button>
 
-              {/* X/Twitter Icon */}
-              <button
-                type="button"
-                onClick={handleXShare}
-                disabled={!tokenId}
-                className="touch-target p-2 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="Share on X"
+            {/* X/Twitter Icon */}
+            <button
+              type="button"
+              onClick={handleXShare}
+              disabled={!tokenId}
+              className="touch-target p-2 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              aria-label="Share on X"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 1200 1227"
+                fill="none"
+                className="text-white"
               >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 1200 1227"
-                  fill="none"
-                  className="text-white"
-                >
-                  <path
-                    d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"
-                    fill="currentColor"
-                  />
-                </svg>
-              </button>
+                <path
+                  d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </DialogContent>
