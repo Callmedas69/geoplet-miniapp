@@ -7,7 +7,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 // x402 Payment Configuration
 const ONCHAIN_API_URL = 'https://api.onchain.fi/v1';
-const REGENERATE_PRICE = '3.00'; // $3.00 USDC
+const REGENERATE_PRICE = '0.90';
 const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS as string;
 
 // CORS headers
@@ -234,7 +234,7 @@ async function generateGeometricArt(
       image: imageFile,
       prompt: prompt,
       n: 1,
-      size: '512x512',
+      size: '1024x1024',
       input_fidelity: 'high',
     });
 

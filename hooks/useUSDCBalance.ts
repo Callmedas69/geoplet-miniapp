@@ -13,7 +13,7 @@ import { base } from 'viem/chains';
 
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Base Mainnet USDC
 const USDC_DECIMALS = 6;
-const MINT_PRICE = '2.00'; // $2 USDC
+const MINT_PRICE = '1.00';
 
 const USDC_ABI = [
   {

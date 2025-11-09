@@ -13,6 +13,24 @@ export interface GeopletNFT {
 }
 
 /**
+ * Alchemy API NFT response structure
+ * Only includes fields we actually use
+ */
+interface AlchemyNFT {
+  tokenId: string; // hex format
+  name?: string;
+  image?: {
+    cachedUrl?: string;
+    originalUrl?: string;
+  };
+  raw?: {
+    metadata?: {
+      image?: string;
+    };
+  };
+}
+
+/**
  * Hook to fetch all minted Geoplets from Alchemy
  * Simple approach: Let Alchemy handle everything
  */
@@ -34,7 +52,7 @@ export function useGalleryNFTs() {
       const data = await response.json();
 
       if (data.nfts && data.nfts.length > 0) {
-        const parsedNFTs: GeopletNFT[] = data.nfts.map((nft: any) => ({
+        const parsedNFTs: GeopletNFT[] = data.nfts.map((nft: AlchemyNFT) => ({
           tokenId: parseInt(nft.tokenId, 16),
           name: nft.name || `Geoplet #${parseInt(nft.tokenId, 16)}`,
           image: nft.image?.cachedUrl || nft.image?.originalUrl || nft.raw?.metadata?.image || '',

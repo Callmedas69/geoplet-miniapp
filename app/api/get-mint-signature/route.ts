@@ -43,7 +43,7 @@ const corsHeaders = {
 };
 
 // Payment configuration
-const MINT_PRICE = '2.00'; // $2.00 USDC
+const MINT_PRICE = '1.00';
 
 // Signer configuration
 const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY as string;

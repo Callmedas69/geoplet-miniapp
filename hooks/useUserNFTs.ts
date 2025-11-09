@@ -5,6 +5,21 @@ import { useAccount } from 'wagmi';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
 import type { GeopletNFT } from './useGalleryNFTs';
 
+// Alchemy API NFT response structure
+interface AlchemyNFT {
+  tokenId: string; // hex format
+  name?: string;
+  image?: {
+    cachedUrl?: string;
+    originalUrl?: string;
+  };
+  raw?: {
+    metadata?: {
+      image?: string;
+    };
+  };
+}
+
 const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
 
 /**
@@ -33,7 +48,7 @@ export function useUserNFTs() {
       const data = await response.json();
 
       if (data.ownedNfts && data.ownedNfts.length > 0) {
-        const parsedNFTs: GeopletNFT[] = data.ownedNfts.map((nft: any) => ({
+        const parsedNFTs: GeopletNFT[] = data.ownedNfts.map((nft: AlchemyNFT) => ({
           tokenId: parseInt(nft.tokenId, 16),
           name: nft.name || `Geoplet #${parseInt(nft.tokenId, 16)}`,
           image: nft.image?.cachedUrl || nft.image?.originalUrl || nft.raw?.metadata?.image || '',
