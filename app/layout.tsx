@@ -4,6 +4,12 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Toaster } from "@/components/ui/sonner";
 import { ClientLayout } from "@/components/ClientLayout";
+import localfont from "next/font/local";
+
+const schoollBell = localfont({
+  src: "../public/font/Schoolbell-Regular.ttf",
+  display: "swap",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,9 +36,9 @@ export const metadata: Metadata = {
     siteName: appName,
     images: [
       {
-        url: `${appUrl}/og-image.webp`,
-        width: 3000,
-        height: 2000,
+        url: `${appUrl}/og-hero-1200x630.png`,
+        width: 1200,
+        height: 630,
         alt: `${appName} - Geofying`,
       },
     ],
@@ -43,7 +49,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: appName,
     description: "GeoPlet: when geometric art meet Warplets",
-    images: [`${appUrl}/og-image.webp`],
+    images: [`${appUrl}/og-hero-1200x630.png`],
     creator: "@geoart_studio",
     site: "geoplet.geoart.studio",
   },
@@ -51,7 +57,7 @@ export const metadata: Metadata = {
     // Farcaster Mini App metadata
     "fc:miniapp": JSON.stringify({
       version: "1",
-      imageUrl: `${appUrl}/og-image.webp`,
+      imageUrl: `${appUrl}/embed-1200x800.webp`,
       button: {
         title: "Geofying",
         action: {
@@ -73,9 +79,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${schoollBell.className} antialiased`}>
         <Providers>
           <ClientLayout>
             <div className="flex min-h-screen flex-col bg-[#fff3d6] mobile-safe-area text-amber-950">

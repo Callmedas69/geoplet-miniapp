@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { useState, useCallback } from "react";
 import { Dialog, DialogContent } from "./ui/dialog";
-import { ExternalLink, Share2, Loader2 } from "lucide-react";
+import { ExternalLink, Share2, Loader2, Copy } from "lucide-react";
+import { sdk } from "@farcaster/miniapp-sdk";
 import { shareToFarcaster } from "@/lib/generators";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
@@ -57,6 +58,26 @@ export function SuccessModal({
     if (newWindow) newWindow.opener = null;
     haptics.tap();
   }, [tokenId]);
+
+  const handleShareWithDynamicEmbed = useCallback(async () => {
+    if (!fid) return;
+
+    try {
+      const shareUrl = `${window.location.origin}/share/${fid}`;
+
+      await sdk.actions.composeCast({
+        text: "Just minted my Geoplet! 🎨",
+        embeds: [shareUrl],
+      });
+
+      haptics.success();
+      toast.success("Share window opened!");
+    } catch (error) {
+      console.error("Share error:", error);
+      haptics.error();
+      toast.error("Failed to open share window");
+    }
+  }, [fid]);
 
   const baseScanUrl = txHash
     ? `${GEOPLET_CONFIG.explorers.basescan}/tx/${txHash}`
@@ -131,44 +152,60 @@ export function SuccessModal({
             )}
           </div>
 
-          {/* Share Icons */}
-          <div className="flex items-center justify-center gap-3 px-2">
-            {/* Farcaster Icon */}
+          {/* Share Buttons */}
+          <div className="flex flex-col gap-3 px-2">
+            {/* Primary: Share with Dynamic Embed */}
             <button
               type="button"
-              onClick={handleShareFarcaster}
-              disabled={isSharing || !image || !tokenId}
-              className="touch-target p-2 rounded-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              aria-label="Share to Farcaster"
+              onClick={handleShareWithDynamicEmbed}
+              disabled={!fid}
+              className="w-full px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-white font-medium"
+              aria-label="Share to Farcaster with custom embed"
             >
-              {isSharing ? (
-                <Loader2 className="w-5 h-5 text-white animate-spin" />
-              ) : (
-                <Share2 className="w-5 h-5 text-white" />
-              )}
+              <Share2 className="w-5 h-5" />
+              Share to Farcaster
             </button>
 
-            {/* X/Twitter Icon */}
-            <button
-              type="button"
-              onClick={handleXShare}
-              disabled={!tokenId}
-              className="touch-target p-2 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              aria-label="Share on X"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 1200 1227"
-                fill="none"
-                className="text-white"
+            {/* Secondary: Social Share Icons */}
+            <div className="flex items-center justify-center gap-3">
+              {/* Quick Farcaster Share */}
+              <button
+                type="button"
+                onClick={handleShareFarcaster}
+                disabled={isSharing || !image || !tokenId}
+                className="touch-target p-2 rounded-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                aria-label="Quick share to Farcaster"
+                title="Quick share (generic)"
               >
-                <path
-                  d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"
-                  fill="currentColor"
-                />
-              </svg>
-            </button>
+                {isSharing ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  <Share2 className="w-5 h-5 text-white" />
+                )}
+              </button>
+
+              {/* X/Twitter Icon */}
+              <button
+                type="button"
+                onClick={handleXShare}
+                disabled={!tokenId}
+                className="touch-target p-2 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                aria-label="Share on X"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 1200 1227"
+                  fill="none"
+                  className="text-white"
+                >
+                  <path
+                    d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </DialogContent>

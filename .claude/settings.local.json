@@ -64,7 +64,9 @@
       "Bash(echo:*)",
       "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\hooks\\useTokenMetadata.ts\")",
       "WebFetch(domain:www.alchemy.com)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(identify:*)",
+      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\share\\[fid]\\metadata.ts\")"
     ]
   },
   "enableAllProjectMcpServers": true,

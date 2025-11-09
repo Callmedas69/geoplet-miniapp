@@ -18,7 +18,7 @@ export function GallerySection() {
     <section className="max-w-7xl mx-auto">
       {/* Title */}
       <div className="text-center mb-4">
-        <h1 className={`text-5xl ${spriteGraffiti.className}`}>gallery</h1>
+        <h1 className={`text-7xl ${spriteGraffiti.className}`}>geollery</h1>
       </div>
 
       {/* NFT Gallery Grid */}

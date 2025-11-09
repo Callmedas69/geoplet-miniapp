@@ -48,10 +48,11 @@ function getContentType(pathname: string): string {
 
 export const config = {
   matcher: [
-    '/og-image.png',
-    '/icon.webp',
+    '/icon.png',
     '/splash.webp',
     '/spalsh.webp', // Handle typo in filename
+    '/og-hero-1200x630.png',
+    '/embed-1200x800.webp',
     '/:path*.png',
     '/:path*.webp',
     '/:path*.jpg',

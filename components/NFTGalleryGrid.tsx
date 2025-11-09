@@ -2,9 +2,13 @@
 
 import { useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
+import { sdk } from "@farcaster/miniapp-sdk";
 import { GeopletNFT } from "@/hooks/useGalleryNFTs";
 import { useUserNFTs } from "@/hooks/useUserNFTs";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
+import { ExpandableShareButton } from "./ExpandableShareButton";
+import { toast } from "sonner";
+import { haptics } from "@/lib/haptics";
 
 interface NFTGalleryGridProps {
   nfts: GeopletNFT[];
@@ -51,6 +55,56 @@ export function NFTGalleryGrid({
 
     return () => observer.disconnect();
   }, [hasMore, isLoading, onLoadMore]);
+
+  // Share handlers - Use dynamic OG embeds
+  const handleShareFarcaster = async () => {
+    if (!userFid) return;
+
+    try {
+      const shareUrl = `${window.location.origin}/share/${userFid}`;
+
+      await sdk.actions.composeCast({
+        text: "Check out my Geoplet! 🎨",
+        embeds: [shareUrl],
+      });
+
+      haptics.success();
+      toast.success("Share window opened!");
+    } catch (error) {
+      console.error("Share error:", error);
+      haptics.error();
+      toast.error("Failed to share to Farcaster");
+    }
+  };
+
+  const handleShareX = () => {
+    if (!userFid) return;
+
+    const shareUrl = `${window.location.origin}/share/${userFid}`;
+    const text = `Check out my Geoplet! 🎨`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      text
+    )}&url=${encodeURIComponent(shareUrl)}`;
+
+    const newWindow = window.open(twitterUrl, "_blank", "noopener,noreferrer");
+    if (newWindow) newWindow.opener = null;
+    haptics.tap();
+  };
+
+  // Marketplace link handlers - Opens in Farcaster in-app browser
+  const handleOpenSea = () => {
+    if (!userFid) return;
+    const url = `https://opensea.io/assets/base/${GEOPLET_CONFIG.address}/${userFid}`;
+    sdk.actions.openUrl(url);
+    haptics.tap();
+  };
+
+  const handleOnchainChecker = () => {
+    if (!userFid) return;
+    const url = `https://onchainchecker.xyz/collection/base/${GEOPLET_CONFIG.address}/${userFid}`;
+    sdk.actions.openUrl(url);
+    haptics.tap();
+  };
 
   // Empty state
   if (nfts.length === 0 && !isLoading) {
@@ -103,36 +157,42 @@ export function NFTGalleryGrid({
                 </p>
               </div>
               <div>
-                {/* NFT Marketplace Links - Use FID directly since FID = tokenId (1:1 mapping) */}
-                <div className="flex gap-2">
-                  <a
-                    href={`https://opensea.io/assets/base/${GEOPLET_CONFIG.address}/${userFid}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5"
-                  >
-                    <Image
-                      src="/Opensea.svg"
-                      alt="OpenSea"
-                      width={28}
-                      height={28}
-                      className="shrink-0"
-                    />
-                  </a>
-                  <a
-                    href={`https://onchainchecker.xyz/collection/base/${GEOPLET_CONFIG.address}/${userFid}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5"
-                  >
-                    <Image
-                      src="/Onchainchecker.png"
-                      alt="OnchainChecker"
-                      width={28}
-                      height={28}
-                      className="shrink-0"
-                    />
-                  </a>
+                {/* NFT Marketplace Links & Share - Use FID directly since FID = tokenId (1:1 mapping) */}
+                <div className="flex flex-col gap-2">
+                  {/* Row 1: Marketplace Links */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleOpenSea}
+                      className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      aria-label="View on OpenSea"
+                    >
+                      <Image
+                        src="/Opensea.svg"
+                        alt="OpenSea"
+                        width={28}
+                        height={28}
+                        className="shrink-0"
+                      />
+                    </button>
+                    <button
+                      onClick={handleOnchainChecker}
+                      className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      aria-label="View on OnchainChecker"
+                    >
+                      <Image
+                        src="/Onchainchecker.png"
+                        alt="OnchainChecker"
+                        width={28}
+                        height={28}
+                        className="shrink-0"
+                      />
+                    </button>
+                  </div>
+                  {/* Row 2: Expandable Share Button */}
+                  <ExpandableShareButton
+                    onShareFarcaster={handleShareFarcaster}
+                    onShareX={handleShareX}
+                  />
                 </div>
               </div>
             </>

@@ -6,10 +6,11 @@
  * Displays rotating messages during long operations
  * - Auto-rotates through messages array
  * - Configurable interval (default: 2 seconds)
- * - Smooth fade transition between messages
+ * - Smooth GSAP fade transition between messages
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { gsap } from "gsap";
 
 interface RotatingTextProps {
   messages: string[];
@@ -23,32 +24,51 @@ export function RotatingText({
   className = "",
 }: RotatingTextProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
+  const textRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     if (messages.length <= 1) return;
 
     const rotateInterval = setInterval(() => {
-      // Fade out
-      setIsVisible(false);
+      if (!textRef.current) return;
 
-      // After fade out, change text and fade in
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % messages.length);
-        setIsVisible(true);
-      }, 300); // Match this with CSS transition duration
+      // Slide up and fade out
+      gsap.to(textRef.current, {
+        opacity: 0,
+        y: -20,
+        duration: 0.3,
+        ease: "power2.inOut",
+        onComplete: () => {
+          // Change text
+          setCurrentIndex((prev) => (prev + 1) % messages.length);
+
+          // Wait for DOM update, then slide down and fade in
+          setTimeout(() => {
+            if (!textRef.current) return;
+
+            gsap.fromTo(
+              textRef.current,
+              { opacity: 0, y: 20 },
+              {
+                opacity: 1,
+                y: 0,
+                duration: 0.3,
+                ease: "power2.out",
+              }
+            );
+          }, 50);
+        },
+      });
     }, interval);
 
     return () => clearInterval(rotateInterval);
   }, [messages.length, interval]);
 
   return (
-    <p
-      className={`transition-opacity duration-300 ${
-        isVisible ? "opacity-100" : "opacity-0"
-      } ${className}`}
-    >
-      {messages[currentIndex]}
-    </p>
+    <div className="overflow-hidden">
+      <p ref={textRef} className={`inline-block ${className}`}>
+        {messages[currentIndex]}
+      </p>
+    </div>
   );
 }
