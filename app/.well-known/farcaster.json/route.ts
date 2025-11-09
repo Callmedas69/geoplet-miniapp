@@ -34,7 +34,7 @@ export async function GET() {
       ogTitle: "Geoplet - Geometric Warplets",
       ogDescription: "Geoplet: when geometric art meets Warplets",
       ogImageUrl: `${appUrl}/og-image.webp`,
-      noindex: true
+      noindex: false
     }
   };
 
