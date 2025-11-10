@@ -12,7 +12,7 @@
 export const appUrl =
   process.env.NEXT_PUBLIC_APP_URL || "https://geoplet.geoart.studio";
 
-export const appName = process.env.NEXT_PUBLIC_APP_NAME || "Geoplet";
+export const appName = process.env.NEXT_PUBLIC_APP_NAME || "Geoplets";
 
 // Validate URL format in development
 if (process.env.NODE_ENV === "development") {

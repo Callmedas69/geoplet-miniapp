@@ -28,7 +28,10 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    "abi/GeopletsABI.ts",
+    "abi/GeopletABI.ts_backup",
+    "abi/GeopletABI.ts.old"
   ],
   "exclude": ["node_modules"]
 }

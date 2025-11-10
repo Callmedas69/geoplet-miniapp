@@ -139,7 +139,7 @@ export function NFTGalleryGrid({
       <div className="grid grid-cols-2 gap-4 py-6 ">
         {/* Left: Featured "My Geoplet" Card - 2x bigger, sticky */}
         <div className="sticky top-20 z-10">
-          <div className="relative w-full aspect-square border-2 border-dashed border-black/8 overflow-hidden">
+          <div className="relative w-full rounded-xl aspect-square border-2 border-dashed border-black/8 overflow-hidden">
             {myGeoplet ? (
               // Show user's NFT
               <div className="relative w-full h-full">

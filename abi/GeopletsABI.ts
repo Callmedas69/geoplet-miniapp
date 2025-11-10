@@ -1,11 +1,11 @@
-// GeoPlet ERC721 with EIP-712 Signature Validation + Animation Upgrade
-// Generated from: GeoPlet (Geoplet.sol) - V2 with Animation Features
-// Deployed: 2025-11-07
-// Contract: 0x9F46DD5E1c1258Ca98b56cCE13A8D33b201D4622
+// Geoplets ERC721 with EIP-712 Signature Validation + Animation Upgrade
+// Generated from: Geoplets (Geoplets.sol) - V2 with Animation Features
+// Deployed: 2025-11-10
+// Contract: 0x04AbA88298A7Ceee6c1cA456beF059FbE98af268
 // Network: Base Mainnet (Chain ID: 8453)
 // Features: Static NFT minting + Animation upgrades via upgradeToAnimated()
 
-export const GeopletABI = [
+export const GeopletsABI = [
   {
     "type": "constructor",
     "inputs": [],
@@ -106,6 +106,19 @@ export const GeopletABI = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "contractURI",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -359,7 +372,7 @@ export const GeopletABI = [
       {
         "name": "voucher",
         "type": "tuple",
-        "internalType": "struct GeoPlet.MintVoucher",
+        "internalType": "struct GeoPlets.MintVoucher",
         "components": [
           {
             "name": "to",
@@ -740,7 +753,7 @@ export const GeopletABI = [
       {
         "name": "voucher",
         "type": "tuple",
-        "internalType": "struct GeoPlet.UpgradeVoucher",
+        "internalType": "struct GeoPlets.UpgradeVoucher",
         "components": [
           {
             "name": "to",
@@ -1288,35 +1301,19 @@ export const GeopletABI = [
         "internalType": "string"
       }
     ]
-  },
-  {
-    "type": "error",
-    "name": "StringsInsufficientHexLength",
-    "inputs": [
-      {
-        "name": "value",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "length",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ]
   }
 ] as const;
 
 // ============ Contract Addresses ============
 
 export const GEOPLET_ADDRESSES = {
-  baseMainnet: "0x9F46DD5E1c1258Ca98b56cCE13A8D33b201D4622" as `0x${string}`, // Production deployment - 2025-01-05
+  baseMainnet: "0x04AbA88298A7Ceee6c1cA456beF059FbE98af268" as `0x${string}`, // Production deployment - 2025-11-10
 } as const;
 
 // ============ EIP-712 Configuration ============
 
 export const EIP712_DOMAIN = {
-  name: "GeoPlet",
+  name: "Geoplets",
   version: "1",
   chainId: 8453, // Base Mainnet
 } as const;
@@ -1337,7 +1334,7 @@ export const MAX_SIGNATURE_VALIDITY = 3600; // 1 hour (matches contract constant
 // ============ Helper Functions ============
 
 /**
- * Get GeoPlet contract address for a given chain ID
+ * Get Geoplets contract address for a given chain ID
  * @param chainId The chain ID (8453 for Base Mainnet)
  * @returns Contract address
  */
@@ -1345,11 +1342,11 @@ export function getGeopletAddress(chainId: number): `0x${string}` {
   if (chainId === 8453) {
     return GEOPLET_ADDRESSES.baseMainnet;
   }
-  throw new Error(`GeoPlet not deployed to chain ${chainId}`);
+  throw new Error(`Geoplets not deployed to chain ${chainId}`);
 }
 
 /**
- * Check if GeoPlet is deployed on the given chain
+ * Check if Geoplets is deployed on the given chain
  * @param chainId The chain ID to check
  * @returns True if deployed, false otherwise
  */

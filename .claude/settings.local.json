@@ -68,7 +68,12 @@
       "Bash(identify:*)",
       "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\share\\[fid]\\metadata.ts\")",
       "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\api\\og\\proxy\\[fid]\\route.ts\")",
-      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\embed\\EmbedRedirect.tsx\")"
+      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\embed\\EmbedRedirect.tsx\")",
+      "Bash(find:*)",
+      "Bash(for file in ./402_FIX_IMPLEMENTATION.md ./ERC721_CRITICAL_FINDING.md ./GEOPLET_CONTRACT_INTEGRATION.md ./GEOPLET_EIP712_INTEGRATION.md ./GEOPLET_ERC721.md ./IDEA_PREVENTION_PAYMENT_MINT_FAILED.md ./LATEST_FINDING.md ./MINTING_FIXES_SUMMARY.md ./REDESIGN_PLAN.md ./SIGNATURE_FINDING_EXECUTIVE.md ./SIGNATURE_FINDING_V2.md)",
+      "Bash(do cp \"$file\" \"$file.backup\")",
+      "Bash(powershell -Command \"(Get-Content ''$file'') -replace ''GeopletABI'', ''GeopletsABI'' -replace ''Geoplet\\.sol'', ''Geoplets.sol'' | Set-Content ''$file''\")",
+      "Bash(done)"
     ]
   },
   "enableAllProjectMcpServers": true,

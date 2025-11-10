@@ -9,12 +9,12 @@
  */
 
 import {
-  GeopletABI,
+  GeopletsABI,
   getGeopletAddress,
   EIP712_DOMAIN,
   EIP712_TYPES,
   type MintVoucher
-} from '@/abi/GeopletABI';
+} from '@/abi/GeopletsABI';
 import { base } from 'viem/chains';
 
 // Base Mainnet Configuration
@@ -27,7 +27,7 @@ export const GEOPLET_CONFIG = {
 
   // Contract Configuration (from ABI)
   address: getGeopletAddress(CHAIN_ID),
-  abi: GeopletABI,
+  abi: GeopletsABI,
 
   // EIP-712 Configuration (from ABI)
   eip712: {

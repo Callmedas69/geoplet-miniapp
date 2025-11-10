@@ -7,12 +7,27 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "solady/utils/SSTORE2.sol";
 
 /**
- * @title GeoPlet
+ * @title IFileStore
+ * @notice Interface for Ethereum File System (EthFS) on-chain file storage
+ */
+interface IFileStore {
+    struct File {
+        function() external view returns (string memory) read;
+    }
+
+    function getFile(
+        string memory filename
+    ) external view returns (File memory);
+}
+
+/**
+ * @title GeoPlets
  * @notice ERC721 NFT with built-in ERC20 treasury and EIP-712 signature-based payment validation
  * @dev Each NFT can hold balances of multiple ERC20 tokens that owners can claim
  *
@@ -27,7 +42,7 @@ import "solady/utils/SSTORE2.sol";
  * - Transferable balances - ERC20 balances transfer with NFT ownership
  * - SSTORE2 for gas-efficient on-chain image storage (~70% cheaper than SSTORE)
  */
-contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
+contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
     using Strings for uint256;
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
@@ -125,8 +140,8 @@ contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
     // ============ Constructor ============
 
     constructor()
-        ERC721("GeoPlet", "GEOPLET")
-        EIP712("GeoPlet", "1")
+        ERC721("Geoplets", "GEOPLETS")
+        EIP712("Geoplets", "1")
         Ownable(msg.sender)
     {
         signerWallet = msg.sender; // Owner is initial signer
@@ -245,48 +260,93 @@ contract GeoPlet is ERC721, Ownable, ReentrancyGuard, EIP712 {
     }
 
     /**
-     * @notice Build metadata JSON
+     * @notice Build metadata JSON in Base64 format for marketplace compatibility
      */
     function _buildMetadata(
         uint256 tokenId,
         string memory imageData,
         string memory animationUrl
-    ) private view returns (string memory) {
+    ) private pure returns (string memory) {
         // Build animation_url field conditionally
         string memory animationField = bytes(animationUrl).length > 0
             ? string(abi.encodePacked('"animation_url":"', animationUrl, '",'))
             : '"animation_url":"",';
 
+        // Build JSON string
+        string memory json = string(
+            abi.encodePacked(
+                "{",
+                '"name":"Geoplet #',
+                tokenId.toString(),
+                '",',
+                '"description":"Geoplet transforms pure geometry into living art - a dialogue between shape, color, and rhythm. Drawing inspiration from Bauhaus and Suprematism, each piece captures harmony through abstraction, expressing emotion within mathematical precision. Every Geoplet is born from code, crafted by algorithmic design, and preserved entirely on-chain - a timeless fusion of creativity, logic, and form.",',
+                '"token_id":',
+                tokenId.toString(),
+                ",",
+                '"image":"data:image/svg+xml;base64,',
+                imageData,
+                '",',
+                animationField,
+                '"attributes":[',
+                '{"trait_type":"Token ID","value":',
+                tokenId.toString(),
+                "},",
+                '{"trait_type":"Collection","value":"Geoplet"},',
+                '{"trait_type":"Creator","value":"0xdas"}',
+                "],",
+                '"external_url":"https://geoplet.geoart.studio"',
+                "}"
+            )
+        );
+
+        // Return Base64-encoded JSON with proper data URI prefix
         return
             string(
                 abi.encodePacked(
-                    "data:application/json;utf8,",
-                    "{",
-                    '"name":"Geoplet #',
-                    tokenId.toString(),
-                    '",',
-                    '"description":"Geoplets: When Geometric Art meets Warplet, a fusion of form and frequency. Powered by $GEOPLET, integrated with onchain.fi (x402 Aggregator). Produced by GeoArt.Studio, where creativity lives fully on-chain.",',
-                    '"token_id":',
-                    tokenId.toString(),
-                    ",",
-                    '"image":"',
-                    imageData,
-                    '",',
-                    animationField,
-                    '"attributes":[',
-                    '{"trait_type":"Token ID","value":"',
-                    tokenId.toString(),
-                    '"},',
-                    '{"trait_type":"Collection","value":"Geoplet"},',
-                    '{"trait_type":"Creator","value":"0xdas"},',
-                    '{"trait_type":"OnchainChecker","value":"https://onchainchecker.xyz/collection/base/',
-                    Strings.toHexString(uint160(address(this)), 20),
-                    "/",
-                    tokenId.toString(),
-                    '"}',
-                    "],",
-                    '"external_url":"https://geoplet.geoart.studio"',
-                    "}"
+                    "data:application/json;base64,",
+                    Base64.encode(bytes(json))
+                )
+            );
+    }
+
+    /**
+     * @notice Collection-level metadata for marketplaces
+     * @dev Returns Base64-encoded collection information with animated WebP from EthFS
+     */
+    function contractURI() public view returns (string memory) {
+        string memory imageData;
+
+        // Fetch animated WebP collection image from EthFS with error handling
+        try
+            IFileStore(0xFe1411d6864592549AdE050215482e4385dFa0FB)
+                .getFile("thumbnail.webp")
+                .read()
+        returns (string memory ethfsData) {
+            imageData = string(
+                abi.encodePacked("data:image/webp;base64,", ethfsData)
+            );
+        } catch {
+            // Fallback to empty image if EthFS fails
+            imageData = "";
+        }
+        string memory json = string(
+            abi.encodePacked(
+                "{",
+                '"name":"Geoplets",',
+                '"description":"Geoplet transforms geometry into living art. Inspired by Bauhaus and Suprematism, each piece embodies balance and motion - a fusion of code and creativity, fully preserved on-chain.",',
+                bytes(imageData).length > 0
+                    ? string(abi.encodePacked('"image":"', imageData, '",'))
+                    : "",
+                '"external_link":"https://geoplet.geoart.studio"',
+                "}"
+            )
+        );
+
+        return
+            string(
+                abi.encodePacked(
+                    "data:application/json;base64,",
+                    Base64.encode(bytes(json))
                 )
             );
     }

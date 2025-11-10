@@ -233,7 +233,7 @@ function parseContractError(error: unknown): { message: string; canRetry: boolea
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStr = errorMessage.toLowerCase();
 
-  // Contract-specific errors (from Geoplet.sol)
+  // Contract-specific errors (from Geoplets.sol)
   if (errorStr.includes('minting paused')) {
     return {
       message: 'Minting is temporarily paused. Please try again later.',
