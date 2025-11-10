@@ -147,7 +147,7 @@ export async function GET(
                 fontFamily: "SpriteGraffiti",
                 fontSize: "120px",
                 color: "#451a03",
-                marginBottom: "5px",
+                marginBottom: "2px",
                 fontWeight: "bold",
               }}
             >

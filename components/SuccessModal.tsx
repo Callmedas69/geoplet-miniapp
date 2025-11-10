@@ -34,7 +34,7 @@ export function SuccessModal({
       const shareUrl = `${window.location.origin}/share/${fid}`;
 
       await sdk.actions.composeCast({
-        text: "Just minted my Geoplet! 🎨",
+        text: "Just minted my Geoplet!\n\nFully on-chain - x402 powered - Onchain.Fi integrated.\n\nThe future of minting is already here 🔥",
         embeds: [shareUrl],
       });
 
@@ -52,7 +52,7 @@ export function SuccessModal({
     if (!fid) return;
 
     const shareUrl = `${window.location.origin}/share/${fid}`;
-    const text = `Just minted my Geoplet! 🎨`;
+    const text = `Just minted my Geoplet!\n\nFully on-chain - x402 powered - Onchain.Fi integrated.\n\nThe future of minting is already here 🔥`;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       text
     )}&url=${encodeURIComponent(shareUrl)}`;
