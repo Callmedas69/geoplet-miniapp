@@ -287,7 +287,8 @@ export function RegenerateButton({
                 "Verifying payment...",
                 "Processing USDC...",
               ]}
-              interval={1500}
+              interval={2000}
+              className="text-lg font-medium"
             />
           </>
         );
@@ -304,7 +305,8 @@ export function RegenerateButton({
                 "Balancing Suprematist chaos...",
                 "Painting the blockchain...",
               ]}
-              interval={2000}
+              interval={4000}
+              className="text-lg font-medium"
             />
           </>
         );

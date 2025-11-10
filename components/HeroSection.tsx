@@ -50,7 +50,6 @@ export function HeroSection({
         {isGenerating && (
           <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20">
             <div className="flex flex-col items-center gap-4 text-black">
-              <Loader2 className="w-10 h-10 animate-spin" />
               <RotatingText
                 messages={[
                   "Summoning geometric harmony...",
@@ -60,8 +59,8 @@ export function HeroSection({
                   "Balancing Suprematist chaos...",
                   "Painting the blockchain...",
                 ]}
-                interval={2000}
-                className="text-sm font-medium"
+                interval={4000}
+                className="text-lg font-medium"
               />
             </div>
           </div>
