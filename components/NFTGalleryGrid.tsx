@@ -92,18 +92,32 @@ export function NFTGalleryGrid({
   };
 
   // Marketplace link handlers - Opens in Farcaster in-app browser
-  const handleOpenSea = () => {
+  const handleOpenSea = async () => {
     if (!userFid) return;
-    const url = `https://opensea.io/assets/base/${GEOPLET_CONFIG.address}/${userFid}`;
-    sdk.actions.openUrl(url);
-    haptics.tap();
+
+    try {
+      const url = `https://opensea.io/assets/base/${GEOPLET_CONFIG.address}/${userFid}`;
+      await sdk.actions.openUrl(url);
+      haptics.tap();
+    } catch (error) {
+      console.error("Failed to open OpenSea:", error);
+      haptics.error();
+      toast.error("Failed to open OpenSea");
+    }
   };
 
-  const handleOnchainChecker = () => {
+  const handleOnchainChecker = async () => {
     if (!userFid) return;
-    const url = `https://onchainchecker.xyz/collection/base/${GEOPLET_CONFIG.address}/${userFid}`;
-    sdk.actions.openUrl(url);
-    haptics.tap();
+
+    try {
+      const url = `https://onchainchecker.xyz/collection/base/${GEOPLET_CONFIG.address}/${userFid}`;
+      await sdk.actions.openUrl(url);
+      haptics.tap();
+    } catch (error) {
+      console.error("Failed to open OnchainChecker:", error);
+      haptics.error();
+      toast.error("Failed to open OnchainChecker");
+    }
   };
 
   // Empty state

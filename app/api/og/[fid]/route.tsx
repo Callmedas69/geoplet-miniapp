@@ -1,31 +1,23 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
+import { readFileSync } from "fs";
+import path from "path";
 
-export const runtime = "edge";
+// Use Node.js runtime (not Edge) to support Buffer, readFileSync, and image processing
+// Following Farcaster miniapp-img official pattern
 export const dynamic = "force-dynamic";
 
-// Fetch Farcaster username from FID
-async function getFarcasterUsername(fid: string): Promise<string> {
-  try {
-    const response = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
-      {
-        headers: {
-          api_key: process.env.NEYNAR_API_KEY || "",
-        },
-      }
-    );
-    const data = await response.json();
-    return data.users?.[0]?.username || `fid:${fid}`;
-  } catch (error) {
-    console.error("Failed to fetch username:", error);
-    return `fid:${fid}`;
-  }
-}
+// Load custom fonts (Farcaster pattern from miniapp-img)
+const spriteGraffitiFontData = readFileSync(
+  path.join(process.cwd(), "public/font/SpriteGraffiti-Shadow.otf")
+);
+const schoolbellFontData = readFileSync(
+  path.join(process.cwd(), "public/font/Schoolbell-Regular.ttf")
+);
 
-// Fetch minted Geoplet image from Alchemy
-async function getGeopletImage(fid: string): Promise<string | null> {
+// Fetch Geoplet image, convert WebP to PNG, then base64 encode
+async function getGeopletImageAsBase64PNG(fid: string): Promise<string | null> {
   try {
     const baseUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}/getNFTMetadata`;
     const params = new URLSearchParams({
@@ -34,12 +26,57 @@ async function getGeopletImage(fid: string): Promise<string | null> {
       refreshCache: "false",
     });
 
-    const response = await fetch(`${baseUrl}?${params}`);
-    const data = await response.json();
+    const metadataResponse = await fetch(`${baseUrl}?${params}`);
+    const metadata = await metadataResponse.json();
 
-    return data.image?.cachedUrl || data.image?.originalUrl || null;
+    const imageUrl = metadata.image?.cachedUrl || metadata.image?.originalUrl;
+
+    if (!imageUrl) return null;
+
+    console.log("[OG] Fetching Geoplet image from:", imageUrl);
+
+    // Fetch the image
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      console.error("[OG] Failed to fetch image:", imageResponse.status);
+      return null;
+    }
+
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const originalType = imageResponse.headers.get("content-type") || "unknown";
+
+    console.log(
+      "[OG] Original image type:",
+      originalType,
+      "Size:",
+      imageBuffer.byteLength,
+      "bytes"
+    );
+
+    // Import sharp dynamically to convert WebP/any format to PNG
+    const sharp = (await import("sharp")).default;
+
+    // Convert to PNG using Sharp (ensures @vercel/og compatibility)
+    const pngBuffer = await sharp(Buffer.from(imageBuffer))
+      .resize(500, 500, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .png({ quality: 90 })
+      .toBuffer();
+
+    // Convert PNG to base64
+    const base64 = pngBuffer.toString("base64");
+
+    console.log(
+      "[OG] Converted to PNG base64. Size:",
+      pngBuffer.length,
+      "bytes"
+    );
+
+    return `data:image/png;base64,${base64}`;
   } catch (error) {
-    console.error("Failed to fetch Geoplet image:", error);
+    console.error("[OG] Failed to process Geoplet image:", error);
     return null;
   }
 }
@@ -51,30 +88,14 @@ export async function GET(
   try {
     const { fid } = await params;
 
-    // Fetch data in parallel
-    const [username, geopletImage] = await Promise.all([
-      getFarcasterUsername(fid),
-      getGeopletImage(fid),
-    ]);
+    // Fetch Geoplet image, convert to PNG, then base64 encode
+    const geopletImageDataURL = await getGeopletImageAsBase64PNG(fid);
 
-    // If no minted Geoplet found, return 404
-    if (!geopletImage) {
+    if (!geopletImageDataURL) {
       return new Response("Geoplet not found", { status: 404 });
     }
 
-    // Load custom fonts
-    const spriteGraffitiFont = fetch(
-      new URL("../../../../public/font/SpriteGraffiti-Shadow.otf", import.meta.url)
-    ).then((res) => res.arrayBuffer());
-
-    const schoolbellFont = fetch(
-      new URL("../../../../public/font/Schoolbell-Regular.ttf", import.meta.url)
-    ).then((res) => res.arrayBuffer());
-
-    const [spriteGraffitiFontData, schoolbellFontData] = await Promise.all([
-      spriteGraffitiFont,
-      schoolbellFont,
-    ]);
+    console.log("[OG] Generating OG image for FID:", fid);
 
     return new ImageResponse(
       (
@@ -88,23 +109,24 @@ export async function GET(
             padding: "40px",
           }}
         >
-          {/* Left: Geoplet Image */}
+          {/* Left: Geoplet Image - Proxied and converted to PNG */}
           <div
             style={{
-              flex: 1,
+              flex: "1",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
             <img
-              src={geopletImage}
+              src={geopletImageDataURL}
               alt="Geoplet"
-              width={500}
-              height={500}
+              width="400"
+              height="400"
               style={{
-                borderRadius: "20px",
+                borderRadius: "24px",
                 objectFit: "contain",
+                boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
               }}
             />
           </div>
@@ -112,64 +134,52 @@ export async function GET(
           {/* Right: Text Content */}
           <div
             style={{
-              flex: 1,
+              flex: "1",
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
-              paddingLeft: "40px",
+              paddingLeft: "20px",
+              paddingRight: "40px",
             }}
           >
-            {/* Logo */}
+            {/* Logo - Using SpriteGraffiti font */}
             <div
               style={{
                 fontFamily: "SpriteGraffiti",
-                fontSize: "80px",
-                color: "#000",
-                marginBottom: "20px",
-                display: "flex",
+                fontSize: "120px",
+                color: "#451a03",
+                marginBottom: "5px",
+                fontWeight: "bold",
               }}
             >
               GEOPLET
             </div>
 
-            {/* Tagline */}
+            {/* Tagline - Using Schoolbell font */}
             <div
               style={{
                 fontFamily: "Schoolbell",
-                fontSize: "24px",
-                color: "#000",
+                fontSize: "48px",
+                color: "#451a03",
                 marginBottom: "10px",
                 fontStyle: "italic",
-                display: "flex",
               }}
             >
               geofying...
             </div>
 
-            {/* Description */}
+            {/* Description - Using Schoolbell font with full text */}
             <div
               style={{
                 fontFamily: "Schoolbell",
-                fontSize: "18px",
-                color: "#000",
-                marginBottom: "40px",
-                lineHeight: 1.4,
-                display: "flex",
+                fontSize: "22px",
+                color: "#451a03",
+                lineHeight: "1.4",
               }}
             >
-              When geometric art meets Warplet — A fusion of form and frequency.
-            </div>
-
-            {/* Minted By */}
-            <div
-              style={{
-                fontFamily: "Schoolbell",
-                fontSize: "20px",
-                color: "#333",
-                display: "flex",
-              }}
-            >
-              Minted by @{username}
+              When Geometric Art meets Warplet — a fusion of form and frequency.
+              Powered by $GEOPLET, integrated with onchain.fi (X402 Aggregator).
+              Produced by GeoArt.Studio — where creativity lives fully on-chain.
             </div>
           </div>
         </div>
@@ -181,14 +191,21 @@ export async function GET(
           {
             name: "SpriteGraffiti",
             data: spriteGraffitiFontData,
+            weight: 400,
             style: "normal",
           },
           {
             name: "Schoolbell",
             data: schoolbellFontData,
+            weight: 400,
             style: "normal",
           },
         ],
+        headers: {
+          // Immutable cache for NFT images (following Farcaster miniapp-img pattern)
+          "Cache-Control":
+            "public, max-age=31536000, s-maxage=31536000, immutable",
+        },
       }
     );
   } catch (error) {

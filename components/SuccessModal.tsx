@@ -1,11 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { Dialog, DialogContent } from "./ui/dialog";
-import { ExternalLink, Share2, Loader2, Copy } from "lucide-react";
+import { ExternalLink, Share2 } from "lucide-react";
 import { sdk } from "@farcaster/miniapp-sdk";
-import { shareToFarcaster } from "@/lib/generators";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
@@ -27,39 +26,8 @@ export function SuccessModal({
   tokenId,
   fid,
 }: SuccessModalProps) {
-  const [isSharing, setIsSharing] = useState(false);
-
+  // Farcaster share with dynamic OG embed
   const handleShareFarcaster = useCallback(async () => {
-    if (!image || !tokenId || isSharing) return;
-
-    try {
-      setIsSharing(true);
-      await shareToFarcaster(image, tokenId);
-      haptics.success();
-    } catch (error) {
-      console.error("Share error:", error);
-      haptics.error();
-      toast.error("Failed to share to Farcaster");
-    } finally {
-      setIsSharing(false);
-    }
-  }, [image, tokenId, isSharing]);
-
-  const handleXShare = useCallback(() => {
-    if (!tokenId) return;
-
-    const text = `Just minted my Geoplet NFT #${tokenId}! 🎨`;
-    const url = `https://geoplet.geoart.studio`;
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      text
-    )}&url=${encodeURIComponent(url)}`;
-
-    const newWindow = window.open(twitterUrl, "_blank", "noopener,noreferrer");
-    if (newWindow) newWindow.opener = null;
-    haptics.tap();
-  }, [tokenId]);
-
-  const handleShareWithDynamicEmbed = useCallback(async () => {
     if (!fid) return;
 
     try {
@@ -71,12 +39,27 @@ export function SuccessModal({
       });
 
       haptics.success();
-      toast.success("Share window opened!");
+      toast.success("Shared to Farcaster!");
     } catch (error) {
       console.error("Share error:", error);
       haptics.error();
-      toast.error("Failed to open share window");
+      toast.error("Failed to share to Farcaster");
     }
+  }, [fid]);
+
+  // X/Twitter share with dynamic OG embed
+  const handleShareX = useCallback(() => {
+    if (!fid) return;
+
+    const shareUrl = `${window.location.origin}/share/${fid}`;
+    const text = `Just minted my Geoplet! 🎨`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      text
+    )}&url=${encodeURIComponent(shareUrl)}`;
+
+    const newWindow = window.open(twitterUrl, "_blank", "noopener,noreferrer");
+    if (newWindow) newWindow.opener = null;
+    haptics.tap();
   }, [fid]);
 
   const baseScanUrl = txHash
@@ -152,60 +135,42 @@ export function SuccessModal({
             )}
           </div>
 
-          {/* Share Buttons */}
-          <div className="flex flex-col gap-3 px-2">
-            {/* Primary: Share with Dynamic Embed */}
+          {/* Share Buttons - Only 2 Icons */}
+          <div className="flex items-center justify-center gap-4 px-2">
+            {/* Farcaster Share Icon */}
             <button
               type="button"
-              onClick={handleShareWithDynamicEmbed}
+              onClick={handleShareFarcaster}
               disabled={!fid}
-              className="w-full px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-white font-medium"
-              aria-label="Share to Farcaster with custom embed"
+              className="touch-target p-3 rounded-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              aria-label="Share to Farcaster"
+              title="Share to Farcaster"
             >
-              <Share2 className="w-5 h-5" />
-              Share to Farcaster
+              <Share2 className="w-6 h-6 text-white" />
             </button>
 
-            {/* Secondary: Social Share Icons */}
-            <div className="flex items-center justify-center gap-3">
-              {/* Quick Farcaster Share */}
-              <button
-                type="button"
-                onClick={handleShareFarcaster}
-                disabled={isSharing || !image || !tokenId}
-                className="touch-target p-2 rounded-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="Quick share to Farcaster"
-                title="Quick share (generic)"
+            {/* X/Twitter Share Icon */}
+            <button
+              type="button"
+              onClick={handleShareX}
+              disabled={!fid}
+              className="touch-target p-3 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              aria-label="Share on X"
+              title="Share on X"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 1200 1227"
+                fill="none"
+                className="text-white"
               >
-                {isSharing ? (
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
-                ) : (
-                  <Share2 className="w-5 h-5 text-white" />
-                )}
-              </button>
-
-              {/* X/Twitter Icon */}
-              <button
-                type="button"
-                onClick={handleXShare}
-                disabled={!tokenId}
-                className="touch-target p-2 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                aria-label="Share on X"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 1200 1227"
-                  fill="none"
-                  className="text-white"
-                >
-                  <path
-                    d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"
-                    fill="currentColor"
-                  />
-                </svg>
-              </button>
-            </div>
+                <path
+                  d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.137 519.284H714.163ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </DialogContent>

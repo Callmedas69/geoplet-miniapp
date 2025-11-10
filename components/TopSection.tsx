@@ -22,7 +22,7 @@ export function TopSection() {
       className="flex flex-col items-center px-4 pt-8 shrink-0"
     >
       {/* Logo - Centered */}
-      <h1 className={`pb-4 text-7xl ${spriteGraffity.className}`}>GEOPLET</h1>
+      <h1 className={`pb-2 text-7xl ${spriteGraffity.className}`}>GEOPLET</h1>
       <p className={`italic text-sm`}>where geo meets warplets</p>
       <p className={`italic text-sm`}>a fusion of art, code, and value.</p>
     </div>
