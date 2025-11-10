@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { usePayment } from '@/hooks/usePayment';
 import { PAYMENT_CONFIG } from '@/lib/payment-config';
+import { SHARE_CONFIG } from '@/lib/share-config';
 import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
 
@@ -110,7 +111,7 @@ export function AnimationGenerator() {
       if (!generatedAnimation) return;
 
       await sdk.actions.composeCast({
-        text: 'Check out my animated image created with Geoplet! 🎬✨',
+        text: SHARE_CONFIG.animation.farcaster,
         embeds: [generatedAnimation],
       });
     } catch (err) {

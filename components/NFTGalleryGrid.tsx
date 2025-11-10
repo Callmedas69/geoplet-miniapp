@@ -6,6 +6,7 @@ import { sdk } from "@farcaster/miniapp-sdk";
 import { GeopletNFT } from "@/hooks/useGalleryNFTs";
 import { useUserNFTs } from "@/hooks/useUserNFTs";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
+import { SHARE_CONFIG } from "@/lib/share-config";
 import { ExpandableShareButton } from "./ExpandableShareButton";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
@@ -64,7 +65,7 @@ export function NFTGalleryGrid({
       const shareUrl = `${window.location.origin}/share/${userFid}`;
 
       await sdk.actions.composeCast({
-        text: "Check out my Geoplet! 🎨",
+        text: SHARE_CONFIG.gallery.farcaster,
         embeds: [shareUrl],
       });
 
@@ -81,7 +82,7 @@ export function NFTGalleryGrid({
     if (!userFid) return;
 
     const shareUrl = `${window.location.origin}/share/${userFid}`;
-    const text = `Check out my Geoplet! 🎨`;
+    const text = SHARE_CONFIG.gallery.twitter;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       text
     )}&url=${encodeURIComponent(shareUrl)}`;

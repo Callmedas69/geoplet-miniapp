@@ -8,6 +8,7 @@ import { sdk } from "@farcaster/miniapp-sdk";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
+import { SHARE_CONFIG } from "@/lib/share-config";
 
 interface SuccessModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export function SuccessModal({
       const shareUrl = `${window.location.origin}/share/${fid}`;
 
       await sdk.actions.composeCast({
-        text: "Just minted my Geoplet!\n\nFully on-chain - x402 powered - Onchain.Fi integrated.\n\nThe future of minting is already here 🔥",
+        text: SHARE_CONFIG.afterMint.farcaster,
         embeds: [shareUrl],
       });
 
@@ -52,7 +53,7 @@ export function SuccessModal({
     if (!fid) return;
 
     const shareUrl = `${window.location.origin}/share/${fid}`;
-    const text = `Just minted my Geoplet!\n\nFully on-chain - x402 powered - Onchain.Fi integrated.\n\nThe future of minting is already here 🔥`;
+    const text = SHARE_CONFIG.afterMint.twitter;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       text
     )}&url=${encodeURIComponent(shareUrl)}`;

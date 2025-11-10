@@ -138,7 +138,7 @@ export async function GET(
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
-              paddingRight: "60px",
+              paddingRight: "80px",
             }}
           >
             {/* Logo - Using SpriteGraffiti font */}

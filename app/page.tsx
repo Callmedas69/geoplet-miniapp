@@ -10,6 +10,7 @@ import { MintButton } from "@/components/MintButton";
 import { SuccessModal } from "@/components/SuccessModal";
 import { TopSection } from "@/components/TopSection";
 import { SplashScreen } from "@/components/SplashScreen";
+import { BeforeMintShareBar } from "@/components/BeforeMintShareBar";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useGenerationStorage } from "@/hooks/useGenerationStorage";
 import { useSplashTransition } from "@/hooks/useSplashTransition";
@@ -355,6 +356,11 @@ export default function Home() {
                 return await deleteGeneration(fid);
               }}
             />
+
+            {/* Share Buttons - Below Mint Button */}
+            <div className="mt-4 w-full flex justify-center">
+              <BeforeMintShareBar fid={fid} variant="inline" />
+            </div>
           </div>
         </main>
 

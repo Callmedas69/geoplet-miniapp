@@ -67,7 +67,8 @@
       "Bash(findstr:*)",
       "Bash(identify:*)",
       "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\share\\[fid]\\metadata.ts\")",
-      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\api\\og\\proxy\\[fid]\\route.ts\")"
+      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\api\\og\\proxy\\[fid]\\route.ts\")",
+      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\app\\embed\\EmbedRedirect.tsx\")"
     ]
   },
   "enableAllProjectMcpServers": true,

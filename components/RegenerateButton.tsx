@@ -314,7 +314,7 @@ export function RegenerateButton({
         return (
           <>
             <RefreshCw className="w-5 h-5" />
-            REGENERATE (${PAYMENT_CONFIG.REGENERATE.price})
+            Regenerate (${PAYMENT_CONFIG.REGENERATE.price})
           </>
         );
     }
