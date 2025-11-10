@@ -269,7 +269,7 @@ async function generateGeometricArt(
       .toBuffer();
 
     const compressedBase64 = compressed.toString('base64');
-    const base64Data = `data:image/webp;base64,${compressedBase64}`;
+    const base64Data = compressedBase64;
 
     log(`✅ Compression complete! Original: ${(b64Json.length / 1024).toFixed(2)} KB → Compressed: ${(compressedBase64.length / 1024).toFixed(2)} KB`);
     log(`✅ Size reduction: ${(((b64Json.length - compressedBase64.length) / b64Json.length) * 100).toFixed(1)}%\n`);

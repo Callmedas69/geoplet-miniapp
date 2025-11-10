@@ -1307,7 +1307,7 @@ export const GeopletsABI = [
 // ============ Contract Addresses ============
 
 export const GEOPLET_ADDRESSES = {
-  baseMainnet: "0x04AbA88298A7Ceee6c1cA456beF059FbE98af268" as `0x${string}`, // Production deployment - 2025-11-10
+  baseMainnet: "0x0f084287c98C45F30CCEd0B631073F77423A4653" as `0x${string}`, // Production deployment - 2025-11-10
 } as const;
 
 // ============ EIP-712 Configuration ============

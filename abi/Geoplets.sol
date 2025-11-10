@@ -283,7 +283,7 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
                 '"token_id":',
                 tokenId.toString(),
                 ",",
-                '"image":"data:image/svg+xml;base64,',
+                '"image":"data:image/webp;base64,',
                 imageData,
                 '",',
                 animationField,

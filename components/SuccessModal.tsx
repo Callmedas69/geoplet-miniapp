@@ -93,7 +93,7 @@ export function SuccessModal({
           )}
 
           {/* NFT Links Row */}
-          <div className="flex items-center justify-center gap-4 px-2 text-xs">
+          <div className="flex items-center justify-center gap-4 px-2 text-sm">
             {baseScanUrl && (
               <a
                 href={baseScanUrl}
@@ -143,8 +143,8 @@ export function SuccessModal({
               <Image
                 src="/farcaster_logo.jpg"
                 alt="Farcaster"
-                width={24}
-                height={24}
+                width={48}
+                height={48}
                 className="rounded"
               />
             </button>
