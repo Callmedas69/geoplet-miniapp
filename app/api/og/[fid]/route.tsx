@@ -106,7 +106,7 @@ export async function GET(
             display: "flex",
             flexDirection: "row",
             backgroundColor: "#f3daa1",
-            padding: "40px",
+            padding: "100px",
           }}
         >
           {/* Left: Geoplet Image - Proxied and converted to PNG */}
@@ -121,8 +121,8 @@ export async function GET(
             <img
               src={geopletImageDataURL}
               alt="Geoplet"
-              width="400"
-              height="400"
+              width="350"
+              height="350"
               style={{
                 borderRadius: "24px",
                 objectFit: "contain",
@@ -138,8 +138,7 @@ export async function GET(
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
-              paddingLeft: "20px",
-              paddingRight: "40px",
+              paddingRight: "60px",
             }}
           >
             {/* Logo - Using SpriteGraffiti font */}
