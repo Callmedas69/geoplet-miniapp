@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback } from "react";
 import { Dialog, DialogContent } from "./ui/dialog";
-import { ExternalLink, Share2 } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
@@ -79,13 +79,6 @@ export function SuccessModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-white border-white/20 text-amber-950 max-w-sm sm:max-w-md">
         <div className="space-y-4 sm:space-y-6">
-          {/* Success Message */}
-          <div className="text-center space-y-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-white">
-              Minted! 🎉
-            </h2>
-          </div>
-
           {/* NFT Preview */}
           {image && (
             <div className="relative aspect-square w-full overflow-hidden">
@@ -129,7 +122,7 @@ export function SuccessModal({
                 rel="noopener noreferrer"
                 className="text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1"
               >
-                <span>OnChain</span>
+                <span>OnChainChecker</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             )}
@@ -142,11 +135,17 @@ export function SuccessModal({
               type="button"
               onClick={handleShareFarcaster}
               disabled={!fid}
-              className="touch-target p-3 rounded-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="touch-target p-3 rounded-full hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               aria-label="Share to Farcaster"
               title="Share to Farcaster"
             >
-              <Share2 className="w-6 h-6 text-white" />
+              <Image
+                src="/farcaster_logo.jpg"
+                alt="Farcaster"
+                width={24}
+                height={24}
+                className="rounded"
+              />
             </button>
 
             {/* X/Twitter Share Icon */}
