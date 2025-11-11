@@ -1,7 +1,6 @@
 // Geoplets ERC721 with EIP-712 Signature Validation + Animation Upgrade
 // Generated from: Geoplets (Geoplets.sol) - V2 with Animation Features
 // Deployed: 2025-11-10
-// Contract: 0x04AbA88298A7Ceee6c1cA456beF059FbE98af268
 // Network: Base Mainnet (Chain ID: 8453)
 // Features: Static NFT minting + Animation upgrades via upgradeToAnimated()
 
@@ -1303,6 +1302,7 @@ export const GeopletsABI = [
     ]
   }
 ] as const;
+
 
 // ============ Contract Addresses ============
 

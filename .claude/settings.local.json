@@ -76,7 +76,8 @@
       "Bash(done)",
       "Bash(cast logs:*)",
       "WebFetch(domain:ethfs.xyz)",
-      "WebFetch(domain:docs.ethstorage.io)"
+      "WebFetch(domain:docs.ethstorage.io)",
+      "Bash(node:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

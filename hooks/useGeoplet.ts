@@ -16,13 +16,14 @@
 
 'use client';
 
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId, usePublicClient } from 'wagmi';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
 import type { MintSignatureResponse } from './usePayment';
 
 export function useGeoplet() {
   const { address } = useAccount();
   const chainId = useChainId();
+  const publicClient = usePublicClient();
   const {
     writeContract,
     data: hash,
@@ -72,12 +73,41 @@ export function useGeoplet() {
       deadline: BigInt(voucher.deadline),
     };
 
-    // Call new mintGeoplet function with voucher + signature
+    // Estimate gas to bypass Farcaster wallet simulation issues
+    // (Farcaster wallet fails simulation on base64-encoded tokenURI)
+    let estimatedGas: bigint;
+    try {
+      if (publicClient) {
+        estimatedGas = await publicClient.estimateContractGas({
+          address: GEOPLET_CONFIG.address,
+          abi: GEOPLET_CONFIG.abi,
+          functionName: 'mintGeoplet',
+          args: [mintVoucher, base64ImageData, signature as `0x${string}`],
+          account: address,
+        });
+
+        // Add 20% buffer for safety
+        estimatedGas = (estimatedGas * 120n) / 100n;
+
+        console.log('[MINT] Gas estimated:', estimatedGas.toString());
+      } else {
+        // Fallback: Use reasonable gas limit for mint operation
+        estimatedGas = 500000n;
+        console.log('[MINT] Using fallback gas limit:', estimatedGas.toString());
+      }
+    } catch (error) {
+      // If gas estimation fails, use safe fallback
+      estimatedGas = 500000n;
+      console.warn('[MINT] Gas estimation failed, using fallback:', error);
+    }
+
+    // Call mintGeoplet with manual gas limit (bypasses wallet simulation)
     return writeContract({
       address: GEOPLET_CONFIG.address,
       abi: GEOPLET_CONFIG.abi,
       functionName: 'mintGeoplet',
       args: [mintVoucher, base64ImageData, signature as `0x${string}`],
+      gas: estimatedGas,
     });
   };
 
