@@ -265,7 +265,7 @@ async function generateGeometricArt(
     const generatedImageBuffer = Buffer.from(b64Json, 'base64');
     const compressed = await sharp(generatedImageBuffer)
       .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .webp({ quality: 75, effort: 4 })
+      .webp({ quality: 75, effort: 6 })
       .toBuffer();
 
     const compressedBase64 = compressed.toString('base64');
