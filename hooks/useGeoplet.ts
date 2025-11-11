@@ -87,17 +87,17 @@ export function useGeoplet() {
         });
 
         // Add 20% buffer for safety
-        estimatedGas = (estimatedGas * 120n) / 100n;
+        estimatedGas = (estimatedGas * BigInt(120)) / BigInt(100);
 
         console.log('[MINT] Gas estimated:', estimatedGas.toString());
       } else {
         // Fallback: Use reasonable gas limit for mint operation
-        estimatedGas = 500000n;
+        estimatedGas = BigInt(500000);
         console.log('[MINT] Using fallback gas limit:', estimatedGas.toString());
       }
     } catch (error) {
       // If gas estimation fails, use safe fallback
-      estimatedGas = 500000n;
+      estimatedGas = BigInt(500000);
       console.warn('[MINT] Gas estimation failed, using fallback:', error);
     }
 
