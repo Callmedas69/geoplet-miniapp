@@ -15,10 +15,15 @@ export function WarpletDisplay({
   isMinted = false,
   alt = "Warplet NFT",
 }: WarpletDisplayProps) {
-  const displayImage = generatedImage || imageUrl;
+  // Add data URI prefix if generatedImage is raw base64 (KISS: display layer transformation)
+  const formattedGenerated = generatedImage && !generatedImage.startsWith('data:')
+    ? `data:image/webp;base64,${generatedImage}`
+    : generatedImage;
+
+  const displayImage = formattedGenerated || imageUrl;
 
   return (
-    <div className="relative aspect-square border-2 rounded-lg drop-shadow-lg">
+    <div className="relative aspect-square border-2 rounded-lg">
       <div className="relative w-full h-full bg-gray-100 flex items-center justify-center">
         <Image
           src={displayImage}

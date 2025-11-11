@@ -43,19 +43,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate base64 format
-    if (!image_data.startsWith('data:image/webp;base64,')) {
+    // Strip data URI prefix if present (KISS: store raw base64, contract format)
+    const rawBase64 = image_data.startsWith('data:image/')
+      ? image_data.split(',')[1] || ''
+      : image_data;
+
+    // Validate base64 format (security: prevent injection)
+    if (!rawBase64 || !/^[A-Za-z0-9+/=]+$/.test(rawBase64)) {
       return NextResponse.json(
-        { success: false, error: 'Image must be WebP base64 format' },
+        { success: false, error: 'Invalid base64 format' },
         { status: 400 }
       );
     }
 
-    // Validate image size (<24KB for contract compliance)
-    const sizeInKB = Buffer.from(image_data).length / 1024;
-    if (sizeInKB > 24) {
+    // Validate image size on RAW base64 (matches contract validation exactly)
+    // Contract requires: bytes(base64ImageData).length <= 24576 (line 206 in Geoplets.sol)
+    const sizeInBytes = Buffer.from(rawBase64, 'base64').length;
+    if (sizeInBytes > 24576) {
       return NextResponse.json(
-        { success: false, error: `Image too large (${sizeInKB.toFixed(2)}KB). Must be <24KB` },
+        { success: false, error: `Image too large (${sizeInBytes} bytes). Must be ≤24KB (24576 bytes)` },
         { status: 400 }
       );
     }
@@ -69,12 +75,13 @@ export async function POST(request: NextRequest) {
     }
 
     // UPSERT to database (insert or update if FID exists)
+    // Store raw base64 (contract-ready format, KISS principle)
     const { data, error } = await supabaseAdmin
       .from('unminted_geoplets')
       .upsert(
         {
           fid,
-          image_data,
+          image_data: rawBase64,
           created_at: new Date().toISOString(),
         },
         {

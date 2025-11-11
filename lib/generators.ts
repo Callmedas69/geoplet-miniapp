@@ -58,9 +58,14 @@ export async function shareToFarcaster(
 export function downloadImage(imageData: string, tokenId: string): void {
   haptics.tap();
 
+  // Add data URI prefix if raw base64 (KISS: display layer transformation)
+  const dataUri = imageData.startsWith('data:')
+    ? imageData
+    : `data:image/webp;base64,${imageData}`;
+
   const link = document.createElement('a');
-  link.href = imageData;
-  link.download = `geoplet-${tokenId}.png`;
+  link.href = dataUri;
+  link.download = `geoplet-${tokenId}.webp`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -88,16 +93,23 @@ export async function checkFidMinted(fid: string): Promise<boolean> {
 
 /**
  * Validate image size before minting (24KB limit)
+ * Matches contract validation (Geoplets.sol line 206: bytes(base64ImageData).length <= 24576)
  */
 export function validateImageSize(imageData: string): {
   valid: boolean;
   sizeKB: number;
   error?: string;
 } {
-  const base64Data = imageData.split(',')[1] || '';
-  const sizeInKB = (base64Data.length * 0.75) / 1024;
+  // Extract raw base64 (handles both data URI and raw base64)
+  const rawBase64 = imageData.startsWith('data:')
+    ? imageData.split(',')[1] || ''
+    : imageData;
 
-  if (sizeInKB > 24) {
+  // Validate on raw base64 size (matches contract exactly)
+  const sizeInBytes = rawBase64.length;
+  const sizeInKB = sizeInBytes / 1024;
+
+  if (sizeInBytes > 24576) {
     return {
       valid: false,
       sizeKB: sizeInKB,
@@ -105,7 +117,7 @@ export function validateImageSize(imageData: string): {
     };
   }
 
-  if (sizeInKB > 20) {
+  if (sizeInBytes > 20480) {
     toast.warning(`⚠️ Image is ${sizeInKB.toFixed(2)}KB (close to 24KB limit)`);
   }
 
