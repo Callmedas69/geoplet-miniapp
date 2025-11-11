@@ -16,9 +16,10 @@ const schoolbellFontData = readFileSync(
   path.join(process.cwd(), "public/font/Schoolbell-Regular.ttf")
 );
 
-// Get Geoplet image URL via proxy (KISS: use URL instead of base64)
-async function getGeopletImageProxyURL(fid: string): Promise<string | null> {
+// Fetch and convert Geoplet image to PNG Buffer (KISS: no proxy, direct processing)
+async function getGeopletImageBuffer(fid: string): Promise<Buffer | null> {
   try {
+    // 1. Fetch NFT metadata from Alchemy
     const baseUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}/getNFTMetadata`;
     const params = new URLSearchParams({
       contractAddress: GEOPLET_CONFIG.address,
@@ -36,17 +37,55 @@ async function getGeopletImageProxyURL(fid: string): Promise<string | null> {
       return null;
     }
 
-    console.log("[OG] Found Geoplet image:", imageUrl);
+    console.log("[OG] Found Geoplet image:", imageUrl.substring(0, 100) + "...");
 
-    // Use image proxy to convert to PNG (avoids base64 overhead)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://geoplet.geoart.studio";
-    const proxyUrl = `${appUrl}/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+    // 2. Handle data URI (inline base64) vs external URL
+    let imageBuffer: Buffer;
 
-    console.log("[OG] Using proxy URL:", proxyUrl);
+    if (imageUrl.startsWith("data:")) {
+      // Data URI - extract base64 and decode directly
+      console.log("[OG] Image is data URI, decoding base64...");
+      const base64Data = imageUrl.split(",")[1];
+      if (!base64Data) {
+        console.error("[OG] Invalid data URI format");
+        return null;
+      }
+      imageBuffer = Buffer.from(base64Data, "base64");
+    } else {
+      // External URL - fetch it
+      console.log("[OG] Image is external URL, fetching...");
+      const imageResponse = await fetch(imageUrl, {
+        headers: {
+          "User-Agent": "Geoplet-OG-Generator/1.0",
+        },
+      });
 
-    return proxyUrl;
+      if (!imageResponse.ok) {
+        console.error("[OG] Failed to fetch image:", imageResponse.status);
+        return null;
+      }
+
+      const arrayBuffer = await imageResponse.arrayBuffer();
+      imageBuffer = Buffer.from(arrayBuffer);
+    }
+
+    console.log("[OG] Image buffer size:", imageBuffer.length, "bytes");
+
+    // 3. Convert to PNG using Sharp (ensures @vercel/og compatibility)
+    const sharp = (await import("sharp")).default;
+    const pngBuffer = await sharp(imageBuffer)
+      .resize(500, 500, {
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .png({ quality: 90 })
+      .toBuffer();
+
+    console.log("[OG] Converted to PNG. Size:", pngBuffer.length, "bytes");
+
+    return pngBuffer;
   } catch (error) {
-    console.error("[OG] Failed to get Geoplet image URL:", error);
+    console.error("[OG] Failed to process Geoplet image:", error);
     return null;
   }
 }
@@ -58,12 +97,15 @@ export async function GET(
   try {
     const { fid } = await params;
 
-    // Get Geoplet image URL via proxy (KISS: use URL instead of base64)
-    const geopletImageURL = await getGeopletImageProxyURL(fid);
+    // Fetch and convert Geoplet image to PNG Buffer (official @vercel/og best practice)
+    const geopletImageBuffer = await getGeopletImageBuffer(fid);
 
-    if (!geopletImageURL) {
+    if (!geopletImageBuffer) {
       return new Response("Geoplet not found", { status: 404 });
     }
+
+    // Convert Buffer to base64 data URI for ImageResponse <img> tag
+    const geopletImageDataURI = `data:image/png;base64,${geopletImageBuffer.toString("base64")}`;
 
     console.log("[OG] Generating OG image for FID:", fid);
 
@@ -79,7 +121,7 @@ export async function GET(
             padding: "100px",
           }}
         >
-          {/* Left: Geoplet Image - Via proxy URL (no base64) */}
+          {/* Left: Geoplet Image - Base64 Data URI (converted from PNG Buffer) */}
           <div
             style={{
               flex: "1",
@@ -89,7 +131,7 @@ export async function GET(
             }}
           >
             <img
-              src={geopletImageURL}
+              src={geopletImageDataURI}
               alt="Geoplet"
               width="300"
               height="300"
@@ -147,8 +189,9 @@ export async function GET(
               }}
             >
               When Geometric Art meets Warplet — a fusion of form and frequency.
-              Powered by $GEOPLET, integrated with onchain.fi (X402 Aggregator).
-              Produced by GeoArt.Studio — where creativity lives fully on-chain.
+              Powered by $GEOPLET, integrated with onchain.fi (x402 Aggregator).
+              Produced by @GeoArt.Studio — where creativity lives fully
+              on-chain.
             </div>
           </div>
         </div>
