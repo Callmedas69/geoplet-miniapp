@@ -53,7 +53,7 @@ export function RegenerateButton({
   const { address, isConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
   const { nft, fid } = useWarplets();
-  const { balance } = useUSDCBalance();
+  const { balance, isLoading: isBalanceLoading } = useUSDCBalance();
 
   const [state, setState] = useState<ButtonState>("idle");
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -322,8 +322,17 @@ export function RegenerateButton({
     }
   };
 
+  // Check if all required data is available
+  const hasRequiredData = !!fid && !!nft && !!address && isConnected;
+
   const isLoading = state === "paying" || state === "generating";
-  const isDisabled = disabled || isLoading || state === "success";
+  const isDisabled =
+    disabled ||
+    !hasRequiredData ||
+    isBalanceLoading ||
+    isLoading ||
+    state === "success" ||
+    state === "insufficient_usdc";
 
   return (
     <Button

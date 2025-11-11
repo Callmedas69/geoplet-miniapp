@@ -146,6 +146,16 @@
     min-width: 44px;
   }
 
+  /* Shimmer Animation for Skeleton Loading */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
   /* Better Tap Highlight */
   .tap-highlight-none {
     -webkit-tap-highlight-color: transparent;

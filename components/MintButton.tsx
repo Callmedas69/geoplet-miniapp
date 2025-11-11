@@ -55,10 +55,12 @@ export function MintButton({
   const { nft, fid } = useWarplets();
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
   const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
-  const { hasEnoughUSDC, balance, mintPrice } = useUSDCBalance();
+  const { hasEnoughUSDC, balance, mintPrice, isLoading: isBalanceLoading } =
+    useUSDCBalance();
   const { checkEligibility, simulateMint } = useContractSimulation();
 
   const [state, setState] = useState<ButtonState>("idle");
+  const [isCheckingMintStatus, setIsCheckingMintStatus] = useState(false);
   const [signatureData, setSignatureData] =
     useState<MintSignatureResponse | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -90,7 +92,10 @@ export function MintButton({
     async function checkInitialState() {
       if (!fid) return;
 
+      setIsCheckingMintStatus(true);
       const minted = await checkFidMinted(fid.toString());
+      setIsCheckingMintStatus(false);
+
       if (minted) {
         setState("already_minted");
         return;
@@ -406,6 +411,9 @@ export function MintButton({
     }
   };
 
+  // Check if all required data is available
+  const hasRequiredData = !!fid && !!address && !!generatedImage;
+
   const isLoading =
     state === "checking_eligibility" ||
     state === "paying" ||
@@ -414,10 +422,13 @@ export function MintButton({
     state === "minting";
   const isDisabled =
     disabled ||
-    !generatedImage ||
+    !hasRequiredData ||
+    isBalanceLoading ||
+    isCheckingMintStatus ||
     isLoading ||
     state === "success" ||
-    state === "already_minted";
+    state === "already_minted" ||
+    state === "insufficient_usdc";
 
   return (
     <Button

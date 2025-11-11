@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "solady/utils/SSTORE2.sol";
@@ -137,6 +136,10 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
         address indexed newSigner
     );
 
+    // ERC-4906: Metadata Update Events
+    event MetadataUpdate(uint256 _tokenId);
+    event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
+
     // ============ Constructor ============
 
     constructor()
@@ -222,6 +225,7 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
         _safeMint(voucher.to, voucher.fid);
 
         emit GeopletMinted(voucher.fid, voucher.to);
+        emit MetadataUpdate(voucher.fid);
 
         return voucher.fid;
     }
@@ -299,19 +303,19 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
             )
         );
 
-        // Return Base64-encoded JSON with proper data URI prefix
+        // Return UTF-8 inline JSON with proper data URI prefix
         return
             string(
                 abi.encodePacked(
-                    "data:application/json;base64,",
-                    Base64.encode(bytes(json))
+                    "data:application/json;utf8,",
+                    json
                 )
             );
     }
 
     /**
      * @notice Collection-level metadata for marketplaces
-     * @dev Returns Base64-encoded collection information with animated WebP from EthFS
+     * @dev Returns UTF-8 inline collection information with animated WebP from EthFS
      */
     function contractURI() public view returns (string memory) {
         string memory imageData;
@@ -345,8 +349,8 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
         return
             string(
                 abi.encodePacked(
-                    "data:application/json;base64,",
-                    Base64.encode(bytes(json))
+                    "data:application/json;utf8,",
+                    json
                 )
             );
     }
@@ -413,6 +417,7 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
         animationPointers[voucher.tokenId] = animationPointer;
 
         emit AnimationUpgraded(voucher.tokenId, msg.sender);
+        emit MetadataUpdate(voucher.tokenId);
     }
 
     /**

@@ -30,7 +30,22 @@ async function getGeopletImageBuffer(fid: string): Promise<Buffer | null> {
     const metadataResponse = await fetch(`${baseUrl}?${params}`);
     const metadata = await metadataResponse.json();
 
-    const imageUrl = metadata.image?.cachedUrl || metadata.image?.originalUrl;
+    let imageUrl = metadata.image?.cachedUrl || metadata.image?.originalUrl;
+
+    // ✅ UTF-8 metadata fallback for on-chain data URIs
+    if (!imageUrl && metadata.tokenUri?.raw) {
+      try {
+        const raw = metadata.tokenUri.raw;
+        if (raw.includes("data:application/json;utf8,")) {
+          const jsonString = raw.split("data:application/json;utf8,")[1];
+          const decoded = JSON.parse(jsonString);
+          imageUrl = decoded.image;
+          console.log("[OG] Decoded UTF-8 tokenURI image field:", imageUrl?.substring(0, 100) + "...");
+        }
+      } catch (e) {
+        console.error("[OG] Failed to decode UTF-8 metadata:", e);
+      }
+    }
 
     if (!imageUrl) {
       console.log("[OG] No image found in Alchemy metadata");

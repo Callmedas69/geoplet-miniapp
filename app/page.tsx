@@ -344,7 +344,6 @@ export default function Home() {
               }}
             />
             <MintButton
-              disabled={!generatedImage}
               generatedImage={generatedImage}
               onSuccess={(hash, tokenId) => {
                 setMintTxHash(hash);

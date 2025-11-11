@@ -1,5 +1,4 @@
 import { WarpletDisplay } from "./WarpletDisplay";
-import { Loader2 } from "lucide-react";
 import { RotatingText } from "./RotatingText";
 import { useRef } from "react";
 import { useGSAP } from "@gsap/react";
@@ -11,6 +10,7 @@ interface HeroSectionProps {
   generatedImage: string | null;
   isGenerating?: boolean;
   isMinted?: boolean;
+  error?: string | null;
 }
 
 export function HeroSection({
@@ -19,6 +19,7 @@ export function HeroSection({
   generatedImage,
   isGenerating = false,
   isMinted = false,
+  error = null,
 }: HeroSectionProps) {
   const displayRef = useRef<HTMLDivElement>(null);
 
@@ -46,9 +47,24 @@ export function HeroSection({
     <div id="hero-section" className="max-w-2xl mx-auto">
       {/* Display Area - Loading overlay only affects this section */}
       <div ref={displayRef} className="relative px-4">
+        {/* Error Overlay */}
+        {error && (
+          <div className="absolute inset-0 bg-red-50/90 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20">
+            <div className="text-center p-6">
+              <p className="text-red-600 font-medium mb-2">Generation Failed</p>
+              <p className="text-sm text-red-500">{error}</p>
+            </div>
+          </div>
+        )}
+
         {/* Loading Overlay */}
         {isGenerating && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20">
+          <div
+            className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20"
+            role="status"
+            aria-live="polite"
+            aria-label="Generating geometric art"
+          >
             <div className="flex flex-col items-center gap-4 text-black">
               <RotatingText
                 messages={[
@@ -59,7 +75,7 @@ export function HeroSection({
                   "Balancing Suprematist chaos...",
                   "Painting the blockchain...",
                 ]}
-                interval={4000}
+                interval={3500}
                 className="text-lg font-medium"
               />
             </div>

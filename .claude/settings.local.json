@@ -77,7 +77,10 @@
       "Bash(cast logs:*)",
       "WebFetch(domain:ethfs.xyz)",
       "WebFetch(domain:docs.ethstorage.io)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:docs.farcaster.xyz)",
+      "WebFetch(domain:blog.logrocket.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

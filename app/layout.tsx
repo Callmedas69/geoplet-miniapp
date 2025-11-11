@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Toaster } from "@/components/ui/sonner";
@@ -9,16 +8,6 @@ import localfont from "next/font/local";
 const schoollBell = localfont({
   src: "../public/font/Schoolbell-Regular.ttf",
   display: "swap",
-});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 const appUrl =
@@ -36,10 +25,18 @@ export const metadata: Metadata = {
     siteName: appName,
     images: [
       {
+        url: `${appUrl}/embed-1200x800.webp`,
+        width: 1200,
+        height: 800,
+        alt: `${appName} - Geofying`,
+        type: "image/webp",
+      },
+      {
         url: `${appUrl}/og-hero-1200x630.png`,
         width: 1200,
         height: 630,
         alt: `${appName} - Geofying`,
+        type: "image/png",
       },
     ],
     locale: "en_US",
@@ -49,7 +46,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: appName,
     description: "GeoPlet: when geometric art meet Warplets",
-    images: [`${appUrl}/og-hero-1200x630.png`],
+    images: [`${appUrl}/embed-1200x800.webp`],
     creator: "@geoart_studio",
     site: "geoplet.geoart.studio",
   },
@@ -87,7 +84,17 @@ export default function RootLayout({
             </div>
           </ClientLayout>
         </Providers>
-        <Toaster />
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              fontFamily: "inherit",
+              background: "#fff3d6",
+              color: "#78350f",
+              border: "1px solid rgba(120, 53, 15, 0.2)",
+            },
+          }}
+        />
       </body>
     </html>
   );

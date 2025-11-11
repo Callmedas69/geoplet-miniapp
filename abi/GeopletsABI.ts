@@ -1,8 +1,9 @@
 // Geoplets ERC721 with EIP-712 Signature Validation + Animation Upgrade
-// Generated from: Geoplets (Geoplets.sol) - V2 with Animation Features
+// Generated from: Geoplets (Geoplets.sol) - V3 with UTF-8 Metadata + ERC-4906
 // Deployed: 2025-11-10
+// Contract: 0x80271d9d45a5bCC4e5325c2A3831fc6Ba9E212E4
 // Network: Base Mainnet (Chain ID: 8453)
-// Features: Static NFT minting + Animation upgrades via upgradeToAnimated()
+// Features: UTF-8 inline metadata, ERC-4906 events, Animation upgrades, ERC20 treasury
 
 export const GeopletsABI = [
   {
@@ -1118,6 +1119,38 @@ export const GeopletsABI = [
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "MetadataUpdate",
+    "inputs": [
+      {
+        "name": "_tokenId",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BatchMetadataUpdate",
+    "inputs": [
+      {
+        "name": "_fromTokenId",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_toTokenId",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "ECDSAInvalidSignature",
     "inputs": []
@@ -1303,11 +1336,10 @@ export const GeopletsABI = [
   }
 ] as const;
 
-
 // ============ Contract Addresses ============
 
 export const GEOPLET_ADDRESSES = {
-  baseMainnet: "0x0f084287c98C45F30CCEd0B631073F77423A4653" as `0x${string}`, // Production deployment - 2025-11-10
+  baseMainnet: "0x80271d9d45a5bCC4e5325c2A3831fc6Ba9E212E4" as `0x${string}`, // Production deployment - 2025-11-10 (UTF-8 + ERC-4906)
 } as const;
 
 // ============ EIP-712 Configuration ============

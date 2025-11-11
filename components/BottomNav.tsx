@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, LayoutGrid, Wallet } from "lucide-react";
+import { haptics } from "@/lib/haptics";
 
 interface BottomNavProps {
   onWalletClick?: () => void;
@@ -39,7 +40,7 @@ export function BottomNav({ onWalletClick }: BottomNavProps) {
     {
       icon: Wallet,
       label: "Wallet",
-      isActive: false,
+      isActive: false, // Wallet is modal action, not a page
       type: "button" as const,
       onClick: onWalletClick,
     },
@@ -56,7 +57,7 @@ export function BottomNav({ onWalletClick }: BottomNavProps) {
             <>
               <item.icon
                 className="w-5 h-5"
-                strokeWidth={item.isActive ? 2 : 2}
+                strokeWidth={2}
                 aria-hidden="true"
               />
               {item.isActive && (
@@ -84,6 +85,7 @@ export function BottomNav({ onWalletClick }: BottomNavProps) {
                 key={item.href}
                 href={item.href!}
                 className={className}
+                onClick={() => haptics.tap()}
                 aria-label={item.label}
                 aria-current={item.isActive ? "page" : undefined}
               >
@@ -95,7 +97,10 @@ export function BottomNav({ onWalletClick }: BottomNavProps) {
           return (
             <button
               key={`button-${index}`}
-              onClick={item.onClick}
+              onClick={() => {
+                haptics.tap();
+                item.onClick?.();
+              }}
               className={className}
               aria-label={item.label}
             >

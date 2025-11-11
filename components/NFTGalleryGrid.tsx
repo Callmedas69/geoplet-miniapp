@@ -124,7 +124,11 @@ export function NFTGalleryGrid({
   // Empty state
   if (nfts.length === 0 && !isLoading) {
     return (
-      <div className="text-center py-20">
+      <div
+        className="text-center py-20"
+        role="status"
+        aria-live="polite"
+      >
         <p className="text-gray-700 text-sm">No Geoplets minted yet</p>
         <p className="text-gray-500 text-xs mt-2">
           Be the first to transform your Warplet!
@@ -136,7 +140,10 @@ export function NFTGalleryGrid({
   return (
     <div className="space-y-6 mb-safe mt-4">
       {/* Row 1: Featured Section (Featured NFT + Info Column) */}
-      <div className="grid grid-cols-2 gap-4 py-6 ">
+      <section
+        aria-label="Featured Geoplet"
+        className="grid grid-cols-2 gap-4 py-6"
+      >
         {/* Left: Featured "My Geoplet" Card - 2x bigger, sticky */}
         <div className="sticky top-20 z-10">
           <div className="relative w-full rounded-xl aspect-square border-2 border-dashed border-black/8 overflow-hidden">
@@ -154,9 +161,12 @@ export function NFTGalleryGrid({
             ) : (
               // Show placeholder
               <div className="relative w-full h-full flex items-center justify-center">
-                <p className="text-black/40 text-xs italic text-center">
-                  Your Geoplet here
-                </p>
+                <div className="text-center p-4">
+                  <p className="text-black/60 text-sm mb-2">No Geoplet yet</p>
+                  <p className="text-black/40 text-xs">
+                    Mint yours from the Home page
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -178,7 +188,7 @@ export function NFTGalleryGrid({
                   <div className="flex gap-2">
                     <button
                       onClick={handleOpenSea}
-                      className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="text-xs text-black px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                       aria-label="View on OpenSea"
                     >
                       <Image
@@ -191,7 +201,7 @@ export function NFTGalleryGrid({
                     </button>
                     <button
                       onClick={handleOnchainChecker}
-                      className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="text-xs text-black px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 cursor-pointer"
                       aria-label="View on OnchainChecker"
                     >
                       <Image
@@ -213,23 +223,23 @@ export function NFTGalleryGrid({
             </>
           ) : (
             <div className="flex items-center justify-center">
-              <p className="text-black/40 text-sm italic">geofying....</p>
+              <p className="text-black/40 text-sm italic">Geopleting....</p>
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       <div className="font-bold border-b border-black/8 pb-4">
-        <p>recently geofying</p>
+        <p>Recently Geopleted</p>
       </div>
 
       {/* Row 2: Pure 4-Column NFT Grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {/* Regular NFTs */}
         {sortedNFTs.map((nft) => (
           <div
             key={nft.tokenId}
-            className="group relative aspect-square  rounded-xl overflow-hidden cursor-pointer hover:bg-blue-500 transition-colors"
+            className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer hover:bg-blue-500 transition-colors"
           >
             {/* NFT Image */}
             <div className="relative w-full h-full p-2">
@@ -249,8 +259,11 @@ export function NFTGalleryGrid({
           Array.from({ length: 8 }).map((_, i) => (
             <div
               key={`skeleton-${i}`}
-              className="aspect-square rounded-3xl animate-pulse"
-            />
+              className="aspect-square rounded-xl bg-amber-50/80 border border-amber-200/40 overflow-hidden relative"
+            >
+              {/* Shimmer overlay */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-100/60 to-transparent animate-[shimmer_2s_ease-in-out_infinite]" />
+            </div>
           ))}
       </div>
 

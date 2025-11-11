@@ -17,14 +17,15 @@ export function BeforeMintShareBar({
   fid,
   variant = "inline",
 }: BeforeMintShareBarProps) {
-  const embedUrl = `${appUrl}/embed`;
+  // Share main site URL with OG metadata
+  const shareUrl = appUrl;
 
-  // Farcaster share with embed OG image (1200x800)
+  // Farcaster share
   const handleShareFarcaster = useCallback(async () => {
     try {
       await sdk.actions.composeCast({
         text: SHARE_CONFIG.beforeMint.farcaster,
-        embeds: [embedUrl],
+        embeds: [shareUrl],
       });
 
       haptics.success();
@@ -34,19 +35,19 @@ export function BeforeMintShareBar({
       haptics.error();
       toast.error("Failed to share to Farcaster");
     }
-  }, []);
+  }, [shareUrl]);
 
-  // X/Twitter share with embed OG image (1200x800)
+  // X/Twitter share
   const handleShareX = useCallback(() => {
     const text = SHARE_CONFIG.beforeMint.twitter;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       text
-    )}&url=${encodeURIComponent(embedUrl)}`;
+    )}&url=${encodeURIComponent(shareUrl)}`;
 
     const newWindow = window.open(twitterUrl, "_blank", "noopener,noreferrer");
     if (newWindow) newWindow.opener = null;
     haptics.tap();
-  }, [embedUrl]);
+  }, [shareUrl]);
 
   const containerClasses =
     variant === "fixed"
