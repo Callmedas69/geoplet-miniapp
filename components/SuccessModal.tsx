@@ -63,6 +63,11 @@ export function SuccessModal({
     haptics.tap();
   }, [fid]);
 
+  // Transform raw base64 to data URI if needed (KISS: display layer transformation)
+  const displayImage = image && !image.startsWith("data:")
+    ? `data:image/webp;base64,${image}`
+    : image;
+
   const baseScanUrl = txHash
     ? `${GEOPLET_CONFIG.explorers.basescan}/tx/${txHash}`
     : null;
@@ -81,10 +86,10 @@ export function SuccessModal({
       <DialogContent className="bg-white border-white/20 text-amber-950 max-w-sm sm:max-w-md">
         <div className="space-y-4 sm:space-y-6">
           {/* NFT Preview */}
-          {image && (
+          {displayImage && (
             <div className="relative aspect-square w-full overflow-hidden">
               <Image
-                src={image}
+                src={displayImage}
                 alt={`Geoplet NFT #${tokenId}`}
                 fill
                 className="object-contain rounded-xl"
@@ -145,7 +150,7 @@ export function SuccessModal({
                 alt="Farcaster"
                 width={48}
                 height={48}
-                className="rounded"
+                className="rounded-full"
               />
             </button>
 

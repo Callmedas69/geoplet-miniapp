@@ -12,7 +12,7 @@ const spriteGraffiti = localFont({
 
 export function GallerySection() {
   const { nfts, isLoading, hasMore, loadMore, refetch } = useGalleryNFTs();
-  const { fid } = useWarplets(); // Get user's FID for correct tokenId links
+  const { fid } = useWarplets();
 
   return (
     <section className="max-w-7xl mx-auto">

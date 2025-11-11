@@ -16,8 +16,8 @@ const schoolbellFontData = readFileSync(
   path.join(process.cwd(), "public/font/Schoolbell-Regular.ttf")
 );
 
-// Fetch Geoplet image, convert WebP to PNG, then base64 encode
-async function getGeopletImageAsBase64PNG(fid: string): Promise<string | null> {
+// Get Geoplet image URL via proxy (KISS: use URL instead of base64)
+async function getGeopletImageProxyURL(fid: string): Promise<string | null> {
   try {
     const baseUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}/getNFTMetadata`;
     const params = new URLSearchParams({
@@ -31,52 +31,22 @@ async function getGeopletImageAsBase64PNG(fid: string): Promise<string | null> {
 
     const imageUrl = metadata.image?.cachedUrl || metadata.image?.originalUrl;
 
-    if (!imageUrl) return null;
-
-    console.log("[OG] Fetching Geoplet image from:", imageUrl);
-
-    // Fetch the image
-    const imageResponse = await fetch(imageUrl);
-    if (!imageResponse.ok) {
-      console.error("[OG] Failed to fetch image:", imageResponse.status);
+    if (!imageUrl) {
+      console.log("[OG] No image found in Alchemy metadata");
       return null;
     }
 
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const originalType = imageResponse.headers.get("content-type") || "unknown";
+    console.log("[OG] Found Geoplet image:", imageUrl);
 
-    console.log(
-      "[OG] Original image type:",
-      originalType,
-      "Size:",
-      imageBuffer.byteLength,
-      "bytes"
-    );
+    // Use image proxy to convert to PNG (avoids base64 overhead)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://geoplet.geoart.studio";
+    const proxyUrl = `${appUrl}/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
 
-    // Import sharp dynamically to convert WebP/any format to PNG
-    const sharp = (await import("sharp")).default;
+    console.log("[OG] Using proxy URL:", proxyUrl);
 
-    // Convert to PNG using Sharp (ensures @vercel/og compatibility)
-    const pngBuffer = await sharp(Buffer.from(imageBuffer))
-      .resize(500, 500, {
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .png({ quality: 90 })
-      .toBuffer();
-
-    // Convert PNG to base64
-    const base64 = pngBuffer.toString("base64");
-
-    console.log(
-      "[OG] Converted to PNG base64. Size:",
-      pngBuffer.length,
-      "bytes"
-    );
-
-    return `data:image/png;base64,${base64}`;
+    return proxyUrl;
   } catch (error) {
-    console.error("[OG] Failed to process Geoplet image:", error);
+    console.error("[OG] Failed to get Geoplet image URL:", error);
     return null;
   }
 }
@@ -88,10 +58,10 @@ export async function GET(
   try {
     const { fid } = await params;
 
-    // Fetch Geoplet image, convert to PNG, then base64 encode
-    const geopletImageDataURL = await getGeopletImageAsBase64PNG(fid);
+    // Get Geoplet image URL via proxy (KISS: use URL instead of base64)
+    const geopletImageURL = await getGeopletImageProxyURL(fid);
 
-    if (!geopletImageDataURL) {
+    if (!geopletImageURL) {
       return new Response("Geoplet not found", { status: 404 });
     }
 
@@ -109,7 +79,7 @@ export async function GET(
             padding: "100px",
           }}
         >
-          {/* Left: Geoplet Image - Proxied and converted to PNG */}
+          {/* Left: Geoplet Image - Via proxy URL (no base64) */}
           <div
             style={{
               flex: "1",
@@ -119,10 +89,10 @@ export async function GET(
             }}
           >
             <img
-              src={geopletImageDataURL}
+              src={geopletImageURL}
               alt="Geoplet"
-              width="350"
-              height="350"
+              width="300"
+              height="300"
               style={{
                 borderRadius: "24px",
                 objectFit: "contain",
