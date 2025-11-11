@@ -16,9 +16,10 @@ export function WarpletDisplay({
   alt = "Warplet NFT",
 }: WarpletDisplayProps) {
   // Add data URI prefix if generatedImage is raw base64 (KISS: display layer transformation)
-  const formattedGenerated = generatedImage && !generatedImage.startsWith('data:')
-    ? `data:image/webp;base64,${generatedImage}`
-    : generatedImage;
+  const formattedGenerated =
+    generatedImage && !generatedImage.startsWith("data:")
+      ? `data:image/webp;base64,${generatedImage}`
+      : generatedImage;
 
   const displayImage = formattedGenerated || imageUrl;
 
@@ -29,7 +30,7 @@ export function WarpletDisplay({
           src={displayImage}
           alt={alt}
           fill
-          className="object-contain"
+          className="object-contain rounded-lg"
           priority
         />
 
