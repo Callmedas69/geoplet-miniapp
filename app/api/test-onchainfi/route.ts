@@ -194,7 +194,7 @@ async function testVerifyPayment(paymentHeader?: string): Promise<TestResult> {
       paymentHeader,
       sourceNetwork: 'base',      // New format (supports cross-chain)
       destinationNetwork: 'base',  // New format (supports cross-chain)
-      expectedAmount: PAYMENT_CONFIG.REGENERATE.price, // Use real regenerate price for testing
+      expectedAmount: PAYMENT_CONFIG.MINT.price, // Using MINT price for testing (REGENERATE removed)
       expectedToken: 'USDC',
       recipientAddress: RECIPIENT_ADDRESS,
       priority: 'balanced',
