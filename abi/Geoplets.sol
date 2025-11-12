@@ -237,7 +237,10 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
     function tokenURI(
         uint256 tokenId
     ) public view override returns (string memory) {
-        require(_ownerOf(tokenId) != address(0), "Token doesn't exist");
+        // Handle simulation preview (mobile wallet compatibility)
+        if (_ownerOf(tokenId) == address(0)) {
+            return "data:application/json;utf8,{}";
+        }
 
         // Read image data from SSTORE2 pointer
         address imagePointer = imagePointers[tokenId];
