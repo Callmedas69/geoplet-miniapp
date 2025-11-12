@@ -28,8 +28,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { fid, image_data } = body;
 
+    console.log('[SAVE-GEN-API] Request received:', {
+      fid,
+      fidType: typeof fid,
+      hasImageData: !!image_data,
+      imageDataLength: image_data?.length,
+      timestamp: new Date().toISOString()
+    });
+
     // Validation
     if (!fid || typeof fid !== 'number') {
+      console.error('[SAVE-GEN-API] ❌ Invalid FID:', { fid, fidType: typeof fid });
       return NextResponse.json(
         { success: false, error: 'Invalid FID' },
         { status: 400 }
@@ -37,6 +46,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!image_data || typeof image_data !== 'string') {
+      console.error('[SAVE-GEN-API] ❌ Invalid image data:', {
+        fid,
+        hasImageData: !!image_data,
+        imageDataType: typeof image_data
+      });
       return NextResponse.json(
         { success: false, error: 'Invalid image data' },
         { status: 400 }
@@ -50,6 +64,12 @@ export async function POST(request: NextRequest) {
 
     // Validate base64 format (security: prevent injection)
     if (!rawBase64 || !/^[A-Za-z0-9+/=]+$/.test(rawBase64)) {
+      console.error('[SAVE-GEN-API] ❌ Invalid base64 format:', {
+        fid,
+        hasRawBase64: !!rawBase64,
+        rawBase64Length: rawBase64?.length,
+        rawBase64Preview: rawBase64?.substring(0, 50)
+      });
       return NextResponse.json(
         { success: false, error: 'Invalid base64 format' },
         { status: 400 }
@@ -59,15 +79,32 @@ export async function POST(request: NextRequest) {
     // Validate image size on RAW base64 (matches contract validation exactly)
     // Contract requires: bytes(base64ImageData).length <= 24576 (line 206 in Geoplets.sol)
     const sizeInBytes = Buffer.from(rawBase64, 'base64').length;
+    const sizeInKB = (sizeInBytes / 1024).toFixed(2);
+
+    console.log('[SAVE-GEN-API] Image size check:', {
+      fid,
+      sizeInBytes,
+      sizeInKB: `${sizeInKB} KB`,
+      limit: '24 KB (24576 bytes)',
+      isWithinLimit: sizeInBytes <= 24576
+    });
+
     if (sizeInBytes > 24576) {
+      console.error('[SAVE-GEN-API] ❌ Image too large:', {
+        fid,
+        sizeInBytes,
+        sizeInKB: `${sizeInKB} KB`,
+        exceededBy: `${(sizeInBytes - 24576)} bytes`
+      });
       return NextResponse.json(
-        { success: false, error: `Image too large (${sizeInBytes} bytes). Must be ≤24KB (24576 bytes)` },
+        { success: false, error: `Image too large (${sizeInKB} KB). Must be ≤24KB` },
         { status: 400 }
       );
     }
 
     // Rate limiting
     if (!checkRateLimit(fid.toString())) {
+      console.warn('[SAVE-GEN-API] ⚠️  Rate limit exceeded:', { fid });
       return NextResponse.json(
         { success: false, error: 'Rate limit exceeded. Max 10 requests per minute.' },
         { status: 429 }
@@ -92,12 +129,25 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Supabase error:', error);
+      console.error('[SAVE-GEN-API] ❌ Supabase error:', {
+        error,
+        fid,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorDetails: error.details,
+        sizeInKB
+      });
       return NextResponse.json(
-        { success: false, error: 'Failed to save generation' },
+        { success: false, error: 'Failed to save generation', details: error.message },
         { status: 500 }
       );
     }
+
+    console.log('[SAVE-GEN-API] ✅ Successfully saved to Supabase:', {
+      fid,
+      id: data.id,
+      sizeInKB: `${sizeInKB} KB`
+    });
 
     return NextResponse.json({
       success: true,

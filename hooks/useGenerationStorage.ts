@@ -17,10 +17,35 @@ export function useGenerationStorage() {
   // Save generation to Supabase
   const saveGeneration = useCallback(
     async (fid: number, imageData: string): Promise<boolean> => {
+      // Enhanced validation logging
+      console.log('[SAVE-GEN] Starting save:', {
+        fid,
+        fidType: typeof fid,
+        imageDataLength: imageData?.length,
+        imageDataPrefix: imageData?.substring(0, 50),
+        timestamp: new Date().toISOString()
+      });
+
       if (!fid || !imageData) {
-        console.error("Missing FID or image data");
+        console.error("[SAVE-GEN] ❌ Validation failed:", {
+          fid,
+          fidType: typeof fid,
+          hasImageData: !!imageData
+        });
         return false;
       }
+
+      // Calculate image size (base64 decoded)
+      const base64Data = imageData.split(',')[1] || imageData;
+      const sizeInBytes = Buffer.from(base64Data, 'base64').length;
+      const sizeInKB = (sizeInBytes / 1024).toFixed(2);
+
+      console.log('[SAVE-GEN] Image size:', {
+        fid,
+        sizeInBytes,
+        sizeInKB: `${sizeInKB} KB`,
+        isWithinLimit: sizeInBytes <= 24576
+      });
 
       setIsSaving(true);
       try {
@@ -32,14 +57,32 @@ export function useGenerationStorage() {
 
         const data = await response.json();
 
+        // Enhanced response logging
+        console.log('[SAVE-GEN] API Response:', {
+          status: response.status,
+          success: data.success,
+          error: data.error,
+          fid
+        });
+
         if (!data.success) {
-          console.error("Failed to save generation:", data.error);
+          console.error("[SAVE-GEN] ❌ Save failed:", {
+            fid,
+            error: data.error,
+            status: response.status,
+            sizeInKB
+          });
           return false;
         }
 
+        console.log('[SAVE-GEN] ✅ Save successful:', { fid });
         return true;
       } catch (error) {
-        console.error("Error saving generation:", error);
+        console.error("[SAVE-GEN] ❌ Exception:", {
+          fid,
+          error,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
+        });
         return false;
       } finally {
         setIsSaving(false);

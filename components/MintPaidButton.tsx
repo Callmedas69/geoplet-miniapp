@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * MintButton Component
+ * MintPaidButton Component
  *
- * Handles minting of generated Geoplet ($1 USDC)
- * - Enabled when generated image exists
- * - Integrates x402 payment verification
- * - Shows success modal
+ * Handles minting for users who already paid but mint failed
+ * - NO x402 payment flow (payment already settled)
+ * - Fetches fresh signature from /api/get-mint-signature-paid
+ * - Reuses simulation and mint logic
+ * - Used for payment recovery scenarios
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -15,49 +16,39 @@ import { Button } from "./ui/button";
 import { Loader2, Sparkles } from "lucide-react";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useGeoplet } from "@/hooks/useGeoplet";
-import { usePayment, type MintSignatureResponse } from "@/hooks/usePayment";
-import { useUSDCBalance } from "@/hooks/useUSDCBalance";
-import { validateImageSize, checkFidMinted } from "@/lib/generators";
+import { useContractSimulation } from "@/hooks/useContractSimulation";
+import { validateImageSize } from "@/lib/generators";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
-import { TokenUSDC } from "@web3icons/react";
 import { RotatingText } from "./RotatingText";
-import { PAYMENT_CONFIG } from "@/lib/payment-config";
-import { useContractSimulation } from "@/hooks/useContractSimulation";
 import { gsap } from "gsap";
+import type { MintSignatureResponse } from "@/hooks/usePayment";
 
 type ButtonState =
   | "idle"
-  | "insufficient_usdc"
   | "checking_eligibility"
-  | "paying"
+  | "getting_signature"
   | "simulating"
-  | "settling"
   | "minting"
-  | "success"
-  | "already_minted";
+  | "success";
 
-interface MintButtonProps {
+interface MintPaidButtonProps {
   disabled?: boolean;
   generatedImage: string | null;
   onSuccess: (txHash: string, tokenId: string) => void;
 }
 
-export function MintButton({
+export function MintPaidButton({
   disabled = false,
   generatedImage,
   onSuccess,
-}: MintButtonProps) {
+}: MintPaidButtonProps) {
   const { address } = useAccount();
   const { nft, fid } = useWarplets();
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
-  const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
-  const { hasEnoughUSDC, balance, mintPrice, isLoading: isBalanceLoading } =
-    useUSDCBalance();
   const { checkEligibility, simulateMint } = useContractSimulation();
 
   const [state, setState] = useState<ButtonState>("idle");
-  const [isCheckingMintStatus, setIsCheckingMintStatus] = useState(false);
   const [signatureData, setSignatureData] =
     useState<MintSignatureResponse | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -84,29 +75,6 @@ export function MintButton({
     };
   }, []);
 
-  // Check FID and USDC balance on mount
-  useEffect(() => {
-    async function checkInitialState() {
-      if (!fid) return;
-
-      setIsCheckingMintStatus(true);
-      const minted = await checkFidMinted(fid.toString());
-      setIsCheckingMintStatus(false);
-
-      if (minted) {
-        setState("already_minted");
-        return;
-      }
-
-      if (!hasEnoughUSDC) {
-        setState("insufficient_usdc");
-      } else {
-        setState("idle");
-      }
-    }
-    checkInitialState();
-  }, [fid, hasEnoughUSDC]);
-
   // Handle mint success
   useEffect(() => {
     if (isSuccess && txHash && fid && !successCalledRef.current) {
@@ -118,11 +86,10 @@ export function MintButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'minted' })
       }).catch(err => {
-        console.error('[MINT] Failed to update payment tracking:', err);
+        console.error('[MINT-PAID] Failed to update payment tracking:', err);
         // Don't block success - mint succeeded
       });
 
-      // Call success callback with FID (which equals Geoplet tokenId in 1:1 mapping)
       onSuccess(txHash, fid.toString());
       toast.success("Geoplet NFT minted successfully!");
       haptics.success();
@@ -142,7 +109,6 @@ export function MintButton({
   }, []);
 
   const handleMint = useCallback(async () => {
-    // Immediately disable button to prevent double-click
     setState("checking_eligibility");
 
     if (!fid || !generatedImage) {
@@ -163,10 +129,8 @@ export function MintButton({
         return;
       }
 
-      // Step 0: Pre-flight eligibility check (BEFORE payment)
-      console.log("[MINT] Step 0: Checking eligibility before payment", {
-        fid,
-      });
+      // Step 1: Pre-flight eligibility check
+      console.log("[MINT-PAID] Step 1: Checking eligibility", { fid });
 
       const eligibilityResult = await checkEligibility(
         fid.toString(),
@@ -177,7 +141,7 @@ export function MintButton({
         throw new Error(eligibilityResult.error || "Eligibility check failed");
       }
 
-      console.log("[MINT] ✅ Eligibility check passed");
+      console.log("[MINT-PAID] ✅ Eligibility check passed");
 
       if (abortControllerRef.current.signal.aborted) {
         setSignatureData(null);
@@ -185,45 +149,45 @@ export function MintButton({
         return;
       }
 
-      // Step 1: Payment (verify only, no settlement yet - per LOG.md)
-      console.log("[MINT] Step 1: Starting payment verification", {
-        fid,
-        address,
-      });
-      setState("paying");
-      const signature = await requestMintSignature(fid.toString());
+      // Step 2: Get fresh signature (NO x402 payment)
+      console.log("[MINT-PAID] Step 2: Getting fresh signature", { fid, address });
+      setState("getting_signature");
 
-      if (abortControllerRef.current.signal.aborted) {
-        setSignatureData(null);
-        setState("idle");
-        return;
+      const signatureResponse = await fetch("/api/get-mint-signature-paid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userAddress: address,
+          fid: fid.toString(),
+        }),
+      });
+
+      if (!signatureResponse.ok) {
+        const errorData = await signatureResponse.json();
+        throw new Error(errorData.error || "Failed to get mint signature");
       }
 
-      // ✅ DEFENSIVE VALIDATION: Verify signature structure
-      console.log("[MINT] Signature received", {
-        hasSignature: !!signature,
-        hasVoucher: !!signature?.voucher,
-        hasSignatureField: !!signature?.signature,
-        hasPaymentHeader: !!signature?.paymentHeader,
-        voucherTo: signature?.voucher?.to,
-        voucherFid: signature?.voucher?.fid,
+      const signature = await signatureResponse.json();
+
+      console.log("[MINT-PAID] Signature received", {
+        hasVoucher: !!signature.voucher,
+        hasSignature: !!signature.signature,
       });
 
-      if (
-        !signature ||
-        !signature.voucher ||
-        !signature.signature ||
-        !signature.paymentHeader
-      ) {
-        throw new Error(
-          "Payment verification succeeded but incomplete response received. Please contact support."
-        );
+      if (!signature.voucher || !signature.signature) {
+        throw new Error("Incomplete signature response");
       }
 
       setSignatureData(signature);
 
-      // Step 2: Parallel checks (per LOG.md)
-      console.log("[MINT] Step 2: Running parallel simulation + verification");
+      if (abortControllerRef.current.signal.aborted) {
+        setSignatureData(null);
+        setState("idle");
+        return;
+      }
+
+      // Step 3: Simulate mint
+      console.log("[MINT-PAID] Step 3: Simulating mint");
       setState("simulating");
 
       const simulationResult = await simulateMint(
@@ -236,36 +200,7 @@ export function MintButton({
         throw new Error(simulationResult.error || "Contract simulation failed");
       }
 
-      console.log("[MINT] ✅ Simulation passed");
-
-      if (abortControllerRef.current.signal.aborted) {
-        setSignatureData(null);
-        setState("idle");
-        return;
-      }
-
-      // Step 3: Settle payment (per LOG.md)
-      console.log("[MINT] Step 3: Settling payment onchain");
-      setState("settling");
-
-      const settleResponse = await fetch("/api/settle-payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fid: fid.toString(),
-          paymentHeader: signature.paymentHeader,
-        }),
-      });
-
-      const settleData = await settleResponse.json();
-
-      if (!settleResponse.ok || !settleData.success) {
-        throw new Error(settleData.error || "Payment settlement failed");
-      }
-
-      console.log("[MINT] ✅ Payment settled:", settleData.txHash);
+      console.log("[MINT-PAID] ✅ Simulation passed");
 
       if (abortControllerRef.current.signal.aborted) {
         setSignatureData(null);
@@ -274,16 +209,13 @@ export function MintButton({
       }
 
       // Step 4: Execute mint transaction
-      console.log("[MINT] Step 4: Executing mint transaction", {
-        hasSignature: !!signature,
-        imageSize: generatedImage.length,
-      });
+      console.log("[MINT-PAID] Step 4: Executing mint transaction");
       setState("minting");
       await mintNFT(signature, generatedImage);
 
       // Success handled in useEffect
     } catch (error) {
-      console.error("Mint error:", error);
+      console.error("[MINT-PAID] Mint error:", error);
 
       if (abortControllerRef.current?.signal.aborted) {
         setSignatureData(null);
@@ -294,43 +226,34 @@ export function MintButton({
       const errorMessage =
         error instanceof Error ? error.message : "Failed to mint";
 
-      // Handle specific errors
-      if (errorMessage.toLowerCase().includes("already minted")) {
-        setState("already_minted");
-      } else if (errorMessage.toLowerCase().includes("signature expired")) {
-        setState("idle");
-        setSignatureData(null);
-      } else if (errorMessage.toLowerCase().includes("rejected")) {
-        setState("idle");
-        setSignatureData(null);
-      } else {
-        setState("idle");
-        setSignatureData(null);
+      // Update payment tracking to 'failed' status
+      if (fid) {
+        fetch(`/api/payment-tracking/${fid}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'failed' })
+        }).catch(err => {
+          console.error('[MINT-PAID] Failed to update status to failed:', err);
+        });
       }
 
+      setState("idle");
+      setSignatureData(null);
       haptics.error();
       toast.error(errorMessage);
     }
   }, [
     fid,
     generatedImage,
+    address,
     checkEligibility,
-    requestMintSignature,
     simulateMint,
     mintNFT,
-    address,
   ]);
 
   // Button content
   const getButtonContent = () => {
     switch (state) {
-      case "insufficient_usdc":
-        return (
-          <p className="flex items-center gap-2">
-            <TokenUSDC className="w-5 h-5" variant="branded" />
-            Insufficient Fund
-          </p>
-        );
       case "checking_eligibility":
         return (
           <>
@@ -345,15 +268,15 @@ export function MintButton({
             />
           </>
         );
-      case "paying":
+      case "getting_signature":
         return (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
-                "Initiating x402...",
-                "Verifying payment...",
-                "Processing USDC...",
+                "Generating signature...",
+                "Preparing mint...",
+                "Almost ready...",
               ]}
               interval={1500}
             />
@@ -368,20 +291,6 @@ export function MintButton({
                 "Simulating contract...",
                 "Checking eligibility...",
                 "Validating transaction...",
-              ]}
-              interval={1500}
-            />
-          </>
-        );
-      case "settling":
-        return (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <RotatingText
-              messages={[
-                "Settling payment...",
-                "Transferring USDC...",
-                "Confirming onchain...",
               ]}
               interval={1500}
             />
@@ -404,45 +313,33 @@ export function MintButton({
         );
       case "success":
         return "Minted!";
-      case "already_minted":
-        return "Already Minted";
       default:
         return (
           <>
             <Sparkles className="w-5 h-5" />
-            MINT (${PAYMENT_CONFIG.MINT.price})
+            MINT (paid)
           </>
         );
     }
   };
 
-  // Check if all required data is available
   const hasRequiredData = !!fid && !!address && !!generatedImage;
-
   const isLoading =
     state === "checking_eligibility" ||
-    state === "paying" ||
+    state === "getting_signature" ||
     state === "simulating" ||
-    state === "settling" ||
     state === "minting";
   const isDisabled =
-    disabled ||
-    !hasRequiredData ||
-    isBalanceLoading ||
-    isCheckingMintStatus ||
-    isLoading ||
-    state === "success" ||
-    state === "already_minted" ||
-    state === "insufficient_usdc";
+    disabled || !hasRequiredData || isLoading || state === "success";
 
   return (
     <Button
       ref={buttonRef}
       onClick={handleMint}
       disabled={isDisabled}
-      className="w-full bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+      className="w-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
       size="lg"
-      aria-label={`Mint Geoplet for $${PAYMENT_CONFIG.MINT.price}`}
+      aria-label="Mint Geoplet (already paid)"
     >
       {getButtonContent()}
     </Button>

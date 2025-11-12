@@ -6,6 +6,7 @@ import { useAccount } from "wagmi";
 import { HeroSection } from "@/components/HeroSection";
 import { BadgeSection } from "@/components/BadgeSection";
 import { MintButton } from "@/components/MintButton";
+import { MintPaidButton } from "@/components/MintPaidButton";
 import { SuccessModal } from "@/components/SuccessModal";
 import { TopSection } from "@/components/TopSection";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -27,6 +28,7 @@ export default function Home() {
   const [mintedTokenId, setMintedTokenId] = useState<string | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
   const [isPageLoading, setIsPageLoading] = useState(true);
+  const [paymentStatus, setPaymentStatus] = useState<'paid' | 'unpaid' | 'checking'>('checking');
 
   const { address } = useAccount();
 
@@ -121,6 +123,52 @@ export default function Home() {
 
     loadSavedGeneration();
   }, [fid, address, loadGeneration]);
+
+  // Check payment status on mount (for payment tracker system)
+  useEffect(() => {
+    async function checkPaymentStatus() {
+      if (!fid) {
+        setPaymentStatus('unpaid');
+        return;
+      }
+
+      try {
+        console.log('[PAYMENT-CHECK] Checking payment status for FID:', fid);
+
+        const response = await fetch(`/api/payment-tracking/${fid}`);
+        const data = await response.json();
+
+        if (data.success && data.data.status === 'settled') {
+          console.log('[PAYMENT-CHECK] ✅ Settled payment found:', {
+            fid,
+            settlement_tx_hash: data.data.settlement_tx_hash
+          });
+
+          setPaymentStatus('paid');
+
+          // Load image from Supabase if not already loaded
+          if (!generatedImage) {
+            const savedImage = await loadGeneration(fid);
+            if (savedImage) {
+              const dataUri = savedImage.startsWith('data:')
+                ? savedImage
+                : `data:image/png;base64,${savedImage}`;
+              setGeneratedImage(dataUri);
+              console.log('[PAYMENT-CHECK] Loaded image from Supabase');
+            }
+          }
+        } else {
+          console.log('[PAYMENT-CHECK] No settled payment found:', { fid });
+          setPaymentStatus('unpaid');
+        }
+      } catch (error) {
+        console.error('[PAYMENT-CHECK] Error checking payment status:', error);
+        setPaymentStatus('unpaid');
+      }
+    }
+
+    checkPaymentStatus();
+  }, [fid, loadGeneration, generatedImage]);
 
   // Control page loading state - hide splash when critical data is ready
   useEffect(() => {
@@ -251,9 +299,24 @@ export default function Home() {
         }
 
         // Save to Supabase
+        console.log('[AUTO-GEN] Attempting to save to Supabase', {
+          fid,
+          imageSize: data.imageData.length,
+          imageSizeKB: (data.imageData.length / 1024).toFixed(2)
+        });
+
         const saved = await saveGeneration(fid, data.imageData);
         if (!saved) {
-          console.warn("Failed to save generation to Supabase");
+          console.error("[AUTO-GEN] ❌ FAILED TO SAVE:", {
+            fid,
+            imageDataLength: data.imageData.length
+          });
+          toast.error(`Failed to save image for FID ${fid}. Image may be too large. Check console for details.`, {
+            duration: 5000
+          });
+          // Note: Image still displays in memory, but won't persist after app closure
+        } else {
+          console.log("[AUTO-GEN] ✅ Saved to Supabase successfully");
         }
 
         // Update state
@@ -329,16 +392,32 @@ export default function Home() {
           {/* Badge Section - Trust signals and features */}
           <BadgeSection />
 
-          {/* Mint Button */}
+          {/* Mint Button - Conditional rendering based on payment status */}
           <div className="flex flex-col gap-4 justify-center items-center">
-            <MintButton
-              generatedImage={generatedImage}
-              onSuccess={(hash, tokenId) => {
-                setMintTxHash(hash);
-                setMintedTokenId(tokenId);
-                setShowSuccessModal(true);
-              }}
-            />
+            {paymentStatus === 'checking' ? (
+              <div className="text-center text-gray-400 py-4">
+                Checking payment status...
+              </div>
+            ) : paymentStatus === 'paid' ? (
+              <MintPaidButton
+                generatedImage={generatedImage}
+                onSuccess={(hash, tokenId) => {
+                  setMintTxHash(hash);
+                  setMintedTokenId(tokenId);
+                  setShowSuccessModal(true);
+                  setPaymentStatus('unpaid'); // Reset after successful mint
+                }}
+              />
+            ) : (
+              <MintButton
+                generatedImage={generatedImage}
+                onSuccess={(hash, tokenId) => {
+                  setMintTxHash(hash);
+                  setMintedTokenId(tokenId);
+                  setShowSuccessModal(true);
+                }}
+              />
+            )}
 
             {/* Share Buttons - Below Mint Button */}
             <div className="mt-4 w-full flex justify-center">

@@ -4,6 +4,7 @@
 // Settles payment AFTER contract simulation passes (per LOG.md)
 
 import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // Onchain.fi API configuration
 const ONCHAIN_API_URL = 'https://api.onchain.fi/v1';
@@ -42,7 +43,7 @@ export async function OPTIONS() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { paymentHeader } = body;
+    const { paymentHeader, fid } = body;
 
     // Validate required fields
     if (!paymentHeader) {
@@ -57,6 +58,21 @@ export async function POST(req: NextRequest) {
         }
       );
     }
+
+    if (!fid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'FID is required for payment tracking',
+        },
+        {
+          status: 400,
+          headers: corsHeaders,
+        }
+      );
+    }
+
+    console.log('[SETTLE] Request:', { fid, hasPaymentHeader: !!paymentHeader });
 
     // Validate environment variables
     if (!process.env.ONCHAIN_FI_API_KEY) {
@@ -115,6 +131,43 @@ export async function POST(req: NextRequest) {
     console.log('[SETTLE] ✅ Payment settled successfully!');
     console.log('[SETTLE] Transaction hash:', settleData.data.txHash);
     console.log('[SETTLE] Treasury address:', RECIPIENT_ADDRESS);
+
+    // Write to payment_tracking table
+    try {
+      console.log('[SETTLE] Writing payment tracking record:', {
+        fid,
+        settlement_tx_hash: settleData.data.txHash
+      });
+
+      const { data: trackingData, error: trackingError } = await supabaseAdmin
+        .from('payment_tracking')
+        .upsert({
+          fid: parseInt(fid),
+          settlement_tx_hash: settleData.data.txHash,
+          status: 'settled',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (trackingError) {
+        console.error('[SETTLE] ⚠️  Failed to write payment tracking:', {
+          error: trackingError,
+          fid
+        });
+        // Don't fail the settlement - payment succeeded, tracking is secondary
+        // User can still mint, just won't have recovery tracking
+      } else {
+        console.log('[SETTLE] ✅ Payment tracking record created:', {
+          fid,
+          trackingId: trackingData?.fid
+        });
+      }
+    } catch (trackingErr) {
+      console.error('[SETTLE] ⚠️  Exception writing payment tracking:', trackingErr);
+      // Don't fail the settlement
+    }
 
     return NextResponse.json(
       {

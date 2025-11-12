@@ -116,18 +116,61 @@ async function generateGeometricArt(
     log(`✅ Received base64 image (${(b64Json.length / 1024).toFixed(2)} KB)`);
 
     // Compress image for on-chain storage (reduce payload size for minting)
+    // Contract limit: 24KB (24576 bytes), target: <20KB for safety margin
     log(`🗜️ Compressing image for on-chain storage...`);
     const generatedImageBuffer = Buffer.from(b64Json, 'base64');
-    const compressed = await sharp(generatedImageBuffer)
-      .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .webp({ quality: 75, effort: 6 })
-      .toBuffer();
+
+    // Adaptive compression: try progressively lower quality until size < 20KB
+    const TARGET_SIZE = 20 * 1024; // 20KB target (leaves 4KB buffer)
+    const MAX_SIZE = 24 * 1024; // 24KB absolute limit
+    const compressionAttempts = [
+      { quality: 70, effort: 6 },  // First attempt: slightly more aggressive
+      { quality: 60, effort: 6 },  // Second attempt: more compression
+      { quality: 50, effort: 6 },  // Third attempt: high compression
+      { quality: 40, effort: 6 },  // Fourth attempt: very high compression
+    ];
+
+    let compressed: Buffer | null = null;
+    let finalQuality = 70;
+
+    for (const { quality, effort } of compressionAttempts) {
+      compressed = await sharp(generatedImageBuffer)
+        .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .webp({ quality, effort })
+        .toBuffer();
+
+      const sizeInBytes = compressed.length;
+      const sizeInKB = (sizeInBytes / 1024).toFixed(2);
+
+      log(`🔍 Compression attempt (quality ${quality}): ${sizeInKB} KB`);
+
+      if (sizeInBytes <= TARGET_SIZE) {
+        finalQuality = quality;
+        log(`✅ Target size achieved with quality ${quality}: ${sizeInKB} KB`);
+        break;
+      } else if (sizeInBytes <= MAX_SIZE) {
+        // Within limit but not ideal - continue trying for better compression
+        finalQuality = quality;
+        log(`⚠️  Size ${sizeInKB} KB acceptable but trying lower quality...`);
+      }
+    }
+
+    if (!compressed) {
+      throw new Error('Compression failed - no buffer generated');
+    }
 
     const compressedBase64 = compressed.toString('base64');
+    const finalSizeKB = (compressed.length / 1024).toFixed(2);
+
+    if (compressed.length > MAX_SIZE) {
+      log(`❌ Image still too large after all compression attempts: ${finalSizeKB} KB`);
+      throw new Error(`Image too large even after aggressive compression: ${finalSizeKB} KB. Maximum is 24 KB.`);
+    }
+
     const base64Data = compressedBase64;
 
-    log(`✅ Compression complete! Original: ${(b64Json.length / 1024).toFixed(2)} KB → Compressed: ${(compressedBase64.length / 1024).toFixed(2)} KB`);
-    log(`✅ Size reduction: ${(((b64Json.length - compressedBase64.length) / b64Json.length) * 100).toFixed(1)}%\n`);
+    log(`✅ Compression complete! Original: ${(b64Json.length / 1024).toFixed(2)} KB → Compressed: ${finalSizeKB} KB (quality: ${finalQuality})`);
+    log(`✅ Size reduction: ${(((b64Json.length - compressed.length) / b64Json.length) * 100).toFixed(1)}%\n`);
 
     return { imageData: base64Data, prompt };
   } catch (error: unknown) {
