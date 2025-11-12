@@ -2,10 +2,25 @@
 
 Transform your Warplet NFT into stunning geometric art. Built on Base as a Farcaster miniapp.
 
+## Philosophy
+
+**Geoplet: Algorithmic Identity**
+
+Your Warplet defines you. Your Geoplet reveals you.
+
+One transformation. One geometric truth. One chance to embrace it.
+
+We don't believe in infinite retakes or pixel-perfect curation. The first generation is not random—it is the truest geometric expression of your Warplet, shaped by algorithmic destiny.
+
+**Accept your Geoplet, or walk away. The choice is yours.**
+
+This constraint is not a limitation—it's the art itself.
+
+---
+
 ## Features
 
-- 🎨 **AI Art Generation** - Convert your Warplet into Bauhaus/Suprematism geometric art (FREE first time)
-- 🔄 **Regenerate** - Create new variations with different styles ($0.90 USDC)
+- 🎨 **AI Art Generation** - Convert your Warplet into Bauhaus/Suprematism geometric art (FREE)
 - 🖼️ **Mint as NFT** - Save your creation as an NFT on Base ($1 USDC)
 - 📱 **Farcaster Native** - Built as a Farcaster miniapp with one-click sharing
 - 🎯 **1:1 Mapping** - Your Farcaster ID = Your Warplet tokenId = Your Geoplet tokenId
@@ -49,8 +64,7 @@ npm run build
 
 ## Pricing
 
-- **Auto-generation**: FREE (first-time per FID)
-- **Regeneration**: $0.90 USDC per generation
+- **Generation**: FREE (always free)
 - **Minting**: $1.00 USDC per NFT
 - **Gas**: <$0.01 per tx on Base
 - **Treasury**: `0xFdF53De20f46bAE2Fa6414e6F25EF1654E68Acd0`
@@ -60,7 +74,7 @@ npm run build
 1. **Connect** - RainbowKit wallet on Base network
 2. **Load** - Fetches your Warplet NFT by Farcaster ID
 3. **Generate** - AI transforms it into geometric art (FREE)
-4. **Regenerate** - Pay $0.90 USDC for new variations (optional)
+4. **Accept or Walk Away** - Embrace your algorithmic destiny
 5. **Mint** - Pay $1 USDC to mint as NFT on Base (optional)
 6. **Share** - One-click sharing to Farcaster with OG images
 
