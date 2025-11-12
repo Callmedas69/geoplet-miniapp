@@ -81,7 +81,9 @@
       "Bash(ls:*)",
       "WebFetch(domain:docs.farcaster.xyz)",
       "WebFetch(domain:blog.logrocket.com)",
-      "Bash(npx tailwindcss --help:*)"
+      "Bash(npx tailwindcss --help:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

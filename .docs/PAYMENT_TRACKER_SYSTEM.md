@@ -31,7 +31,7 @@ Payment → Verification → [DEFER Settlement] → Simulation → Settlement �
 ### User-Reported Failures
 - Settlement succeeded but user navigated away → cannot resume mint
 - Mint transaction rejected by user → cannot retry without re-payment
-- Signature expired (>5min) → unclear error, forces re-payment
+- Signature expired (>15min) → unclear error, forces re-payment
 - **💰 CRITICAL: Payment settled but OpenAI credit limit reached** → User paid $0.90 but no image generated
 - **💰 CRITICAL: Payment settled but wallet simulation fails** → User paid $1.00 but cannot mint
 
@@ -89,7 +89,6 @@ CREATE TABLE payment_tracking (
   -- Status Tracking
   status TEXT NOT NULL CHECK (status IN (
     'verified',      -- Payment verified, not yet settled
-    'settling',      -- Settlement in progress
     'settled',       -- USDC transferred onchain (for mint) OR Image generation pending (for regenerate)
     'minting',       -- Mint transaction submitted
     'minted',        -- NFT minted successfully
@@ -100,14 +99,13 @@ CREATE TABLE payment_tracking (
   -- Error Tracking
   error_code TEXT,
   error_message TEXT,
-  retry_count INT DEFAULT 0,
 
   -- Timestamps
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   verified_at TIMESTAMPTZ,
   settled_at TIMESTAMPTZ,
   minted_at TIMESTAMPTZ,
-  expires_at TIMESTAMPTZ,  -- Signature expiration (created_at + 5 min)
+  expires_at TIMESTAMPTZ,  -- Signature expiration (created_at + 15 min)
 
   -- Constraints
   PRIMARY KEY (fid, payment_type),
@@ -124,20 +122,20 @@ CREATE INDEX idx_payment_tracking_expires ON payment_tracking(expires_at);
 
 **Mint Flow:**
 ```
-verified → settling → settled → minting → minted
-    ↓          ↓          ↓         ↓        ↓
-                  failed (at any point)
+verified → settled → minting → minted
+    ↓          ↓          ↓        ↓
+              failed (at any point)
 ```
 
 **Regenerate Flow:**
 ```
-verified → settling → settled → completed
-    ↓          ↓          ↓         ↓
-                  failed (at any point)
+verified → settled → completed
+    ↓          ↓          ↓
+              failed (at any point)
 ```
 
 **Note:** `settled` means different things:
-- **Mint:** Payment settled, ready to mint (signature valid for 15-30 min)
+- **Mint:** Payment settled, ready to mint (signature valid for 15 min)
 - **Regenerate:** Payment settled, image generation pending or failed (can retry within 24 hours)
 
 ### Data Flow Examples
@@ -151,7 +149,7 @@ INSERT INTO payment_tracking (
 ) VALUES (
   12345, 'mint', '0xABC...', 'base64...',
   '{"to":"0x...","fid":12345,...}', '0xSIG...',
-  'verified', NOW() + INTERVAL '5 minutes'
+  'verified', NOW() + INTERVAL '15 minutes'
 );
 
 -- 2. After settlement (settle-payment)
@@ -218,7 +216,7 @@ INSERT INTO payment_tracking (
 **Implementation:**
 ```typescript
 // UPSERT logic
-const expiresAt = new Date(Date.now() + 5 * 60 * 1000);  // 5 minutes
+const expiresAt = new Date(Date.now() + 15 * 60 * 1000);  // 15 minutes
 
 await supabaseAdmin
   .from('payment_tracking')
@@ -234,7 +232,6 @@ await supabaseAdmin
     verified_at: new Date(),
     settled_at: settlementTxHash ? new Date() : null,
     expires_at: expiresAt,
-    retry_count: 0,
     error_code: null
   }, {
     onConflict: 'fid,payment_type'
@@ -256,7 +253,7 @@ await supabaseAdmin
 **Response (if found):**
 ```typescript
 {
-  status: 'verified' | 'settling' | 'settled' | 'minting',
+  status: 'verified' | 'settled' | 'minting',
   mintVoucher?: {
     to: string,
     fid: string,
@@ -287,7 +284,7 @@ const payment = await supabaseAdmin
   .select('*')
   .eq('fid', fid)
   .eq('payment_type', paymentType)
-  .in('status', ['verified', 'settling', 'settled', 'minting'])
+  .in('status', ['verified', 'settled', 'minting'])
   .single();
 
 if (!payment) {
@@ -419,6 +416,25 @@ await supabaseAdmin
 ---
 
 ## Integration Points
+
+### External References
+
+**OnchainFi x402 Payment API:**
+- Documentation: https://docs.onchain.fi
+- Verify endpoint: `POST /v1/verify`
+- Settle endpoint: `POST /v1/settle`
+
+**USDC Contract (Base Mainnet):**
+- Address: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+- Standard: EIP-3009 (transferWithAuthorization)
+- Chain: Base (Chain ID: 8453)
+
+**Geoplet Contract (Base Mainnet):**
+- See `lib/contracts.ts` for current deployment address
+- Mint function signature: EIP-712 typed data
+- Signature deadline: 15 minutes (900 seconds)
+
+---
 
 ### 1. `app/api/get-mint-signature/route.ts`
 
@@ -903,7 +919,7 @@ if (now > deadline) {
 
 **Flow:**
 1. User pays $1 → Verification succeeds → Status = `verified`
-2. User waits 6+ minutes (signature expires at 5 minutes)
+2. User waits 16+ minutes (signature expires at 15 minutes)
 3. User clicks mint → Simulation → Settlement attempt
 4. Backend checks `expires_at` column
 5. If expired, return 402 error with code `SIGNATURE_EXPIRED`
@@ -980,9 +996,9 @@ WHERE fid = 12345 AND payment_type = 'mint';
 -- Result:
 status: 'verified'
 created_at: '2025-01-12 10:00:00'
-expires_at: '2025-01-12 10:05:00'  -- 5 minutes later
+expires_at: '2025-01-12 10:15:00'  -- 15 minutes later
 
--- Current time: 2025-01-12 10:06:00 (EXPIRED)
+-- Current time: 2025-01-12 10:16:00 (EXPIRED)
 
 -- After expiration handling (deleted)
 SELECT * FROM payment_tracking WHERE fid = 12345 AND payment_type = 'mint';
@@ -991,678 +1007,71 @@ SELECT * FROM payment_tracking WHERE fid = 12345 AND payment_type = 'mint';
 
 ---
 
-### Scenario 4: 💰 CRITICAL - Payment Settled but OpenAI Credit Limit Reached (Regenerate)
+### Scenario 4: 💰 Payment Settled but Image Generation Fails (Regenerate)
 
-**Problem:** User paid $0.90, USDC transferred, but OpenAI API fails → No image generated → User lost money
+**Problem:** User paid $0.90, USDC transferred, but image generation fails → User lost money
 
-**Current Flow:**
+**Solution:** Payment tracker stores settlement status, enables retry without re-payment within 24 hours.
+
+**Status Transition:**
 ```
-User pays $0.90 → Verify → Pre-flight check (API key exists) ✅ → Settle ✅ → OpenAI generate → FAIL ❌
-```
-
-**Current Implementation:**
-✅ **Pre-flight check ALREADY exists** (`lib/openai-health.ts`, line 394-412 in generate-image/route.ts)
-- Checks if `OPENAI_API_KEY` configured (prevents 401 errors)
-- Runs BEFORE payment settlement (correct order!)
-
-**NEW FINDING:** ✅ **We CAN detect credit limit errors!**
-
-OpenAI SDK provides specific error detection:
-```typescript
-import OpenAI from 'openai';
-
-try {
-  const response = await openai.images.generate({...});
-} catch (error: unknown) {
-  if (error instanceof OpenAI.RateLimitError) {
-    const apiError = error as OpenAI.APIError;
-
-    // Detect credit/quota exhaustion specifically
-    if (apiError.code === 'insufficient_quota' ||
-        apiError.type === 'insufficient_quota') {
-      // This is a CREDIT LIMIT error, not a rate limit!
-      console.error('❌ CREDIT LIMIT: OpenAI quota exceeded');
-      throw new Error('OPENAI_CREDIT_LIMIT');
-    }
-
-    // Other rate limits (requests/min, tokens/min)
-    console.error('❌ RATE LIMIT: Temporary throttling');
-    throw new Error('OPENAI_RATE_LIMIT');
-  }
-}
+verified → settled (payment processed) → completed (image generated)
+                ↓
+              failed (unrecoverable error)
 ```
 
-**Error Response Structure:**
-```json
-{
-  "error": {
-    "message": "You exceeded your current quota, please check your plan and billing details",
-    "type": "insufficient_quota",
-    "code": "insufficient_quota",
-    "param": null
-  }
-}
-```
-
-**HTTP Status:** 429 (RateLimitError class in SDK)
-
-**Limitation:**
-⚠️ **Cannot PREVENT the error** (no pre-check endpoint for credits), but we **CAN DETECT IT** when it occurs!
-
-**Two-Pronged Solution Required:**
-1. **Detection:** Catch `insufficient_quota` errors and return structured error code
-2. **Recovery:** Retry without re-payment (payment tracker)
-
-### Enhanced Backend Implementation
-
-**Step 1: Add OpenAI Error Detection in `app/api/generate-image/route.ts`:**
-
-```typescript
-import OpenAI from 'openai';
-
-// In generateGeometricArt function (line ~278-282):
-try {
-  const response = await openai.images.edit({
-    model: "gpt-image-1",
-    image: await toFile(buffer, "image.png", { type: "image/png" }),
-    prompt: generationPrompt,
-    n: 1,
-  });
-
-  // ... existing logic
-} catch (error: unknown) {
-  console.error('❌ Generation failed:', error);
-
-  // NEW: Detect OpenAI-specific errors
-  if (error instanceof OpenAI.RateLimitError) {
-    const apiError = error as OpenAI.APIError;
-
-    // Check for credit/quota exhaustion
-    if (apiError.code === 'insufficient_quota' ||
-        apiError.type === 'insufficient_quota') {
-      console.error('❌ CRITICAL: OpenAI credit limit exceeded');
-      throw new Error('OPENAI_CREDIT_LIMIT');
-    }
-
-    // Other rate limits (transient, will clear)
-    console.error('❌ OpenAI rate limit (transient)');
-    throw new Error('OPENAI_RATE_LIMIT');
-  }
-
-  // Other OpenAI API errors
-  if (error instanceof OpenAI.APIError) {
-    const apiError = error as OpenAI.APIError;
-    console.error(`❌ OpenAI API Error: ${apiError.status} - ${apiError.message}`);
-    throw new Error(`OPENAI_API_ERROR: ${apiError.message}`);
-  }
-
-  // Generic errors
-  const errorMessage = error instanceof Error ? error.message : 'Image generation failed';
-  throw new Error(errorMessage);
-}
-```
-
-**Step 2: Return Structured Error in Route Handler (line ~400+):**
-
-```typescript
-// After settlement succeeds
-const settlementResult = await verifyX402Payment(paymentHeader);
-
-try {
-  const base64String = await generateGeometricArt(imageUrl, tokenId, name);
-
-  // Track as completed
-  await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/payment-tracking`, {
-    method: 'POST',
-    body: JSON.stringify({
-      fid,
-      paymentType: 'regenerate',
-      userAddress,
-      paymentHeader,
-      settlementTxHash: settlementResult.txHash,
-      status: 'completed',
-    })
-  });
-
-  return NextResponse.json({
-    success: true,
-    data: base64String,
-    settlementTxHash: settlementResult.txHash,
-  });
-
-} catch (error: any) {
-  console.error('[OPENAI] Generation failed after settlement:', error);
-
-  // Detect credit limit error
-  const errorMessage = error.message || 'Unknown error';
-  const isCreditsError = errorMessage === 'OPENAI_CREDIT_LIMIT';
-
-  // Track payment as settled but not completed
-  await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/payment-tracking`, {
-    method: 'POST',
-    body: JSON.stringify({
-      fid,
-      paymentType: 'regenerate',
-      userAddress,
-      paymentHeader,
-      settlementTxHash: settlementResult.txHash,
-      status: 'settled',  // NOT completed
-      errorCode: isCreditsError ? 'OPENAI_CREDIT_LIMIT' : 'GENERATION_FAILED',
-      errorMessage: errorMessage,
-    })
-  });
-
-  // Return structured error
-  return NextResponse.json({
-    error: isCreditsError
-      ? 'OpenAI credit limit reached. Your payment was processed. Please contact support to retry.'
-      : 'Image generation failed but your payment was processed. You can retry without re-payment.',
-    success: false,
-    code: isCreditsError ? 'OPENAI_CREDIT_LIMIT' : 'GENERATION_FAILED_RETRY',
-    canRetry: true,
-    settlementTxHash: settlementResult.txHash,
-  }, {
-    status: 503,
-    headers: corsHeaders,
-  });
-}
-```
-
-**Step 3: Add Error Code to Types (`types/errors.ts`):**
-
-```typescript
-export enum GenerationErrorCode {
-  // OpenAI API errors
-  OPENAI_API_ERROR = 'OPENAI_API_ERROR',
-  OPENAI_RATE_LIMIT = 'OPENAI_RATE_LIMIT',
-  OPENAI_CREDIT_LIMIT = 'OPENAI_CREDIT_LIMIT',  // NEW
-  OPENAI_TIMEOUT = 'OPENAI_TIMEOUT',
-  GENERATION_FAILED = 'GENERATION_FAILED',
-  // ... rest
-}
-
-export const ERROR_MESSAGES: Record<AppErrorCode, string> = {
-  // ...
-  [GenerationErrorCode.OPENAI_CREDIT_LIMIT]:
-    'OpenAI service temporarily unavailable. Please contact support.',
-  [GenerationErrorCode.OPENAI_RATE_LIMIT]:
-    'Rate limit reached. Please wait a moment and try again.',
-  // ...
-};
-```
-
-### Enhanced Frontend Implementation
-
-**Frontend (`components/RegenerateButton.tsx`):**
-```typescript
-// On mount, check for settled but incomplete regeneration
-useEffect(() => {
-  const checkPendingRegeneration = async () => {
-    if (!fid) return;
-
-    const response = await fetch(`/api/payment-tracking/${fid}/regenerate`);
-    if (!response.ok) return;
-
-    const data = await response.json();
-
-    if (data.status === 'settled' && !data.status === 'completed') {
-      // Payment settled but generation failed
-      setHasPaidButFailed(true);
-      toast.info(
-        'Your previous regeneration payment succeeded but image generation failed. Click to retry without re-payment.',
-        { duration: 10000 }
-      );
-    }
-  };
-
-  checkPendingRegeneration();
-}, [fid]);
-
-// In handleRegenerate catch block - Enhanced error handling:
-catch (error) {
-  console.error("Regenerate error:", error);
-
-  if (abortControllerRef.current?.signal.aborted) return;
-
-  // Parse structured error from API
-  let errorCode: string | undefined;
-  let errorMessage = "Failed to regenerate";
-
-  try {
-    if (paymentResponse && !paymentResponse.ok) {
-      const errorData = await paymentResponse.json();
-      errorCode = errorData.code;
-      errorMessage = errorData.error || errorMessage;
-    }
-  } catch {
-    // Fallback to error instance
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-  }
-
-  // Handle OpenAI credit limit error
-  if (errorCode === 'OPENAI_CREDIT_LIMIT') {
-    toast.error(
-      'OpenAI service temporarily unavailable due to credit limits. ' +
-      'Your payment was processed. Please contact support at support@geoplet.geoart.studio.',
-      { duration: 15000 }
-    );
-    haptics.error();
-    setState("idle");
-    return;
-  }
-
-  // Handle transient rate limit
-  if (errorCode === 'OPENAI_RATE_LIMIT') {
-    toast.error(
-      'Rate limit reached. Please wait a moment and try again.',
-      { duration: 8000 }
-    );
-    haptics.error();
-    setState("idle");
-    return;
-  }
-
-  // Handle generation failed but payment succeeded
-  if (errorCode === 'GENERATION_FAILED_RETRY') {
-    toast.error(
-      'Image generation failed but your payment was processed. ' +
-      'Click regenerate again to retry without re-payment.',
-      { duration: 10000 }
-    );
-    haptics.error();
-    setState("idle");
-    return;
-  }
-
-  // Existing user rejection handling
-  if (
-    errorMessage.toLowerCase().includes("user rejected") ||
-    errorMessage.toLowerCase().includes("user denied") ||
-    errorMessage.toLowerCase().includes("user cancelled")
-  ) {
-    toast.error("Payment cancelled");
-    haptics.error();
-    setState("idle");
-    return;
-  }
-
-  // Generic error
-  toast.error(errorMessage);
-  haptics.error();
-  setState("idle");
-}
-```
-
-**Backend (`app/api/generate-image/route.ts`):**
-```typescript
-const { fid, skipPayment } = await req.json();
-
-if (skipPayment) {
-  // Verify payment already settled in database
-  const payment = await supabaseAdmin
-    .from('payment_tracking')
-    .select('*')
-    .eq('fid', fid)
-    .eq('payment_type', 'regenerate')
-    .eq('status', 'settled')
-    .single();
-
-  if (!payment) {
-    return NextResponse.json({
-      error: 'No settled payment found. Please pay first.'
-    }, { status: 402 });
-  }
-
-  // Check if payment is recent (within 24 hours)
-  const paymentAge = Date.now() - new Date(payment.settled_at).getTime();
-  if (paymentAge > 24 * 60 * 60 * 1000) {
-    return NextResponse.json({
-      error: 'Payment expired. Please pay again.'
-    }, { status: 402 });
-  }
-
-  // Proceed with generation (no payment needed)
-  const image = await generateGeometricArt(...);
-
-  // Mark as completed
-  await supabaseAdmin
-    .from('payment_tracking')
-    .update({ status: 'completed' })
-    .eq('fid', fid)
-    .eq('payment_type', 'regenerate');
-
-  return NextResponse.json({ success: true, data: image });
-}
-
-// Normal flow...
-```
-
-**Database Schema Addition:**
-```sql
--- Add new status for regenerate
-ALTER TABLE payment_tracking
-  DROP CONSTRAINT payment_tracking_status_check;
-
-ALTER TABLE payment_tracking
-  ADD CONSTRAINT payment_tracking_status_check
-  CHECK (status IN (
-    'verified',
-    'settling',
-    'settled',
-    'minting',
-    'minted',
-    'completed',  -- NEW: For regenerate (image generated successfully)
-    'failed'
-  ));
-```
-
-**Why Enhanced Detection + Retry is the Complete Solution:**
-- ✅ **Pre-flight check** (already implemented) prevents API key issues (401 errors)
-- ✅ **NEW: Credit limit detection** via `error.code === 'insufficient_quota'`
-- ✅ **Payment tracking** stores `settled` vs `completed` status
-- ✅ **Retry without re-payment** handles credit limit exhaustion gracefully
-- ✅ **User protected:** Clear error messages + support contact info
-
-**User Experience:**
-1. **Best case:** Pre-flight passes → Settlement → Generation → Success → Mark `completed`
-2. **API key missing:** Pre-flight fails → User NOT charged → Clear error (already working!)
-3. **Credit limit reached:** Settlement succeeds → Generation fails → **Detect `insufficient_quota`** → Store as `settled` (not `completed`) → Return `OPENAI_CREDIT_LIMIT` error code
-4. **User sees:** "OpenAI service temporarily unavailable due to credit limits. Your payment was processed. Please contact support at support@geoplet.geoart.studio."
-5. **Admin action:** Top up OpenAI credits
-6. **User retry:** Clicks regenerate → Detects `settled` payment → Skips payment → Generates → Success → Mark `completed`
-7. **Multiple retries:** Unlimited retries within 24 hours without re-payment
+**Note:** Detailed OpenAI error handling, detection strategies, and retry mechanisms are documented in a separate guide: `OPENAI_ERROR_HANDLING.md`
 
 ---
 
-### Scenario 5: 💰 CRITICAL - Payment Settled but Wallet Simulation Fails (Mint)
+### Scenario 5: 💰 Payment Settled but Wallet Simulation Fails (Mint)
 
 **Problem:** User paid $1, USDC transferred, but wallet simulation fails → Cannot mint → User lost money
 
-**Current Flow:**
-```
-Verify payment ✅
-  ↓
-Code simulation (publicClient.simulateContract) ✅
-  ↓
-Settlement (USDC transferred) ✅
-  ↓
-Wallet simulation (user's wallet tests transaction) ❌ FAILS HERE
-  ↓
-Mint (never reached)
-```
-
-**Root Cause:**
-Two-layer simulation system:
-1. **Code simulation** (line 225 in MintButton.tsx) - Uses publicClient, tests contract logic
-2. **Wallet simulation** (during mint) - User's wallet (Rainbow/Coinbase) runs own simulation
-
-Wallet simulation happens AFTER settlement and can fail even though code simulation passed due to:
-- Different RPC endpoint (wallet uses different node)
-- Wallet checks user's actual gas balance
-- Network state changed between simulations
-- Wallet has stricter validation rules
-
-**Solution: Store Settlement, Allow Retry (Already Covered)**
-
-Good news: This is **already handled** by the payment tracker design!
+**Solution:** Payment tracker stores settlement, signature stays valid for 15 minutes, enabling unlimited retries.
 
 **How It Works:**
+1. Payment settled → Status = `settled`
+2. Wallet simulation fails → Status stays `settled` (not changed to `minting`)
+3. User can retry mint multiple times within 15-minute signature window
+4. If signature expires → User directed to support
 
-1. **Payment settled:**
-```sql
-INSERT INTO payment_tracking (fid, payment_type, status, ...)
-VALUES (12345, 'mint', 'settled', ...);
-```
+**Why This Works:**
+- ✅ Status only changes to `minting` when transaction confirmed onchain
+- ✅ User can retry from different wallet, add gas, or wait for network
+- ✅ 15-minute window tested and working well in production
+- ✅ Payment recovery on page refresh (state restored from database)
 
-2. **Wallet simulation fails:**
-```typescript
-// In components/MintButton.tsx
-try {
-  await mintNFT(signature, generatedImage);  // Wallet prompts, simulation fails
-} catch (error) {
-  // Error thrown, status stays 'settled'
-  toast.error('Mint simulation failed. Please check your wallet and try again.');
-  setState('ready_to_mint');  // Allow retry
-}
-```
-
-3. **User can retry:**
-- Status stays `settled` (not changed to `minting` until tx confirmed)
-- Signature and voucher still valid (for 15 minutes)
-- User clicks mint again → Wallet simulation runs again
-- If simulation passes, mint succeeds
-
-4. **If signature expires:**
-```typescript
-// Before retry, check expiration
-if (now > deadline) {
-  await fetch(`/api/payment-tracking/${fid}/mint`, { method: 'DELETE' });
-  throw new AppError(
-    PaymentErrorCode.SIGNATURE_EXPIRED,
-    'Mint signature expired. Please contact support for refund.'
-  );
-}
-```
-
-**Additional Protection: Better Error Messaging**
-
-```typescript
-// In components/MintButton.tsx catch block
-} catch (error) {
-  const errorMessage = error instanceof Error ? error.message : 'Failed to mint';
-
-  // Detect wallet simulation failure
-  if (
-    errorMessage.includes('simulation') ||
-    errorMessage.includes('gas') ||
-    errorMessage.includes('revert')
-  ) {
-    setState('ready_to_mint');  // Allow retry WITHOUT resetting payment
-    toast.error(
-      'Wallet simulation failed. Common causes:\n' +
-      '• Insufficient gas in your wallet\n' +
-      '• Network congestion\n' +
-      '• RPC endpoint issues\n\n' +
-      'Your payment is safe. Try again in a moment.',
-      { duration: 10000 }
-    );
-    return;
-  }
-
-  // Other errors (signature expired, user rejection, etc.)
-  if (errorMessage.includes('signature expired')) {
-    setState('idle');
-    setSignatureData(null);
-    toast.error(
-      'Mint signature expired. Your payment was processed. ' +
-      'Please contact support at support@geoplet.geoart.studio for assistance.',
-      { duration: 15000 }
-    );
-    return;
-  }
-
-  // Generic error
-  setState('idle');
-  toast.error(errorMessage);
-}
-```
-
-**Database State During Retry:**
-```sql
--- After settlement but before mint
-SELECT status, settlement_tx_hash, expires_at FROM payment_tracking
-WHERE fid = 12345 AND payment_type = 'mint';
-
--- Result:
-status: 'settled'  -- Stays 'settled' even if wallet simulation fails
-settlement_tx_hash: '0xTXHASH...'
-expires_at: '2025-01-12 10:15:00'  -- 15 minutes from signature creation
-
--- User can retry mint as many times as needed within 15-minute window
-```
-
-**Recovery on Page Refresh:**
-If user closes page after wallet simulation failure:
-
-```typescript
-// On mount (GenerateMintButton.tsx / MintButton.tsx)
-useEffect(() => {
-  const checkResumablePayment = async () => {
-    const response = await fetch(`/api/payment-tracking/${fid}/mint`);
-    const data = await response.json();
-
-    if (data.status === 'settled' && !data.isExpired) {
-      // Restore state
-      setSignatureData({
-        voucher: data.mintVoucher,
-        signature: data.mintSignature,
-        paymentHeader: data.paymentHeader,
-      });
-      setState('ready_to_mint');
-
-      toast.info(
-        'You have a pending mint (payment already settled). ' +
-        'Click to try again. If wallet simulation fails, check your gas balance.',
-        { duration: 8000 }
-      );
-    }
-  };
-
-  checkResumablePayment();
-}, [fid]);
-```
-
-**Why This Solution Works:**
-
-1. ✅ **User doesn't lose money:** Payment tracked, can retry
-2. ✅ **Clear error messages:** User knows it's a wallet issue, not payment issue
-3. ✅ **Multiple retry attempts:** User can try different wallets, add gas, wait for network
-4. ✅ **Time window:** 15 minutes to resolve (current implementation, working well)
-5. ✅ **Recovery after refresh:** State restored from database
-6. ✅ **Expiration handling:** If signature expires, user directed to support
-
-**Note on Signature Deadline:**
-Current implementation uses 15 minutes (`deadline: BigInt(Math.floor(Date.now() / 1000) + 900)`). This has been tested and works well in production. No changes needed.
+**Note:** Detailed wallet error handling and retry UX patterns are covered in mint button implementation.
 
 ---
 
 ## Maintenance & Cleanup
 
-### Automatic Cleanup Cron Job
+### Manual Cleanup Strategy
 
-**Endpoint:** `app/api/cleanup-payments/route.ts`
+**For MVP (< 1000 users):**
+Manual cleanup is sufficient. With composite key (FID, payment_type), max records = 2 × active users (one mint + one regenerate).
 
-```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+**Cleanup Queries (Run Monthly):**
+```sql
+-- Delete minted payments older than 30 days
+DELETE FROM payment_tracking
+WHERE status = 'minted'
+  AND minted_at < NOW() - INTERVAL '30 days';
 
-/**
- * POST /api/cleanup-payments
- *
- * Cron job to clean up completed and expired payments
- * Prevents database bloat
- *
- * Called by: Vercel Cron (hourly)
- */
-export async function POST(req: NextRequest) {
-  // Verify cron secret (security)
-  const authHeader = req.headers.get('authorization');
+-- Delete expired payments older than 1 day
+DELETE FROM payment_tracking
+WHERE expires_at < NOW() - INTERVAL '1 day'
+  AND status IN ('verified', 'settled');
 
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    console.error('[CLEANUP] Unauthorized cron attempt');
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  try {
-    console.log('[CLEANUP] Starting payment cleanup...');
-
-    // Delete minted payments older than 7 days
-    const { data: mintedDeleted, error: mintedError } = await supabaseAdmin
-      .from('payment_tracking')
-      .delete()
-      .eq('status', 'minted')
-      .lt('minted_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
-      .select('fid, payment_type');
-
-    if (mintedError) {
-      console.error('[CLEANUP] Error deleting minted payments:', mintedError);
-    } else {
-      console.log(`[CLEANUP] Deleted ${mintedDeleted?.length || 0} minted payments`);
-    }
-
-    // Delete expired payments older than 1 hour
-    const { data: expiredDeleted, error: expiredError } = await supabaseAdmin
-      .from('payment_tracking')
-      .delete()
-      .lt('expires_at', new Date(Date.now() - 60 * 60 * 1000))
-      .in('status', ['verified', 'settling'])
-      .select('fid, payment_type');
-
-    if (expiredError) {
-      console.error('[CLEANUP] Error deleting expired payments:', expiredError);
-    } else {
-      console.log(`[CLEANUP] Deleted ${expiredDeleted?.length || 0} expired payments`);
-    }
-
-    // Delete failed payments older than 24 hours
-    const { data: failedDeleted, error: failedError } = await supabaseAdmin
-      .from('payment_tracking')
-      .delete()
-      .eq('status', 'failed')
-      .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000))
-      .select('fid, payment_type');
-
-    if (failedError) {
-      console.error('[CLEANUP] Error deleting failed payments:', failedError);
-    } else {
-      console.log(`[CLEANUP] Deleted ${failedDeleted?.length || 0} failed payments`);
-    }
-
-    console.log('[CLEANUP] ✅ Cleanup completed successfully');
-
-    return NextResponse.json({
-      success: true,
-      deleted: {
-        minted: mintedDeleted?.length || 0,
-        expired: expiredDeleted?.length || 0,
-        failed: failedDeleted?.length || 0,
-      }
-    });
-  } catch (error) {
-    console.error('[CLEANUP] Unexpected error:', error);
-
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Cleanup failed'
-    }, { status: 500 });
-  }
-}
+-- Delete failed payments older than 7 days
+DELETE FROM payment_tracking
+WHERE status = 'failed'
+  AND created_at < NOW() - INTERVAL '7 days';
 ```
 
-**Vercel Cron Configuration (`vercel.json`):**
-```json
-{
-  "crons": [{
-    "path": "/api/cleanup-payments",
-    "schedule": "0 * * * *"
-  }]
-}
-```
-
-**Environment Variable:**
-```env
-CRON_SECRET=random_secure_string_here
-```
-
-**Cleanup Rules:**
-| Status | Retention | Reason |
-|--------|-----------|--------|
-| `minted` | 7 days | Keep for recent audit trail |
-| `verified`, `settling` (expired) | 1 hour after expiration | Grace period for late settlement |
-| `failed` | 24 hours | Debugging window |
-| `settled`, `minting` | Never auto-delete | User may return to mint |
+**Future Enhancement (Post-MVP):** If database grows beyond 10,000 records, implement automated cleanup cron job.
 
 ---
 
@@ -1875,7 +1284,7 @@ describe('Payment Recovery', () => {
 **Recovery Scenarios:**
 - [ ] Pay → Close page → Reopen → Resume mint
 - [ ] Pay → Reject mint tx → Retry → Success
-- [ ] Pay → Wait 6 min → Attempt settle → Error (signature expired)
+- [ ] Pay → Wait 16 min → Attempt settle → Error (signature expired)
 - [ ] Pay → Network error during settle → Retry → Success
 
 **Edge Cases:**
@@ -2129,23 +1538,32 @@ This payment tracker design follows KISS principles while providing robust recov
 
 ### Implementation Effort:
 
-**Phase 1 - Core Tracking:** ~2-3 hours
-- Database schema + API endpoints
-- Integration with existing mint/regenerate flows
+**Phase 1 - Database & Core API:** ~3-4 hours
+- Create Supabase table with composite key
+- Implement 4 API endpoints (create, get, settle, mint)
+- Configure RLS policies
+- Test database operations
 
-**Phase 2 - Critical Protections:** ~1-2 hours
-- **NEW:** OpenAI error detection in generate-image/route.ts (`insufficient_quota`)
-- Add `OPENAI_CREDIT_LIMIT` error code to types/errors.ts
-- Enhanced error handling in RegenerateButton (structured error codes)
-- Enhanced error handling in MintButton/GenerateMintButton (wallet simulation detection)
-- Skip-payment flow for regenerate retry
+**Phase 2 - Backend Integration:** ~3-4 hours
+- Modify `get-mint-signature/route.ts` (track after verification)
+- Modify `settle-payment/route.ts` (accept FID/type, update tracking)
+- Modify `generate-image/route.ts` (optional regenerate tracking)
+- Handle expiration checks in settlement
 
-**Phase 3 - Polish:** ~1 hour
-- Cleanup cron job
-- User-facing error messages
-- Testing and verification
+**Phase 3 - Frontend Recovery Logic:** ~2-3 hours
+- Add resumable payment check in GenerateMintButton
+- Add resumable payment check in MintButton
+- Handle signature expiration in components
+- Update settle-payment calls to include FID/type
 
-**Total: ~4-6 hours**
+**Phase 4 - Testing & Polish:** ~1-2 hours
+- End-to-end recovery flow testing
+- Error message refinement
+- Documentation and support queries
+
+**Total: ~9-13 hours**
+
+**Note:** Estimate assumes familiarity with existing codebase. Add 2-3 hours for learning curve if new to the project.
 
 ### Decisions Made:
 
