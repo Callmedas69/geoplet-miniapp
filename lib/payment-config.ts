@@ -3,7 +3,6 @@
  *
  * Centralized x402 payment settings for all payment flows
  * - Mint: $1.00 USDC (onchain NFT minting)
- * - Regenerate: $0.90 USDC (AI image generation)
  * - Animation: $5.00 USDC (animation generation)
  */
 
@@ -14,13 +13,6 @@ export const PAYMENT_CONFIG = {
     endpoint: '/api/get-mint-signature',
     label: 'Mint',
     description: 'Mint your unique Geoplet NFT',
-  },
-  REGENERATE: {
-    price: '0.90',
-    priceAtomic: '900000',
-    endpoint: '/api/generate-image',
-    label: 'Regenerate',
-    description: 'Generate a new Geoplet artwork',
   },
   ANIMATION: {
     price: '5.00',
