@@ -5,7 +5,6 @@ import { sdk } from "@farcaster/miniapp-sdk";
 import { useAccount } from "wagmi";
 import { HeroSection } from "@/components/HeroSection";
 import { BadgeSection } from "@/components/BadgeSection";
-import { RegenerateButton } from "@/components/RegenerateButton";
 import { MintButton } from "@/components/MintButton";
 import { SuccessModal } from "@/components/SuccessModal";
 import { TopSection } from "@/components/TopSection";
@@ -330,19 +329,8 @@ export default function Home() {
           {/* Badge Section - Trust signals and features */}
           <BadgeSection />
 
-          {/* Split Buttons: Regenerate & Mint */}
+          {/* Mint Button */}
           <div className="flex flex-col gap-4 justify-center items-center">
-            <RegenerateButton
-              disabled={isGenerating || isMinted}
-              onRegenerate={(imageData) => {
-                setGeneratedImage(imageData);
-                setServiceError(null); // Clear error on successful regeneration
-              }}
-              onSaveToSupabase={async (imageData) => {
-                if (!fid) return false;
-                return await saveGeneration(fid, imageData);
-              }}
-            />
             <MintButton
               generatedImage={generatedImage}
               onSuccess={(hash, tokenId) => {
