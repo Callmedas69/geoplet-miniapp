@@ -4,14 +4,17 @@
 **Date:** 2025-01-12
 **Status:** Proposal
 **Principle:** KISS (Keep It Simple, Stupid)
+**Version:** 2.0 (Mint-Only - Regenerate Removed)
 
 ---
 
 ## Executive Summary
 
-A minimal payment tracking system to handle failures in the "payment first, then regenerate/mint" flow. Uses Supabase with composite key (FID + payment type) to enable payment recovery after network errors, page navigation, or transaction rejection.
+A minimal payment tracking system to handle failures in the "payment first, then mint" flow. Uses Supabase with FID as primary key to enable payment recovery after network errors, page navigation, or transaction rejection.
 
-**Key Decision:** Use FID + payment type as natural composite key (not UUID, not OnchainFi tx hash).
+**Key Decision:** Use FID as natural primary key (not UUID, not OnchainFi tx hash).
+
+**Breaking Change from v1.0:** Removed regenerate flow entirely. System now tracks mint payments only.
 
 ---
 
@@ -32,7 +35,6 @@ Payment → Verification → [DEFER Settlement] → Simulation → Settlement �
 - Settlement succeeded but user navigated away → cannot resume mint
 - Mint transaction rejected by user → cannot retry without re-payment
 - Signature expired (>15min) → unclear error, forces re-payment
-- **💰 CRITICAL: Payment settled but OpenAI credit limit reached** → User paid $0.90 but no image generated
 - **💰 CRITICAL: Payment settled but wallet simulation fails** → User paid $1.00 but cannot mint
 
 ---
@@ -47,7 +49,7 @@ Payment → Verification → [DEFER Settlement] → Simulation → Settlement �
 
 ### Key Decisions
 
-#### Tracking ID: FID + Payment Type (Composite Key)
+#### Tracking ID: FID (Primary Key)
 
 **Options Considered:**
 | Option | Pros | Cons | Verdict |
@@ -55,13 +57,14 @@ Payment → Verification → [DEFER Settlement] → Simulation → Settlement �
 | **OnchainFi TX Hash** | Simple, one source of truth | ❌ Only available AFTER settlement | ❌ Cannot track verify→settle lifecycle |
 | **UUID per payment** | Unique, supports multiple pending | Requires ID propagation through all APIs | ❌ Over-engineering |
 | **Payment header hash** | Deterministic, no generation | Less readable for debugging | ❌ Complexity without benefit |
-| **FID + Payment Type** | Natural key, matches business logic | One payment per user per type | ✅ **CHOSEN** |
+| **FID** | Natural key, matches business logic | One payment per user | ✅ **CHOSEN** |
 
 **Rationale:**
-- Matches existing `unminted_geoplets` table (UPSERT on FID conflict)
-- One user = one pending mint + one pending regenerate (business constraint)
-- Easy queries: "Show payment status for FID 12345's mint"
+- Matches existing `geoplets` table (UPSERT on FID conflict)
+- One user = one pending mint (business constraint: no regenerate)
+- Easy queries: "Show payment status for FID 12345"
 - No UUID generation or propagation needed
+- KISS: Simplest possible design
 
 ---
 
@@ -71,17 +74,16 @@ Payment → Verification → [DEFER Settlement] → Simulation → Settlement �
 
 ```sql
 CREATE TABLE payment_tracking (
-  -- Composite Primary Key
-  fid BIGINT NOT NULL,
-  payment_type TEXT NOT NULL CHECK (payment_type IN ('mint', 'regenerate')),
+  -- Primary Key
+  fid BIGINT PRIMARY KEY,
 
   -- Payment Data
   user_address TEXT NOT NULL,
   payment_header TEXT,  -- Base64 x402 authorization (for settlement retry)
 
-  -- Mint-specific data (NULL for regenerate)
-  mint_voucher JSONB,  -- { to, fid, nonce, deadline }
-  mint_signature TEXT,  -- EIP-712 signature
+  -- Mint Data
+  mint_voucher JSONB NOT NULL,  -- { to, fid, nonce, deadline }
+  mint_signature TEXT NOT NULL,  -- EIP-712 signature
 
   -- Settlement Data
   settlement_tx_hash TEXT,  -- OnchainFi tx hash (NULL until settled)
@@ -89,10 +91,9 @@ CREATE TABLE payment_tracking (
   -- Status Tracking
   status TEXT NOT NULL CHECK (status IN (
     'verified',      -- Payment verified, not yet settled
-    'settled',       -- USDC transferred onchain (for mint) OR Image generation pending (for regenerate)
-    'minting',       -- Mint transaction submitted
+    'settled',       -- USDC transferred onchain, ready to mint
+    'minting',       -- Mint transaction submitted (not used currently)
     'minted',        -- NFT minted successfully
-    'completed',     -- Regenerate: Image generated successfully
     'failed'         -- Unrecoverable error
   )),
 
@@ -105,10 +106,9 @@ CREATE TABLE payment_tracking (
   verified_at TIMESTAMPTZ,
   settled_at TIMESTAMPTZ,
   minted_at TIMESTAMPTZ,
-  expires_at TIMESTAMPTZ,  -- Signature expiration (created_at + 15 min)
+  expires_at TIMESTAMPTZ NOT NULL,  -- Signature expiration (created_at + 15 min)
 
   -- Constraints
-  PRIMARY KEY (fid, payment_type),
   CONSTRAINT settlement_tx_unique UNIQUE (settlement_tx_hash)
     WHERE settlement_tx_hash IS NOT NULL
 );
@@ -116,65 +116,56 @@ CREATE TABLE payment_tracking (
 -- Indexes
 CREATE INDEX idx_payment_tracking_status ON payment_tracking(status);
 CREATE INDEX idx_payment_tracking_expires ON payment_tracking(expires_at);
+CREATE INDEX idx_payment_tracking_created ON payment_tracking(created_at);
 ```
 
 ### Status Lifecycle
 
 **Mint Flow:**
 ```
-verified → settled → minting → minted
-    ↓          ↓          ↓        ↓
-              failed (at any point)
+verified → settled → minted
+    ↓          ↓        ↓
+           failed (at any point)
 ```
 
-**Regenerate Flow:**
-```
-verified → settled → completed
-    ↓          ↓          ↓
-              failed (at any point)
-```
+**Status Meanings:**
+- `verified`: Payment verified, signature generated, not yet settled
+- `settled`: USDC transferred on-chain, ready to mint (signature valid for 15 min)
+- `minted`: NFT minted successfully, payment complete
+- `failed`: Unrecoverable error (signature expired, contract error, etc.)
 
-**Note:** `settled` means different things:
-- **Mint:** Payment settled, ready to mint (signature valid for 15 min)
-- **Regenerate:** Payment settled, image generation pending or failed (can retry within 24 hours)
+**Note:** `minting` status exists in schema but currently unused (could be used for transaction pending state in future).
 
-### Data Flow Examples
+### Data Flow Example
 
-**Mint Flow:**
 ```sql
 -- 1. After verification (get-mint-signature)
 INSERT INTO payment_tracking (
-  fid, payment_type, user_address, payment_header,
-  mint_voucher, mint_signature, status, expires_at
+  fid, user_address, payment_header,
+  mint_voucher, mint_signature, status, expires_at, verified_at
 ) VALUES (
-  12345, 'mint', '0xABC...', 'base64...',
+  12345, '0xABC...', 'base64...',
   '{"to":"0x...","fid":12345,...}', '0xSIG...',
-  'verified', NOW() + INTERVAL '15 minutes'
-);
+  'verified', NOW() + INTERVAL '15 minutes', NOW()
+) ON CONFLICT (fid) DO UPDATE SET
+  payment_header = EXCLUDED.payment_header,
+  mint_voucher = EXCLUDED.mint_voucher,
+  mint_signature = EXCLUDED.mint_signature,
+  status = EXCLUDED.status,
+  expires_at = EXCLUDED.expires_at,
+  verified_at = EXCLUDED.verified_at;
 
 -- 2. After settlement (settle-payment)
 UPDATE payment_tracking
 SET status = 'settled',
     settlement_tx_hash = '0xTXHASH...',
     settled_at = NOW()
-WHERE fid = 12345 AND payment_type = 'mint';
+WHERE fid = 12345;
 
--- 3. After mint success (GenerateMintButton)
+-- 3. After mint success (MintButton)
 UPDATE payment_tracking
 SET status = 'minted', minted_at = NOW()
-WHERE fid = 12345 AND payment_type = 'mint';
-```
-
-**Regenerate Flow:**
-```sql
--- 1. After verification + immediate settlement (generate-image)
-INSERT INTO payment_tracking (
-  fid, payment_type, user_address, payment_header,
-  settlement_tx_hash, status, settled_at
-) VALUES (
-  12345, 'regenerate', '0xABC...', 'base64...',
-  '0xTXHASH...', 'settled', NOW()
-);
+WHERE fid = 12345;
 ```
 
 ---
@@ -191,17 +182,16 @@ INSERT INTO payment_tracking (
 ```typescript
 {
   fid: number,
-  paymentType: 'mint' | 'regenerate',
   userAddress: string,
   paymentHeader: string,
-  voucher?: {  // Mint only
+  voucher: {
     to: string,
     fid: bigint,
     nonce: bigint,
     deadline: bigint
   },
-  signature?: string,  // Mint only
-  settlementTxHash?: string  // Regenerate only (immediate settlement)
+  signature: string,
+  settlementTxHash?: string  // Optional: if immediate settlement
 }
 ```
 
@@ -222,7 +212,6 @@ await supabaseAdmin
   .from('payment_tracking')
   .upsert({
     fid,
-    payment_type: paymentType,
     user_address: userAddress,
     payment_header: paymentHeader,
     mint_voucher: voucher,
@@ -232,21 +221,21 @@ await supabaseAdmin
     verified_at: new Date(),
     settled_at: settlementTxHash ? new Date() : null,
     expires_at: expiresAt,
-    error_code: null
+    error_code: null,
+    error_message: null
   }, {
-    onConflict: 'fid,payment_type'
+    onConflict: 'fid'  // Overwrite existing payment for this FID
   });
 ```
 
 **Called By:**
 - `app/api/get-mint-signature/route.ts` (after verification)
-- `app/api/generate-image/route.ts` (after verification + settlement)
 
 ---
 
 ### 2. Get Payment Status
 
-**Endpoint:** `GET /api/payment-tracking/:fid/:paymentType`
+**Endpoint:** `GET /api/payment-tracking/:fid`
 
 **Purpose:** Check for resumable payments on page load
 
@@ -254,14 +243,14 @@ await supabaseAdmin
 ```typescript
 {
   status: 'verified' | 'settled' | 'minting',
-  mintVoucher?: {
+  mintVoucher: {
     to: string,
     fid: string,
     nonce: string,
     deadline: string
   },
-  mintSignature?: string,
-  paymentHeader?: string,
+  mintSignature: string,
+  paymentHeader: string,
   settlementTxHash?: string,
   expiresAt: string,
   canResume: boolean,  // Computed: status='settled' AND not expired
@@ -279,27 +268,31 @@ await supabaseAdmin
 
 **Implementation:**
 ```typescript
-const payment = await supabaseAdmin
+const { data: payment, error } = await supabaseAdmin
   .from('payment_tracking')
   .select('*')
   .eq('fid', fid)
-  .eq('payment_type', paymentType)
   .in('status', ['verified', 'settled', 'minting'])
   .single();
 
 if (!payment) {
-  return { status: null, canResume: false };
+  return NextResponse.json({ status: null, canResume: false });
 }
 
 const now = new Date();
 const expiresAt = new Date(payment.expires_at);
 const isExpired = now > expiresAt;
 
-return {
-  ...payment,
+return NextResponse.json({
+  status: payment.status,
+  mintVoucher: payment.mint_voucher,
+  mintSignature: payment.mint_signature,
+  paymentHeader: payment.payment_header,
+  settlementTxHash: payment.settlement_tx_hash,
+  expiresAt: payment.expires_at,
   canResume: payment.status === 'settled' && !isExpired,
   isExpired
-};
+});
 ```
 
 **Called By:**
@@ -310,7 +303,7 @@ return {
 
 ### 3. Update Settlement Status
 
-**Endpoint:** `PATCH /api/payment-tracking/:fid/:paymentType/settle`
+**Endpoint:** `PATCH /api/payment-tracking/:fid/settle`
 
 **Purpose:** Update payment record after OnchainFi settlement succeeds
 
@@ -339,8 +332,7 @@ await supabaseAdmin
     settlement_tx_hash: settlementTxHash,
     settled_at: new Date()
   })
-  .eq('fid', fid)
-  .eq('payment_type', paymentType);
+  .eq('fid', fid);
 ```
 
 **Called By:**
@@ -350,7 +342,7 @@ await supabaseAdmin
 
 ### 4. Mark as Minted
 
-**Endpoint:** `PATCH /api/payment-tracking/:fid/:paymentType/mint`
+**Endpoint:** `PATCH /api/payment-tracking/:fid/mint`
 
 **Purpose:** Mark payment as completed after successful mint transaction
 
@@ -377,8 +369,7 @@ await supabaseAdmin
     status: 'minted',
     minted_at: new Date()
   })
-  .eq('fid', fid)
-  .eq('payment_type', paymentType);
+  .eq('fid', fid);
 ```
 
 **Called By:**
@@ -389,7 +380,7 @@ await supabaseAdmin
 
 ### 5. Delete Payment (Cleanup)
 
-**Endpoint:** `DELETE /api/payment-tracking/:fid/:paymentType`
+**Endpoint:** `DELETE /api/payment-tracking/:fid`
 
 **Purpose:** Remove expired or invalid payment records
 
@@ -405,8 +396,7 @@ await supabaseAdmin
 await supabaseAdmin
   .from('payment_tracking')
   .delete()
-  .eq('fid', fid)
-  .eq('payment_type', paymentType);
+  .eq('fid', fid);
 ```
 
 **Called By:**
@@ -464,7 +454,6 @@ try {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       fid: voucherParams.fid,
-      paymentType: 'mint',
       userAddress: voucherParams.to,
       paymentHeader,
       voucher: voucher,
@@ -495,7 +484,7 @@ return NextResponse.json({
 
 **Changes Required:**
 
-#### A. Accept FID and Payment Type in Request
+#### A. Accept FID in Request
 
 **Current:**
 ```typescript
@@ -510,10 +499,10 @@ export async function POST(req: NextRequest) {
 ```typescript
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { paymentHeader, fid, paymentType } = body;
+  const { paymentHeader, fid } = body;
 
   // Validate required fields
-  if (!paymentHeader || !fid || !paymentType) {
+  if (!paymentHeader || !fid) {
     return NextResponse.json(
       { success: false, error: 'Missing required fields' },
       { status: 400, headers: corsHeaders }
@@ -523,7 +512,39 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-#### B. Update Tracking After Settlement
+#### B. Check Expiration Before Settlement
+
+**Location:** Before calling OnchainFi settle endpoint
+
+**New:**
+```typescript
+// Check if payment exists and is not expired
+const { data: payment, error: paymentError } = await supabaseAdmin
+  .from('payment_tracking')
+  .select('expires_at, status')
+  .eq('fid', fid)
+  .single();
+
+if (payment && new Date(payment.expires_at) < new Date()) {
+  // Delete expired payment
+  await supabaseAdmin
+    .from('payment_tracking')
+    .delete()
+    .eq('fid', fid);
+
+  return NextResponse.json({
+    success: false,
+    error: {
+      code: 'SIGNATURE_EXPIRED',
+      message: 'Payment signature expired. Please pay again.',
+    }
+  }, { status: 402, headers: corsHeaders });
+}
+
+// Proceed with settlement...
+```
+
+#### C. Update Tracking After Settlement
 
 **Location:** After OnchainFi settlement succeeds (~line 116)
 
@@ -536,7 +557,7 @@ console.log('[SETTLE] Transaction hash:', settleData.data.txHash);
 // NEW: Update payment tracking
 try {
   await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/payment-tracking/${fid}/${paymentType}/settle`,
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/payment-tracking/${fid}/settle`,
     {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -559,7 +580,7 @@ return NextResponse.json({
 }, { status: 200, headers: corsHeaders });
 ```
 
-#### C. Frontend Changes (Callers)
+#### D. Frontend Changes (Callers)
 
 **GenerateMintButton.tsx (~line 195):**
 ```typescript
@@ -570,14 +591,13 @@ const settleResponse = await fetch('/api/settle-payment', {
   body: JSON.stringify({ paymentHeader }),
 });
 
-// NEW: Add fid and paymentType
+// NEW: Add fid
 const settleResponse = await fetch('/api/settle-payment', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     paymentHeader,
-    fid: fid,  // From props/state
-    paymentType: 'mint'
+    fid: fid  // From props/state
   }),
 });
 ```
@@ -589,121 +609,7 @@ const settleResponse = await fetch('/api/settle-payment', {
 
 ---
 
-### 3. `app/api/generate-image/route.ts`
-
-**Changes Required:**
-
-#### A. Return Settlement TX Hash in Response
-
-**Location:** After settlement succeeds (~line 163)
-
-**Current:**
-```typescript
-const settled = await verifyX402Payment(paymentHeader);
-
-if (!settled) {
-  return NextResponse.json(
-    { success: false, error: 'Payment settlement failed' },
-    { status: 402 }
-  );
-}
-
-// Generate image...
-```
-
-**New:**
-```typescript
-// Modify verifyX402Payment to return tx hash
-const settlementResult = await verifyX402Payment(paymentHeader);
-
-if (!settlementResult.success) {
-  return NextResponse.json(
-    { success: false, error: 'Payment settlement failed' },
-    { status: 402 }
-  );
-}
-
-// Store tx hash
-const settlementTxHash = settlementResult.txHash;
-
-// Generate image...
-```
-
-**Function Signature Change (~line 37):**
-```typescript
-// BEFORE
-async function verifyX402Payment(paymentHeader: string): Promise<boolean>
-
-// AFTER
-async function verifyX402Payment(
-  paymentHeader: string
-): Promise<{ success: boolean; txHash?: string }>
-```
-
-**Return Value Change (~line 163):**
-```typescript
-// BEFORE
-return true;
-
-// AFTER
-return {
-  success: true,
-  txHash: settleData.data.txHash
-};
-```
-
-#### B. Return TX Hash to Frontend
-
-**Location:** Response (~line 450)
-
-**Current:**
-```typescript
-return NextResponse.json({
-  success: true,
-  data: base64String,
-}, { status: 200, headers: corsHeaders });
-```
-
-**New:**
-```typescript
-return NextResponse.json({
-  success: true,
-  data: base64String,
-  settlementTxHash: settlementTxHash || null,  // Include tx hash
-}, { status: 200, headers: corsHeaders });
-```
-
-#### C. Track Payment (Optional for Regenerate)
-
-**Note:** Regenerate flow immediately settles, so tracking is less critical (no deferred settlement). Include if audit trail is desired.
-
-**Location:** After settlement succeeds (~line 170)
-
-**Optional Addition:**
-```typescript
-// Track regeneration payment (for audit)
-if (settlementTxHash && fid) {
-  try {
-    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/payment-tracking`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        fid: parseInt(fid),
-        paymentType: 'regenerate',
-        userAddress: '0x...',  // Extract from payment header if needed
-        paymentHeader,
-        settlementTxHash,
-      })
-    });
-  } catch (error) {
-    console.error('[TRACKING] Failed to track regeneration:', error);
-  }
-}
-```
-
----
-
-### 4. `components/GenerateMintButton.tsx`
+### 3. `components/GenerateMintButton.tsx`
 
 **Changes Required:**
 
@@ -717,7 +623,7 @@ useEffect(() => {
     if (!fid) return;
 
     try {
-      const response = await fetch(`/api/payment-tracking/${fid}/mint`);
+      const response = await fetch(`/api/payment-tracking/${fid}`);
 
       if (!response.ok) return;
 
@@ -731,11 +637,6 @@ useEffect(() => {
           signature: data.mintSignature,
           paymentHeader: data.paymentHeader,
         });
-
-        // Load generated image from unminted_geoplets or regenerate
-        if (generatedImage) {
-          setGeneratedImage(generatedImage);
-        }
 
         setState('ready_to_mint');
 
@@ -751,7 +652,7 @@ useEffect(() => {
         console.log('[RECOVERY] Signature expired, cleaning up...');
 
         // Delete expired payment
-        await fetch(`/api/payment-tracking/${fid}/mint`, {
+        await fetch(`/api/payment-tracking/${fid}`, {
           method: 'DELETE'
         });
 
@@ -783,7 +684,7 @@ toast.success("Successfully minted!");
 
 // Mark as minted in tracking
 try {
-  await fetch(`/api/payment-tracking/${fid}/mint/mint`, {
+  await fetch(`/api/payment-tracking/${fid}/mint`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -812,7 +713,7 @@ if (signatureData?.voucher?.deadline) {
     setSignatureData(null);
 
     // Delete expired payment
-    await fetch(`/api/payment-tracking/${fid}/mint`, {
+    await fetch(`/api/payment-tracking/${fid}`, {
       method: 'DELETE'
     });
 
@@ -828,7 +729,7 @@ if (signatureData?.voucher?.deadline) {
 
 ---
 
-### 5. `components/MintButton.tsx`
+### 4. `components/MintButton.tsx`
 
 **Changes Required:**
 
@@ -849,20 +750,18 @@ if (signatureData?.voucher?.deadline) {
 1. User pays $1 → Settlement succeeds → Status = `settled`
 2. User closes browser tab
 3. User returns to app
-4. `useEffect` checks `/api/payment-tracking/${fid}/mint`
+4. `useEffect` checks `/api/payment-tracking/${fid}`
 5. Finds status=`settled`, canResume=true
-6. Restores `signatureData` and `generatedImage` from database
+6. Restores `signatureData` from database
 7. Sets state to `ready_to_mint`
 8. Shows toast: "You have a pending mint. Click to continue!"
 9. User clicks mint → Simulation → Mint → Success
-
-**Implementation:** ✅ Covered in Integration Point #4A
 
 **Database State:**
 ```sql
 -- Before user returns
 SELECT status, mint_voucher, mint_signature FROM payment_tracking
-WHERE fid = 12345 AND payment_type = 'mint';
+WHERE fid = 12345;
 
 -- Result:
 status: 'settled'
@@ -883,18 +782,6 @@ mint_signature: '0xSIG...'
 6. If valid, retry mint without re-payment
 7. If expired, force new payment
 
-**Implementation:** ✅ Covered in Integration Point #4C
-
-**Database State:**
-```sql
--- After rejection (status unchanged)
-SELECT status FROM payment_tracking
-WHERE fid = 12345 AND payment_type = 'mint';
-
--- Result:
-status: 'settled'  -- NOT changed to 'minting' until tx confirmed
-```
-
 **Code:**
 ```typescript
 // Before retry, check expiration
@@ -905,7 +792,7 @@ if (now > deadline) {
   // Force new payment
   setState('idle');
   setSignatureData(null);
-  await fetch(`/api/payment-tracking/${fid}/mint`, { method: 'DELETE' });
+  await fetch(`/api/payment-tracking/${fid}`, { method: 'DELETE' });
   throw new AppError(PaymentErrorCode.SIGNATURE_EXPIRED, 'Signature expired');
 } else {
   // Retry mint
@@ -926,105 +813,48 @@ if (now > deadline) {
 6. Frontend deletes expired payment from tracking
 7. Force new payment flow
 
-**Implementation:**
-
 **Backend Validation (`app/api/settle-payment/route.ts`):**
 ```typescript
-export async function POST(req: NextRequest) {
-  const { paymentHeader, fid, paymentType } = await req.json();
+const { data: payment } = await supabaseAdmin
+  .from('payment_tracking')
+  .select('expires_at')
+  .eq('fid', fid)
+  .single();
 
-  // Check payment tracking for expiration
-  const payment = await supabaseAdmin
+if (payment && new Date(payment.expires_at) < new Date()) {
+  // Delete expired payment
+  await supabaseAdmin
     .from('payment_tracking')
-    .select('expires_at')
-    .eq('fid', fid)
-    .eq('payment_type', paymentType)
-    .single();
+    .delete()
+    .eq('fid', fid);
 
-  if (payment && new Date(payment.expires_at) < new Date()) {
-    // Delete expired payment
-    await supabaseAdmin
-      .from('payment_tracking')
-      .delete()
-      .eq('fid', fid)
-      .eq('payment_type', paymentType);
-
-    return NextResponse.json({
-      success: false,
-      error: {
-        code: 'SIGNATURE_EXPIRED',
-        message: 'Payment signature expired. Please pay again.',
-      }
-    }, { status: 402, headers: corsHeaders });
-  }
-
-  // Proceed with settlement...
-}
-```
-
-**Frontend Handling (`components/GenerateMintButton.tsx`):**
-```typescript
-try {
-  const settleResponse = await fetch('/api/settle-payment', {
-    method: 'POST',
-    body: JSON.stringify({ paymentHeader, fid, paymentType: 'mint' }),
-  });
-
-  if (!settleResponse.ok) {
-    const errorData = await settleResponse.json();
-
-    if (errorData.error?.code === 'SIGNATURE_EXPIRED') {
-      // Reset to initial state
-      setState('idle');
-      setSignatureData(null);
-
-      toast.error('Payment signature expired. Please pay again.');
-      return;
+  return NextResponse.json({
+    success: false,
+    error: {
+      code: 'SIGNATURE_EXPIRED',
+      message: 'Payment signature expired. Please pay again.',
     }
-  }
-} catch (error) {
-  // Handle error...
+  }, { status: 402, headers: corsHeaders });
 }
 ```
 
-**Database State:**
-```sql
--- Before expiration check
-SELECT status, created_at, expires_at FROM payment_tracking
-WHERE fid = 12345 AND payment_type = 'mint';
+**Frontend Handling:**
+```typescript
+if (!settleResponse.ok) {
+  const errorData = await settleResponse.json();
 
--- Result:
-status: 'verified'
-created_at: '2025-01-12 10:00:00'
-expires_at: '2025-01-12 10:15:00'  -- 15 minutes later
-
--- Current time: 2025-01-12 10:16:00 (EXPIRED)
-
--- After expiration handling (deleted)
-SELECT * FROM payment_tracking WHERE fid = 12345 AND payment_type = 'mint';
--- Result: (empty)
+  if (errorData.error?.code === 'SIGNATURE_EXPIRED') {
+    setState('idle');
+    setSignatureData(null);
+    toast.error('Payment signature expired. Please pay again.');
+    return;
+  }
+}
 ```
 
 ---
 
-### Scenario 4: 💰 Payment Settled but Image Generation Fails (Regenerate)
-
-**Problem:** User paid $0.90, USDC transferred, but image generation fails → User lost money
-
-**Solution:** Payment tracker stores settlement status, enables retry without re-payment within 24 hours.
-
-**Status Transition:**
-```
-verified → settled (payment processed) → completed (image generated)
-                ↓
-              failed (unrecoverable error)
-```
-
-**Note:** Detailed OpenAI error handling, detection strategies, and retry mechanisms are documented in a separate guide: `OPENAI_ERROR_HANDLING.md`
-
----
-
-### Scenario 5: 💰 Payment Settled but Wallet Simulation Fails (Mint)
+### Scenario 4: 💰 Payment Settled but Wallet Simulation Fails (Mint)
 
 **Problem:** User paid $1, USDC transferred, but wallet simulation fails → Cannot mint → User lost money
 
@@ -1037,12 +867,10 @@ verified → settled (payment processed) → completed (image generated)
 4. If signature expires → User directed to support
 
 **Why This Works:**
-- ✅ Status only changes to `minting` when transaction confirmed onchain
+- ✅ Status only changes to `minted` when transaction confirmed onchain
 - ✅ User can retry from different wallet, add gas, or wait for network
 - ✅ 15-minute window tested and working well in production
 - ✅ Payment recovery on page refresh (state restored from database)
-
-**Note:** Detailed wallet error handling and retry UX patterns are covered in mint button implementation.
 
 ---
 
@@ -1051,7 +879,7 @@ verified → settled (payment processed) → completed (image generated)
 ### Manual Cleanup Strategy
 
 **For MVP (< 1000 users):**
-Manual cleanup is sufficient. With composite key (FID, payment_type), max records = 2 × active users (one mint + one regenerate).
+Manual cleanup is sufficient. With single FID key, max records = active users.
 
 **Cleanup Queries (Run Monthly):**
 ```sql
@@ -1085,11 +913,7 @@ WHERE status = 'failed'
 -- Enable RLS
 ALTER TABLE payment_tracking ENABLE ROW LEVEL SECURITY;
 
--- Policy: Users can read their own payments (if authenticated by FID)
--- Note: Geoplet uses FID-based auth, not Supabase auth
--- For now, rely on API-level security (service role key)
-
--- Policy: Only service role can write (backend only)
+-- Policy: Only service role can access (backend only)
 CREATE POLICY "Service role full access"
 ON payment_tracking
 FOR ALL
@@ -1140,7 +964,6 @@ describe('Payment Tracking Database', () => {
   test('UPSERT creates new payment', async () => {
     const result = await createPayment({
       fid: 12345,
-      paymentType: 'mint',
       userAddress: '0xABC...',
       paymentHeader: 'base64...',
     });
@@ -1151,27 +974,15 @@ describe('Payment Tracking Database', () => {
 
   test('UPSERT updates existing payment', async () => {
     // Create initial payment
-    await createPayment({ fid: 12345, paymentType: 'mint', ... });
+    await createPayment({ fid: 12345, ... });
 
     // Update with new signature
     const result = await createPayment({
       fid: 12345,
-      paymentType: 'mint',
       signature: '0xNEWSIG...'
     });
 
     expect(result.signature).toBe('0xNEWSIG...');
-  });
-
-  test('Composite key allows multiple payment types per FID', async () => {
-    await createPayment({ fid: 12345, paymentType: 'mint' });
-    await createPayment({ fid: 12345, paymentType: 'regenerate' });
-
-    const mintPayment = await getPayment(12345, 'mint');
-    const regenPayment = await getPayment(12345, 'regenerate');
-
-    expect(mintPayment).toBeDefined();
-    expect(regenPayment).toBeDefined();
   });
 });
 ```
@@ -1184,7 +995,6 @@ describe('Payment Tracking API', () => {
       method: 'POST',
       body: JSON.stringify({
         fid: 12345,
-        paymentType: 'mint',
         userAddress: '0xABC...',
         paymentHeader: 'base64...',
       }),
@@ -1195,27 +1005,13 @@ describe('Payment Tracking API', () => {
     expect(data.status).toBe('verified');
   });
 
-  test('GET /api/payment-tracking/:fid/:type returns payment', async () => {
-    // Create payment first
-    await createPayment({ fid: 12345, paymentType: 'mint' });
+  test('GET /api/payment-tracking/:fid returns payment', async () => {
+    await createPayment({ fid: 12345 });
 
-    const response = await fetch('/api/payment-tracking/12345/mint');
+    const response = await fetch('/api/payment-tracking/12345');
     const data = await response.json();
 
     expect(data.status).toBe('verified');
-  });
-
-  test('PATCH /api/payment-tracking/:fid/:type/settle updates status', async () => {
-    await createPayment({ fid: 12345, paymentType: 'mint' });
-
-    const response = await fetch('/api/payment-tracking/12345/mint/settle', {
-      method: 'PATCH',
-      body: JSON.stringify({ settlementTxHash: '0xTXHASH...' }),
-    });
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.status).toBe('settled');
   });
 });
 ```
@@ -1234,7 +1030,7 @@ describe('Payment Recovery', () => {
     clearComponentState();
 
     // 3. Check for resumable payment
-    const resumable = await fetch(`/api/payment-tracking/${fid}/mint`);
+    const resumable = await fetch(`/api/payment-tracking/${fid}`);
     const data = await resumable.json();
 
     expect(data.canResume).toBe(true);
@@ -1244,30 +1040,29 @@ describe('Payment Recovery', () => {
     await mintNFT(data.mintVoucher, data.mintSignature);
 
     // 5. Verify marked as minted
-    const final = await fetch(`/api/payment-tracking/${fid}/mint`);
+    const final = await fetch(`/api/payment-tracking/${fid}`);
     const finalData = await final.json();
     expect(finalData.status).toBe('minted');
   });
 
   test('Expired signature forces new payment', async () => {
-    // 1. Create payment
-    await createPayment({ fid: 12345, paymentType: 'mint' });
+    await createPayment({ fid: 12345 });
 
-    // 2. Simulate time passing (6 minutes)
-    await setSystemTime(Date.now() + 6 * 60 * 1000);
+    // Simulate time passing (16 minutes)
+    await setSystemTime(Date.now() + 16 * 60 * 1000);
 
-    // 3. Attempt settlement
+    // Attempt settlement
     const response = await fetch('/api/settle-payment', {
       method: 'POST',
-      body: JSON.stringify({ fid: 12345, paymentType: 'mint' }),
+      body: JSON.stringify({ fid: 12345 }),
     });
 
     expect(response.status).toBe(402);
     const error = await response.json();
     expect(error.error.code).toBe('SIGNATURE_EXPIRED');
 
-    // 4. Verify payment deleted
-    const payment = await getPayment(12345, 'mint');
+    // Verify payment deleted
+    const payment = await getPayment(12345);
     expect(payment).toBeNull();
   });
 });
@@ -1279,7 +1074,6 @@ describe('Payment Recovery', () => {
 - [ ] Pay $1 → Get signature → Simulate → Settle → Mint → Success
 - [ ] Payment tracked at each step (verified → settled → minted)
 - [ ] Settlement tx hash stored correctly
-- [ ] Cleanup cron deletes minted payment after 7 days
 
 **Recovery Scenarios:**
 - [ ] Pay → Close page → Reopen → Resume mint
@@ -1288,7 +1082,6 @@ describe('Payment Recovery', () => {
 - [ ] Pay → Network error during settle → Retry → Success
 
 **Edge Cases:**
-- [ ] User has both mint and regenerate pending (composite key works)
 - [ ] Multiple browsers (last payment wins due to UPSERT)
 - [ ] Rapid clicks (idempotency)
 
@@ -1341,72 +1134,42 @@ WHERE status IN ('verified', 'settled', 'minted')
   AND created_at > NOW() - INTERVAL '24 hours';
 ```
 
-### Logging Strategy
-
-**Key Events to Log:**
-1. Payment tracked (verified)
-2. Settlement succeeded (tx hash)
-3. Mint succeeded (blockchain tx hash)
-4. Recovery triggered (resumable payment found)
-5. Signature expired (forced re-payment)
-6. Cleanup executed (records deleted)
-
-**Log Format:**
-```typescript
-console.log('[PAYMENT_TRACKING]', {
-  event: 'payment_verified',
-  fid: 12345,
-  paymentType: 'mint',
-  expiresAt: '2025-01-12T10:05:00Z',
-});
-
-console.log('[PAYMENT_TRACKING]', {
-  event: 'settlement_succeeded',
-  fid: 12345,
-  paymentType: 'mint',
-  settlementTxHash: '0xTXHASH...',
-});
-```
-
 ---
 
 ## Rollout Plan
 
-### Phase 1: Database Setup
+### Phase 1: Database Setup (~1 hour)
 1. Create `payment_tracking` table in Supabase
 2. Configure RLS policies
 3. Create indexes
 4. Verify admin access
 
-### Phase 2: API Endpoints
+### Phase 2: API Endpoints (~3 hours)
 1. Implement `POST /api/payment-tracking`
-2. Implement `GET /api/payment-tracking/:fid/:type`
-3. Implement `PATCH /api/payment-tracking/:fid/:type/settle`
-4. Implement `PATCH /api/payment-tracking/:fid/:type/mint`
-5. Test endpoints with Postman/Insomnia
+2. Implement `GET /api/payment-tracking/:fid`
+3. Implement `PATCH /api/payment-tracking/:fid/settle`
+4. Implement `PATCH /api/payment-tracking/:fid/mint`
+5. Implement `DELETE /api/payment-tracking/:fid`
+6. Test endpoints with Postman/Insomnia
 
-### Phase 3: Integration
+### Phase 3: Backend Integration (~2 hours)
 1. Modify `get-mint-signature/route.ts` (track after verification)
-2. Modify `settle-payment/route.ts` (add fid/type, update tracking)
-3. Update frontend components (add fid/type to settle calls)
+2. Modify `settle-payment/route.ts` (add fid, check expiration, update tracking)
+3. Update frontend components (add fid to settle calls)
 4. Test mint flow end-to-end
 
-### Phase 4: Recovery Logic
+### Phase 4: Frontend Recovery (~2 hours)
 1. Add resumable payment check in GenerateMintButton
 2. Add resumable payment check in MintButton
-3. Handle signature expiration in settle-payment
+3. Handle signature expiration in components
 4. Test recovery scenarios
 
-### Phase 5: Maintenance
-1. Implement cleanup cron endpoint
-2. Configure Vercel cron schedule
-3. Set CRON_SECRET environment variable
-4. Monitor cleanup logs
+### Phase 5: Testing & Polish (~1 hour)
+1. End-to-end recovery flow testing
+2. Error message refinement
+3. Documentation
 
-### Phase 6: Monitoring
-1. Set up Supabase dashboard queries
-2. Configure error alerts (if settlement rate drops)
-3. Document customer support queries
+**Total: ~9 hours**
 
 ---
 
@@ -1416,7 +1179,6 @@ console.log('[PAYMENT_TRACKING]', {
 
 **Per Payment Record:**
 - fid: 8 bytes
-- payment_type: ~10 bytes
 - user_address: 42 bytes
 - payment_header: ~500 bytes (base64 encoded)
 - mint_voucher: ~200 bytes (JSON)
@@ -1424,16 +1186,16 @@ console.log('[PAYMENT_TRACKING]', {
 - settlement_tx_hash: 66 bytes
 - status: ~10 bytes
 - timestamps: 40 bytes (5 fields × 8 bytes)
-- **Total: ~1,008 bytes per record**
+- **Total: ~1,000 bytes per record**
 
 **Capacity:**
 - Free tier: 500MB = 500,000,000 bytes
-- **~495,000 payment records** before hitting free tier limit
+- **~500,000 payment records** before hitting free tier limit
 
-**With Cleanup (7-day retention for minted):**
+**With Cleanup (30-day retention for minted):**
 - Assume 100 mints/day
-- 100 × 7 days = 700 records max
-- **0.7MB storage usage (well within free tier)**
+- 100 × 30 days = 3,000 records max
+- **~3MB storage usage (well within free tier)**
 
 ### API Costs (Supabase Free Tier: Unlimited API calls)
 
@@ -1449,137 +1211,63 @@ console.log('[PAYMENT_TRACKING]', {
 
 ---
 
-## Future Enhancements (Out of Scope)
-
-### 1. Refund Mechanism
-**Problem:** User paid but cannot mint (contract error, FID already minted, etc.)
-
-**Solution:**
-- Admin panel to mark payment as `refund_eligible`
-- Manual USDC transfer from treasury wallet
-- Update status to `refunded`
-
-**Complexity:** Medium (requires admin auth, onchain transaction)
-
-### 2. Webhook Support
-**Problem:** Polling for payment status is inefficient
-
-**Solution:**
-- OnchainFi webhook endpoint (if supported)
-- Receive settlement notifications via POST
-- Update payment_tracking automatically
-
-**Complexity:** Low (if OnchainFi supports webhooks)
-
-### 3. Cross-Chain Settlement
-**Problem:** User on Ethereum, treasury on Base
-
-**Solution:**
-- Already supported in OnchainFi API (`sourceNetwork` / `destinationNetwork`)
-- No changes needed to payment tracker
-
-**Complexity:** None (already compatible)
-
-### 4. Payment Batching
-**Problem:** High gas costs for multiple settlements
-
-**Solution:**
-- Accumulate multiple payments
-- Settle in single batch transaction
-- Split settlement tx hash across records
-
-**Complexity:** High (requires custom settlement logic)
-
-**Note:** Not needed on Base (gas is cheap per user instructions)
-
----
-
 ## Conclusion
 
-This payment tracker design follows KISS principles while providing robust recovery mechanisms for ALL identified failure scenarios:
+This payment tracker design follows KISS principles while providing robust recovery mechanisms for ALL identified failure scenarios.
 
 ### Recovery Scenarios Covered:
 
 1. ✅ Settlement succeeded but user closed page → Auto-resume on return
 2. ✅ Mint transaction rejected by user → Retry with signature check
 3. ✅ Signature expired before settlement → Force new payment
-4. ✅ 💰 **CRITICAL:** Payment settled but OpenAI credit limit reached → Detect `insufficient_quota` error + retry without re-payment
-5. ✅ 💰 **CRITICAL:** Payment settled but wallet simulation fails → Store settlement + allow retry with clear error messages
+4. ✅ 💰 **CRITICAL:** Payment settled but wallet simulation fails → Store settlement + allow retry
 
 ### Key Strengths:
 
 **Architecture:**
-- Natural composite key (FID + payment type) - no UUID overhead
-- Minimal API surface (4 endpoints) - no new availability check needed
-- `completed` status for regenerate flow (distinguishes settled vs. image generated)
+- Simple FID primary key (not composite, not UUID)
+- Minimal API surface (5 endpoints)
 - Settlement tx hash stored for audit trail
-- Leverages existing OpenAI health check (already implemented)
+- UPSERT pattern matches existing tables
 
 **User Protection:**
-- Pre-flight check (already exists) prevents API key issues
-- **NEW:** OpenAI error detection (`insufficient_quota` code)
-- Retry without re-payment for credit limit failures
 - Retry mechanisms for all failure scenarios
-- Clear, actionable error messages with support contact
-- 15-minute signature deadline (current, tested in production)
-- 24-hour retry window for regenerate failures
+- Clear, actionable error messages
+- 15-minute signature deadline (tested in production)
+- Payment recovery on page refresh
 
 **Professional:**
-- Automatic cleanup (Vercel cron)
+- Automatic cleanup (manual monthly for MVP)
 - Zero additional cost (Supabase free tier)
 - Comprehensive error tracking
-- Support-friendly (settlement tx hashes for verification)
+- Support-friendly (settlement tx hashes)
 
 **Security:**
-- Not negotiable: RLS policies, server-side validation
-- Payment data encrypted at rest (Supabase default)
+- RLS policies, server-side validation
+- Payment data encrypted at rest
 - TLS in transit
-- No private keys or sensitive data stored
+- No private keys stored
 
-### Implementation Effort:
+### Breaking Changes from v1.0:
 
-**Phase 1 - Database & Core API:** ~3-4 hours
-- Create Supabase table with composite key
-- Implement 4 API endpoints (create, get, settle, mint)
-- Configure RLS policies
-- Test database operations
-
-**Phase 2 - Backend Integration:** ~3-4 hours
-- Modify `get-mint-signature/route.ts` (track after verification)
-- Modify `settle-payment/route.ts` (accept FID/type, update tracking)
-- Modify `generate-image/route.ts` (optional regenerate tracking)
-- Handle expiration checks in settlement
-
-**Phase 3 - Frontend Recovery Logic:** ~2-3 hours
-- Add resumable payment check in GenerateMintButton
-- Add resumable payment check in MintButton
-- Handle signature expiration in components
-- Update settle-payment calls to include FID/type
-
-**Phase 4 - Testing & Polish:** ~1-2 hours
-- End-to-end recovery flow testing
-- Error message refinement
-- Documentation and support queries
-
-**Total: ~9-13 hours**
-
-**Note:** Estimate assumes familiarity with existing codebase. Add 2-3 hours for learning curve if new to the project.
-
-### Decisions Made:
-
-1. **Signature deadline:** ✅ Keep 15 minutes (current implementation working well)
-2. **Regenerate retry window:** ✅ 24 hours (approved)
-3. **Refund mechanism:** ❌ Out of scope (will be implemented later)
+- ❌ Removed `payment_type` column
+- ❌ Removed composite key `(fid, payment_type)`
+- ❌ Removed `completed` status (was for regenerate)
+- ❌ Removed all regenerate-related code
+- ✅ Simplified to FID primary key
+- ✅ Simpler API endpoints (no `:paymentType` param)
+- ✅ Reduced implementation time (~30% less code)
 
 **Ready for implementation upon approval.**
 
 ---
 
-**Document Version:** 1.2
+**Document Version:** 2.0 (Mint-Only)
 **Last Updated:** 2025-01-12
 **Changelog:**
-- v1.0: Initial design with 3 recovery scenarios
-- v1.1: Added Scenarios 4 & 5 (OpenAI credit limit, wallet simulation failure)
-- v1.2: Enhanced with OpenAI error detection capability (`insufficient_quota` code)
+- v1.0: Initial design with mint + regenerate
+- v1.1: Added recovery scenarios 4 & 5
+- v1.2: Enhanced OpenAI error detection
+- **v2.0: BREAKING - Removed regenerate flow, simplified to mint-only**
 
-**Next Review:** After Phase 6 rollout
+**Next Review:** After Phase 4 rollout
