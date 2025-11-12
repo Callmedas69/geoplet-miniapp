@@ -4,11 +4,6 @@ import { toFile } from 'openai/uploads';
 import sharp from 'sharp';
 import { checkOpenAIAvailability } from '@/lib/openai-health';
 import { supabaseAdmin } from '@/lib/supabase';
-import { PAYMENT_CONFIG } from '@/lib/payment-config';
-
-// x402 Payment Configuration
-const ONCHAIN_API_URL = 'https://api.onchain.fi/v1';
-const RECIPIENT_ADDRESS = process.env.NEXT_PUBLIC_RECIPIENT_ADDRESS as string;
 
 // CORS headers
 const corsHeaders = {
@@ -29,146 +24,6 @@ const log = (...args: unknown[]) => {
     console.log(...args);
   }
 };
-
-/**
- * Verify and settle x402 payment via Onchain.fi API
- * (Same implementation as get-mint-signature route)
- */
-async function verifyX402Payment(paymentHeader: string): Promise<boolean> {
-  try {
-    // Decode payment header to check expiration
-    try {
-      const decoded = JSON.parse(Buffer.from(paymentHeader, 'base64').toString());
-      const validBefore = parseInt(decoded.payload?.authorization?.validBefore || '0');
-      const now = Math.floor(Date.now() / 1000);
-      const timeUntilExpiry = validBefore - now;
-
-      console.log('[PAYMENT-CHECK] Signature validity check:', {
-        validBefore: validBefore,
-        currentTime: now,
-        expiresIn: `${timeUntilExpiry}s`,
-        isExpired: now > validBefore,
-        validBeforeISO: new Date(validBefore * 1000).toISOString(),
-        currentTimeISO: new Date(now * 1000).toISOString(),
-      });
-
-      // Check if signature is already expired
-      if (now > validBefore) {
-        console.error('[PAYMENT-CHECK] ❌ Payment signature EXPIRED!');
-        console.error('[PAYMENT-CHECK] Expired since:', `${now - validBefore} seconds ago`);
-        return false;
-      }
-
-      // Warn if expiring soon (less than 60 seconds)
-      if (timeUntilExpiry < 60) {
-        console.warn('[PAYMENT-CHECK] ⚠️ Signature expiring soon:', `${timeUntilExpiry}s remaining`);
-      }
-
-      console.log('[ONCHAIN.FI] Payment Details:', {
-        from: decoded.payload?.authorization?.from,
-        to: decoded.payload?.authorization?.to,
-        value: decoded.payload?.authorization?.value,
-        scheme: decoded.scheme,
-        network: decoded.network,
-      });
-    } catch (decodeError) {
-      console.error('[PAYMENT-CHECK] Could not decode payment header:', decodeError);
-      return false;
-    }
-
-    console.log('[ONCHAIN.FI] Step 1: Verifying payment...');
-
-    // Step 1: Verify payment
-    const requestBody = {
-      paymentHeader,
-      sourceNetwork: 'base',      // New format (supports cross-chain)
-      destinationNetwork: 'base',  // New format (supports cross-chain)
-      expectedAmount: PAYMENT_CONFIG.REGENERATE.price, // Decimal format per onchain.fi spec
-      expectedToken: 'USDC',
-      recipientAddress: RECIPIENT_ADDRESS,
-      priority: 'balanced',
-    };
-
-    console.log('[ONCHAIN.FI] Request body:', JSON.stringify(requestBody, null, 2));
-
-    const verifyResponse = await fetch(`${ONCHAIN_API_URL}/verify`, {
-      method: 'POST',
-      headers: {
-        'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    const verifyData = await verifyResponse.json();
-
-    // ✅ Comprehensive logging to diagnose issues
-    console.log('[ONCHAIN.FI] Full verify response:', JSON.stringify(verifyData, null, 2));
-    console.log('[ONCHAIN.FI] Response status:', verifyResponse.status);
-    console.log('[ONCHAIN.FI] Response statusText:', verifyResponse.statusText);
-
-    // Legacy logs for backward compatibility
-    console.log('[ONCHAIN.FI] Verify response summary:', {
-      status: verifyResponse.status,
-      valid: verifyData.data?.valid,
-      facilitator: verifyData.data?.facilitator,
-    });
-
-    if (!verifyResponse.ok || verifyData.status !== 'success' || !verifyData.data?.valid) {
-      console.error('[ONCHAIN.FI] ❌ Verification failed');
-      console.error('[ONCHAIN.FI] Error details:', {
-        status: verifyData.status,
-        message: verifyData.message,
-        error: verifyData.error,
-        reason: verifyData.data?.reason,
-        data: verifyData.data,
-      });
-      return false;
-    }
-
-    console.log('[ONCHAIN.FI] ✅ Payment verified');
-    console.log('[ONCHAIN.FI] Step 2: Settling payment...');
-
-    // Step 2: Settle payment
-    const settleResponse = await fetch(`${ONCHAIN_API_URL}/settle`, {
-      method: 'POST',
-      headers: {
-        'X-API-Key': process.env.ONCHAIN_FI_API_KEY!,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        paymentHeader,
-        sourceNetwork: 'base',      // New format (supports cross-chain)
-        destinationNetwork: 'base',  // New format (supports cross-chain)
-        priority: 'balanced',
-      }),
-    });
-
-    const settleData = await settleResponse.json();
-
-    console.log('[ONCHAIN.FI] Settle response:', {
-      status: settleResponse.status,
-      settled: settleData.data?.settled,
-      txHash: settleData.data?.txHash,
-    });
-
-    if (!settleResponse.ok || settleData.status !== 'success' || !settleData.data?.settled) {
-      console.error('[ONCHAIN.FI] ❌ Settlement failed:', settleData.data?.reason);
-      return false;
-    }
-
-    console.log('[ONCHAIN.FI] ✅ Payment settled successfully!');
-    console.log('[ONCHAIN.FI] Transaction hash:', settleData.data.txHash);
-
-    return true;
-  } catch (error: unknown) {
-    console.error('[ONCHAIN.FI] Payment error:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      error: error,
-    });
-    return false;
-  }
-}
 
 /**
  * Generate geometric art using gpt-image-1 with direct image-to-image transformation
@@ -282,34 +137,6 @@ async function generateGeometricArt(
   }
 }
 
-/**
- * Check if FID has already generated (has entry in Supabase)
- * Used to determine if generation should be FREE (first time) or PAID (regeneration)
- */
-async function hasFidGenerated(fid: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('unminted_geoplets')
-      .select('fid')
-      .eq('fid', parseInt(fid))
-      .limit(1);
-
-    if (error) {
-      console.error('[FID-CHECK] Supabase error:', error);
-      // On error, assume not generated (allow free generation)
-      return false;
-    }
-
-    const hasGenerated = data && data.length > 0;
-    console.log(`[FID-CHECK] FID ${fid} has generated: ${hasGenerated}`);
-    return hasGenerated;
-  } catch (error) {
-    console.error('[FID-CHECK] Error checking FID:', error);
-    // On error, assume not generated (allow free generation)
-    return false;
-  }
-}
-
 // Handle OPTIONS preflight
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
@@ -342,56 +169,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if this is a first-time generation (FREE) or regeneration (PAID)
-    const isFirstTime = fid ? !(await hasFidGenerated(fid)) : false;
+    console.log(`[AUTO-GEN] Free generation for FID: ${fid || 'unknown'}`);
 
-    console.log(`[GENERATION-TYPE] FID: ${fid}, First time: ${isFirstTime}`);
-
-    // Get x402 payment header
-    const paymentHeader = request.headers.get('X-Payment');
-
-    // If no payment header AND not first time → require payment
-    if (!paymentHeader && !isFirstTime) {
-      // Return x402-compliant 402 response
-      console.log('[X402] No X-Payment header found, returning 402 Payment Required');
-
-      // Use pre-calculated atomic units from PAYMENT_CONFIG (KISS principle)
-      return NextResponse.json(
-        {
-          x402Version: 1,
-          accepts: [
-            {
-              scheme: 'exact',
-              network: 'base',
-              maxAmountRequired: PAYMENT_CONFIG.REGENERATE.priceAtomic,
-              asset: process.env.BASE_USDC_ADDRESS!,
-              payTo: RECIPIENT_ADDRESS,
-              resource: `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/generate-image`,
-              description: `Generate a new Geoplet artwork for ${PAYMENT_CONFIG.REGENERATE.price} USDC`,
-              mimeType: 'application/json',
-              maxTimeoutSeconds: 600,
-              extra: {
-                name: 'USD Coin',
-                version: '2',
-              },
-            },
-          ],
-          error: 'Payment Required',
-        },
-        {
-          status: 402,
-          headers: corsHeaders,
-        }
-      );
-    }
-
-    // If first time (auto-gen) → skip payment, proceed directly to generation
-    if (isFirstTime) {
-      console.log('[AUTO-GEN] First-time generation - FREE (no payment required)');
-    }
-
-    // Pre-check OpenAI availability BEFORE settling payment
-    console.log('[OPENAI-PRECHECK] Checking service availability before payment...');
+    // Pre-check OpenAI availability
+    console.log('[OPENAI-PRECHECK] Checking service availability...');
     const health = await checkOpenAIAvailability();
 
     if (!health.available) {
@@ -411,30 +192,9 @@ export async function POST(request: NextRequest) {
 
     console.log('[OPENAI-PRECHECK] ✅ Service available');
 
-    // Only verify/settle payment if NOT first time (regeneration requires payment)
-    if (!isFirstTime && paymentHeader) {
-      console.log('[ONCHAIN.FI] Verifying and settling x402 payment...');
-      const paymentValid = await verifyX402Payment(paymentHeader);
-
-      if (!paymentValid) {
-        return NextResponse.json(
-          {
-            error: 'Payment verification/settlement failed - Invalid or insufficient payment',
-            success: false,
-          },
-          {
-            status: 402,
-            headers: corsHeaders,
-          }
-        );
-      }
-
-      console.log('[ONCHAIN.FI] Payment verified and settled successfully');
-    }
-
     log(`\n🎨 Starting generation for Warplet #${tokenId}`);
     log(`📷 Image URL: ${imageUrl}`);
-    log(`💰 Payment: ${isFirstTime ? 'FREE (first time)' : `PAID ($${PAYMENT_CONFIG.REGENERATE.price} USDC)`}`);
+    log(`💰 Payment: FREE (always free generation)`);
 
     // Generate geometric art
     const result = await generateGeometricArt(imageUrl, tokenId, name || `Warplet #${tokenId}`);
@@ -485,9 +245,9 @@ export async function GET() {
   return NextResponse.json({
     status: 'ok',
     service: 'geometric-art-generation',
-    price: `${PAYMENT_CONFIG.REGENERATE.price} USDC (x402)`,
+    price: 'FREE (always free)',
     network: 'base',
     provider: 'OpenAI gpt-image-1',
-    paymentProtocol: 'x402 (onchain.fi)',
+    paymentProtocol: 'none',
   });
 }
