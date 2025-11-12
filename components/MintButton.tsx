@@ -6,7 +6,6 @@
  * Handles minting of generated Geoplet ($1 USDC)
  * - Enabled when generated image exists
  * - Integrates x402 payment (reuses existing pattern from GenerateMintButton)
- * - Deletes from Supabase after successful mint
  * - Shows success modal
  */
 
@@ -42,14 +41,12 @@ interface MintButtonProps {
   disabled?: boolean;
   generatedImage: string | null;
   onSuccess: (txHash: string, tokenId: string) => void;
-  onDeleteFromSupabase: () => Promise<boolean>;
 }
 
 export function MintButton({
   disabled = false,
   generatedImage,
   onSuccess,
-  onDeleteFromSupabase,
 }: MintButtonProps) {
   const { address } = useAccount();
   const { nft, fid } = useWarplets();
@@ -115,16 +112,13 @@ export function MintButton({
     if (isSuccess && txHash && fid && !successCalledRef.current) {
       successCalledRef.current = true;
 
-      // Delete from Supabase
-      onDeleteFromSupabase().catch(console.error);
-
       // Call success callback with FID (which equals Geoplet tokenId in 1:1 mapping)
       onSuccess(txHash, fid.toString());
       toast.success("Geoplet NFT minted successfully!");
       haptics.success();
       setState("success");
     }
-  }, [isSuccess, txHash, fid, onSuccess, onDeleteFromSupabase]);
+  }, [isSuccess, txHash, fid, onSuccess]);
 
   // Cleanup on unmount
   useEffect(() => {

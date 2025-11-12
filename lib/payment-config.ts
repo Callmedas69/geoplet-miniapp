@@ -2,21 +2,21 @@
  * Payment Configuration
  *
  * Centralized x402 payment settings for all payment flows
- * - Mint: $1.00 USDC (onchain NFT minting)
- * - Animation: $5.00 USDC (animation generation)
+ * - Mint: $1.99 USDC (onchain NFT minting)
+ * - Animation: $4.99 USDC (animation generation)
  */
 
 export const PAYMENT_CONFIG = {
   MINT: {
-    price: '1.00',           // Human-readable price
-    priceAtomic: '1000000',  // USDC atomic units (6 decimals)
+    price: '1.99',           // Human-readable price
+    priceAtomic: '1990000',  // USDC atomic units (6 decimals)
     endpoint: '/api/get-mint-signature',
     label: 'Mint',
     description: 'Mint your unique Geoplet NFT',
   },
   ANIMATION: {
-    price: '5.00',
-    priceAtomic: '5000000',
+    price: '4.99',
+    priceAtomic: '4990000',
     endpoint: '/api/generate-animation',
     label: 'Animation',
     description: 'Generate animated version',

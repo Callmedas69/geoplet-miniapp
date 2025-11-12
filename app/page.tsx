@@ -36,7 +36,6 @@ export default function Home() {
   const {
     saveGeneration,
     loadGeneration,
-    deleteGeneration,
     isLoading: isLoadingStorage,
   } = useGenerationStorage();
 
@@ -338,10 +337,6 @@ export default function Home() {
                 setMintTxHash(hash);
                 setMintedTokenId(tokenId);
                 setShowSuccessModal(true);
-              }}
-              onDeleteFromSupabase={async () => {
-                if (!fid) return false;
-                return await deleteGeneration(fid);
               }}
             />
 
