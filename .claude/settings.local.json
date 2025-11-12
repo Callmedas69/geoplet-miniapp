@@ -80,7 +80,8 @@
       "Bash(node:*)",
       "Bash(ls:*)",
       "WebFetch(domain:docs.farcaster.xyz)",
-      "WebFetch(domain:blog.logrocket.com)"
+      "WebFetch(domain:blog.logrocket.com)",
+      "Bash(npx tailwindcss --help:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

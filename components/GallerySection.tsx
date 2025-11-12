@@ -15,7 +15,7 @@ export function GallerySection() {
   const { fid } = useWarplets();
 
   return (
-    <section className="max-w-7xl mx-auto">
+    <section className="max-w-7xl mx-4">
       {/* Title */}
       <div className="text-center mb-4">
         <h1 className={`text-5xl sm:text-7xl ${spriteGraffiti.className}`}>

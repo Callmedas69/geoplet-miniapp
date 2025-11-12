@@ -99,7 +99,10 @@ export function ExpandableShareButton({
     if (!isExpanded) return;
 
     const handleClickOutside = (event: MouseEvent) => {
-      if (buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsExpanded(false);
       }
     };
@@ -132,19 +135,23 @@ export function ExpandableShareButton({
   };
 
   return (
-    <div ref={buttonRef} className="flex items-center gap-1">
+    <div
+      ref={buttonRef}
+      className="flex items-center gap-1"
+      style={{ width: "160px" }}
+    >
       {/* Main share button */}
       <button
         ref={shareIconRef}
         onClick={handleToggle}
         disabled={disabled || isSharing}
-        className="text-xs text-black px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="text-xs text-black px-3 py-2 bg-white/5 hover:bg-white/10 rounded border border-white/10 transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Share options"
       >
         {isSharing ? (
-          <Loader2 className="w-7 h-7 animate-spin" />
+          <Loader2 className="w-5 h-5 animate-spin" />
         ) : (
-          <Share2 className="w-7 h-7" />
+          <Share2 className="w-5 h-5" />
         )}
       </button>
 

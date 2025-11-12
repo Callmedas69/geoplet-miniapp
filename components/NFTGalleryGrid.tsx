@@ -124,11 +124,7 @@ export function NFTGalleryGrid({
   // Empty state
   if (nfts.length === 0 && !isLoading) {
     return (
-      <div
-        className="text-center py-20"
-        role="status"
-        aria-live="polite"
-      >
+      <div className="text-center py-20" role="status" aria-live="polite">
         <p className="text-gray-700 text-sm">No Geoplets minted yet</p>
         <p className="text-gray-500 text-xs mt-2">
           Be the first to transform your Warplet!
@@ -142,7 +138,8 @@ export function NFTGalleryGrid({
       {/* Row 1: Featured Section (Featured NFT + Info Column) */}
       <section
         aria-label="Featured Geoplet"
-        className="grid grid-cols-2 gap-4 py-6"
+        className="grid gap-4 py-6 w-full"
+        style={{ gridTemplateColumns: "45% 55%" }}
       >
         {/* Left: Featured "My Geoplet" Card - 2x bigger, sticky */}
         <div className="sticky top-20 z-10">
@@ -177,38 +174,36 @@ export function NFTGalleryGrid({
           {myGeoplet ? (
             <>
               <div>
-                <p className="text-black text-lg font-medium">
-                  {myGeoplet.name}
-                </p>
+                <p className="text-xl font-medium">{myGeoplet.name}</p>
               </div>
               <div>
                 {/* NFT Marketplace Links & Share - Use FID directly since FID = tokenId (1:1 mapping) */}
                 <div className="flex flex-col gap-2">
                   {/* Row 1: Marketplace Links */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <button
                       onClick={handleOpenSea}
-                      className="text-xs text-black px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="text-xs text-black px-3 py-1.5 flex items-center cursor-pointer"
                       aria-label="View on OpenSea"
                     >
                       <Image
                         src="/Opensea.svg"
                         alt="OpenSea"
-                        width={28}
-                        height={28}
+                        width={32}
+                        height={32}
                         className="shrink-0"
                       />
                     </button>
                     <button
                       onClick={handleOnchainChecker}
-                      className="text-xs text-black px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded border border-gray-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="text-xs text-black px-3 py-1.5 flex items-center cursor-pointer"
                       aria-label="View on OnchainChecker"
                     >
                       <Image
                         src="/Onchainchecker.png"
                         alt="OnchainChecker"
-                        width={28}
-                        height={28}
+                        width={32}
+                        height={32}
                         className="shrink-0"
                       />
                     </button>
@@ -233,8 +228,8 @@ export function NFTGalleryGrid({
         <p>Recently Geopleted</p>
       </div>
 
-      {/* Row 2: Pure 4-Column NFT Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      {/* Row 2: NFT Grid */}
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
         {/* Regular NFTs */}
         {sortedNFTs.map((nft) => (
           <div

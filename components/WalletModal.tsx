@@ -54,9 +54,9 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-black/80 border-white/20 text-white max-w-sm mx-auto">
+      <DialogContent className="bg-white border-white/20 text-amber-950 max-w-sm mx-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
+          <DialogTitle className="flex items-center gap-2 text-amber-950">
             <Wallet className="w-5 h-5" />
             Wallet
           </DialogTitle>
@@ -64,13 +64,13 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
 
         <div className="space-y-3 mt-4">
           {/* USDC Balance */}
-          <div className="bg-white/10 rounded-lg px-4 py-3">
+          <div className="bg-amber-50/80 border border-amber-200/40 rounded-lg px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TokenUSDC className="w-5 h-5" variant="branded" />
-                <span className="text-sm text-white/70">USDC</span>
+                <span className="text-sm text-amber-700">USDC</span>
               </div>
-              <span className="font-semibold text-white">
+              <span className="font-semibold text-amber-950">
                 {isLoading
                   ? "..."
                   : balance
@@ -83,21 +83,23 @@ export function WalletModal({ isOpen, onClose }: WalletModalProps) {
           {/* Address with Copy */}
           <button
             onClick={handleCopy}
-            className="w-full flex items-center justify-between bg-white/10 rounded-lg px-4 py-3 hover:bg-white/20 transition-colors"
+            className="w-full flex items-center justify-between bg-amber-50/80 border border-amber-200/40 rounded-lg px-4 py-3 hover:bg-amber-100 transition-colors"
             aria-label="Copy wallet address"
           >
-            <span className="font-mono text-sm text-white">{truncated}</span>
+            <span className="font-mono text-sm text-amber-950">
+              {truncated}
+            </span>
             {isCopied ? (
-              <Check className="w-5 h-5 text-green-400" />
+              <Check className="w-5 h-5 text-green-600" />
             ) : (
-              <Copy className="w-5 h-5 text-white/70" />
+              <Copy className="w-5 h-5 text-amber-700" />
             )}
           </button>
 
           {/* Disconnect Button */}
           <Button
             onClick={handleDisconnect}
-            className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/30"
+            className="w-full bg-red-500/20 hover:bg-red-500/30 text-red-600 border-red-500/30 font-semibold"
             variant="outline"
           >
             <LogOut className="w-4 h-4 mr-2" />
