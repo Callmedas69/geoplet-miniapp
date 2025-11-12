@@ -185,7 +185,7 @@ export function ImageGenerator() {
         );
       }
 
-      // ARCHIVED: Old v1.0 minting - see GenerateMintButton.tsx for v2.0
+      // ARCHIVED: Old v1.0 minting logic
       // await mintNFT(nft.tokenId, generatedImage.imageData);
 
       haptics.success();

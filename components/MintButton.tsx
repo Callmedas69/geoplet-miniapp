@@ -5,7 +5,7 @@
  *
  * Handles minting of generated Geoplet ($1 USDC)
  * - Enabled when generated image exists
- * - Integrates x402 payment (reuses existing pattern from GenerateMintButton)
+ * - Integrates x402 payment verification
  * - Shows success modal
  */
 

@@ -296,7 +296,6 @@ return NextResponse.json({
 ```
 
 **Called By:**
-- `components/GenerateMintButton.tsx` (on mount)
 - `components/MintButton.tsx` (on mount)
 
 ---
@@ -373,7 +372,6 @@ await supabaseAdmin
 ```
 
 **Called By:**
-- `components/GenerateMintButton.tsx` (after mint success)
 - `components/MintButton.tsx` (after mint success)
 
 ---
@@ -582,7 +580,7 @@ return NextResponse.json({
 
 #### D. Frontend Changes (Callers)
 
-**GenerateMintButton.tsx (~line 195):**
+**MintButton.tsx (~line 195):**
 ```typescript
 // EXISTING
 const settleResponse = await fetch('/api/settle-payment', {
@@ -602,14 +600,9 @@ const settleResponse = await fetch('/api/settle-payment', {
 });
 ```
 
-**MintButton.tsx (~line similar):**
-```typescript
-// Same changes as GenerateMintButton
-```
-
 ---
 
-### 3. `components/GenerateMintButton.tsx`
+### 3. `components/MintButton.tsx`
 
 **Changes Required:**
 
@@ -727,18 +720,6 @@ if (signatureData?.voucher?.deadline) {
 // Proceed with settlement...
 ```
 
----
-
-### 4. `components/MintButton.tsx`
-
-**Changes Required:**
-
-**Same modifications as GenerateMintButton:**
-1. Check for resumable payment on mount
-2. Mark as minted after success
-3. Handle signature expiration on retry
-
-**Location:** Same relative locations as GenerateMintButton
 
 ---
 
@@ -1159,10 +1140,9 @@ WHERE status IN ('verified', 'settled', 'minted')
 4. Test mint flow end-to-end
 
 ### Phase 4: Frontend Recovery (~2 hours)
-1. Add resumable payment check in GenerateMintButton
-2. Add resumable payment check in MintButton
-3. Handle signature expiration in components
-4. Test recovery scenarios
+1. Add resumable payment check in MintButton
+2. Handle signature expiration in MintButton
+3. Test recovery scenarios
 
 ### Phase 5: Testing & Polish (~1 hour)
 1. End-to-end recovery flow testing

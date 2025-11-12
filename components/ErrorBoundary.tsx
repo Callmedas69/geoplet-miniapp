@@ -2,7 +2,6 @@
  * ErrorBoundary Component
  *
  * Catches React errors in child components and provides graceful fallback UI
- * Specific implementation for GenerateMintButton error handling
  *
  * Features:
  * - Catches render errors and lifecycle errors
@@ -118,7 +117,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 }
 
 /**
- * Specialized fallback for GenerateMintButton
+ * Specialized fallback for button components
  */
 export function ButtonErrorFallback({ onReset }: { onReset?: () => void }) {
   return (
