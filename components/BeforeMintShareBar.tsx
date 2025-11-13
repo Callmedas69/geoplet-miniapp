@@ -62,7 +62,7 @@ export function BeforeMintShareBar({
           type="button"
           onClick={handleShareFarcaster}
           disabled={!fid}
-          className="w-12 h-12 rounded-full bg-[#6a3cff] hover:bg-[#c7a9fd] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="w-8 h-8 rounded-full bg-[#6a3cff] hover:bg-[#c7a9fd] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
           aria-label="Share to Farcaster"
           title="Share to Farcaster"
         >
@@ -70,8 +70,8 @@ export function BeforeMintShareBar({
             <Image
               src="/farcaster_logo.jpg"
               alt="Farcaster"
-              width={48}
-              height={48}
+              width={36}
+              height={36}
             />
           </div>
         </button>
@@ -81,13 +81,13 @@ export function BeforeMintShareBar({
           type="button"
           onClick={handleShareX}
           disabled={!fid}
-          className="w-12 h-12 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="w-8 h-8 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
           aria-label="Share on X"
           title="Share on X"
         >
           <svg
-            width="24"
-            height="24"
+            width="16"
+            height="16"
             viewBox="0 0 1200 1227"
             fill="none"
             className="text-white"

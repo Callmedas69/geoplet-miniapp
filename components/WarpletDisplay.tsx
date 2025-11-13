@@ -24,8 +24,8 @@ export function WarpletDisplay({
   const displayImage = formattedGenerated || imageUrl;
 
   return (
-    <div className="relative aspect-square border-2 rounded-lg">
-      <div className="relative w-full h-full bg-gray-100 flex items-center justify-center">
+    <div className="relative aspect-square rounded-lg">
+      <div className="relative w-full h-full flex items-center justify-center">
         <Image
           src={displayImage}
           alt={alt}
@@ -36,7 +36,7 @@ export function WarpletDisplay({
 
         {/* Placeholder text if no image */}
         {!displayImage && (
-          <span className="text-gray-400 text-xs">thumbnail here</span>
+          <span className="text-gray-400 text-xs">your geoplet here</span>
         )}
 
         {/* Generated/Minted indicator */}
@@ -46,7 +46,7 @@ export function WarpletDisplay({
               isMinted ? "bg-purple-600/90" : "bg-green-500/90"
             }`}
           >
-            {isMinted ? "🎨 Minted" : "✨ Generated"}
+            {isMinted ? "Minted" : "Generated"}
           </div>
         )}
       </div>
