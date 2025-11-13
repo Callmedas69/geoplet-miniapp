@@ -43,7 +43,7 @@ export async function OPTIONS() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { paymentHeader, fid } = body;
+    const { paymentHeader, fid, userAddress } = body;
 
     // Validate required fields
     if (!paymentHeader) {
@@ -72,7 +72,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('[SETTLE] Request:', { fid, hasPaymentHeader: !!paymentHeader });
+    if (!userAddress) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'User address is required for payment tracking',
+        },
+        {
+          status: 400,
+          headers: corsHeaders,
+        }
+      );
+    }
+
+    console.log('[SETTLE] Request:', { fid, userAddress, hasPaymentHeader: !!paymentHeader });
 
     // Validate environment variables
     if (!process.env.ONCHAIN_FI_API_KEY) {
@@ -136,6 +149,7 @@ export async function POST(req: NextRequest) {
     try {
       console.log('[SETTLE] Writing payment tracking record:', {
         fid,
+        userAddress,
         settlement_tx_hash: settleData.data.txHash
       });
 
@@ -144,6 +158,7 @@ export async function POST(req: NextRequest) {
         .upsert({
           fid: parseInt(fid),
           settlement_tx_hash: settleData.data.txHash,
+          user_address: userAddress,
           status: 'settled',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),

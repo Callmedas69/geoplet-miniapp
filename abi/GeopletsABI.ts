@@ -1,9 +1,9 @@
-// Geoplets ERC721 with EIP-712 Signature Validation + Animation Upgrade
-// Generated from: Geoplets (Geoplets.sol) - V3 with UTF-8 Metadata + ERC-4906
-// Deployed: 2025-11-10
-// Contract: 0x80271d9d45a5bCC4e5325c2A3831fc6Ba9E212E4
+// Geoplets ERC721 with EIP-712 Signature Validation + Animation Upgrade + On-Chain Attributes
+// Generated from: Geoplets (Geoplets.sol) - V5 with Modular Attributes Library
+// Deployed: 2025-11-13
+// Contract: 0xFbb5174FF8970B76648a9E7cCA05D4036958276A
 // Network: Base Mainnet (Chain ID: 8453)
-// Features: UTF-8 inline metadata, ERC-4906 events, Animation upgrades, ERC20 treasury
+// Features: Base64 inline metadata, ERC-4906 events, Animation upgrades, ERC20 treasury, Burn function, On-chain attributes
 
 export const GeopletsABI = [
   {
@@ -109,6 +109,19 @@ export const GeopletsABI = [
   },
   {
     "type": "function",
+    "name": "burn",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "contractURI",
     "inputs": [],
     "outputs": [
@@ -118,7 +131,7 @@ export const GeopletsABI = [
         "internalType": "string"
       }
     ],
-    "stateMutability": "view"
+    "stateMutability": "pure"
   },
   {
     "type": "function",
@@ -298,6 +311,30 @@ export const GeopletsABI = [
         "name": "tokenId",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hasBalance",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "erc20Token",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -912,6 +949,25 @@ export const GeopletsABI = [
   },
   {
     "type": "event",
+    "name": "BatchMetadataUpdate",
+    "inputs": [
+      {
+        "name": "_fromTokenId",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "_toTokenId",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "EIP712DomainChanged",
     "inputs": [],
     "anonymous": false
@@ -968,6 +1024,19 @@ export const GeopletsABI = [
         "name": "newMax",
         "type": "uint256",
         "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MetadataUpdate",
+    "inputs": [
+      {
+        "name": "_tokenId",
+        "type": "uint256",
+        "indexed": false,
         "internalType": "uint256"
       }
     ],
@@ -1114,38 +1183,6 @@ export const GeopletsABI = [
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "MetadataUpdate",
-    "inputs": [
-      {
-        "name": "_tokenId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "BatchMetadataUpdate",
-    "inputs": [
-      {
-        "name": "_fromTokenId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "_toTokenId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1339,7 +1376,7 @@ export const GeopletsABI = [
 // ============ Contract Addresses ============
 
 export const GEOPLET_ADDRESSES = {
-  baseMainnet: "0x80271d9d45a5bCC4e5325c2A3831fc6Ba9E212E4" as `0x${string}`, // Production deployment - 2025-11-10 (UTF-8 + ERC-4906)
+  baseMainnet: "0xFbb5174FF8970B76648a9E7cCA05D4036958276A" as `0x${string}`, // Production deployment - 2025-11-13 (Attributes + Mobile Wallet Support)
 } as const;
 
 // ============ EIP-712 Configuration ============

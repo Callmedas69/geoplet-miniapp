@@ -10,20 +10,8 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "solady/utils/SSTORE2.sol";
-
-/**
- * @title IFileStore
- * @notice Interface for Ethereum File System (EthFS) on-chain file storage
- */
-interface IFileStore {
-    struct File {
-        function() external view returns (string memory) read;
-    }
-
-    function getFile(
-        string memory filename
-    ) external view returns (File memory);
-}
+import "solady/utils/Base64.sol";
+import "./lib/Attributes.sol";
 
 /**
  * @title GeoPlets
@@ -239,7 +227,14 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
     ) public view override returns (string memory) {
         // Handle simulation preview (mobile wallet compatibility)
         if (_ownerOf(tokenId) == address(0)) {
-            return "data:application/json;utf8,{}";
+            // If FID was never minted, return preview for wallet simulation
+            if (!fidMinted[tokenId]) {
+                // Return empty but valid NFT metadata JSON in base64
+                // Decodes to: {"name":"","description":"","image":""}
+                return "data:application/json;base64,eyJuYW1lIjoiIiwiZGVzY3JpcHRpb24iOiIiLCJpbWFnZSI6IiJ9";
+            }
+            // If FID was minted but token is burned, revert
+            revert("Token doesn't exist");
         }
 
         // Read image data from SSTORE2 pointer
@@ -279,14 +274,59 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
             ? string(abi.encodePacked('"animation_url":"', animationUrl, '",'))
             : '"animation_url":"",';
 
-        // Build JSON string
+        // Generate all attributes from library
+        string memory composition = Attributes.getComposition(tokenId);
+        string memory palette = Attributes.getPalette(tokenId);
+        string memory primaryShape = Attributes.getPrimaryShape(tokenId);
+        string memory style = Attributes.getStyle(tokenId);
+        string memory symmetry = Attributes.getSymmetry(tokenId);
+        string memory background = Attributes.getBackground(tokenId);
+        uint256 complexity = Attributes.getComplexity(tokenId);
+        uint256 density = Attributes.getDensity(tokenId);
+        uint256 elements = Attributes.getElements(tokenId);
+        string memory rarityTier = Attributes.getRarityTier(tokenId);
+
+        // Build attributes JSON (split to avoid stack too deep)
+        string memory textAttributes = string(
+            abi.encodePacked(
+                '{"trait_type":"Composition","value":"', composition, '"},',
+                '{"trait_type":"Palette","value":"', palette, '"},',
+                '{"trait_type":"Primary Shape","value":"', primaryShape, '"},',
+                '{"trait_type":"Style","value":"', style, '"},',
+                '{"trait_type":"Symmetry","value":"', symmetry, '"},',
+                '{"trait_type":"Background","value":"', background, '"},'
+            )
+        );
+
+        string memory numericAttributes = string(
+            abi.encodePacked(
+                '{"display_type":"number","trait_type":"Complexity","value":',
+                complexity.toString(),
+                ',"max_value":10},',
+                '{"display_type":"number","trait_type":"Density","value":',
+                density.toString(),
+                ',"max_value":100},',
+                '{"display_type":"number","trait_type":"Elements","value":',
+                elements.toString(),
+                '},'
+            )
+        );
+
+        string memory specialAttributes = string(
+            abi.encodePacked(
+                '{"trait_type":"Rarity","value":"', rarityTier, '"},',
+                '{"trait_type":"Creator","value":"0xdas"}'
+            )
+        );
+
+        // Build complete JSON
         string memory json = string(
             abi.encodePacked(
                 "{",
                 '"name":"Geoplet #',
                 tokenId.toString(),
                 '",',
-                '"description":"Geoplet transforms pure geometry into living art - a dialogue between shape, color, and rhythm. Drawing inspiration from Bauhaus and Suprematism, each piece captures harmony through abstraction, expressing emotion within mathematical precision. Every Geoplet is born from code, crafted by algorithmic design, and preserved entirely on-chain - a timeless fusion of creativity, logic, and form.",',
+                '"description":"Geoplet transforms pure geometry into living art, a dialogue between shape, color, and rhythm. Drawing inspiration from Bauhaus and Suprematism, each piece captures harmony through abstraction, expressing emotion within mathematical precision. Every Geoplet is born from code, crafted by algorithmic design, and preserved entirely on-chain, a timeless fusion of creativity, logic, and form.",',
                 '"token_id":',
                 tokenId.toString(),
                 ",",
@@ -295,65 +335,44 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
                 '",',
                 animationField,
                 '"attributes":[',
-                '{"trait_type":"Token ID","value":',
-                tokenId.toString(),
-                "},",
-                '{"trait_type":"Collection","value":"Geoplet"},',
-                '{"trait_type":"Creator","value":"0xdas"}',
+                textAttributes,
+                numericAttributes,
+                specialAttributes,
                 "],",
                 '"external_url":"https://geoplet.geoart.studio"',
                 "}"
             )
         );
 
-        // Return UTF-8 inline JSON with proper data URI prefix
+        // Return base64-encoded JSON per OpenSea standard
         return
             string(
                 abi.encodePacked(
-                    "data:application/json;utf8,",
-                    json
+                    "data:application/json;base64,",
+                    Base64.encode(bytes(json))
                 )
             );
     }
 
     /**
      * @notice Collection-level metadata for marketplaces
-     * @dev Returns UTF-8 inline collection information with animated WebP from EthFS
+     * @dev Returns base64-encoded collection metadata per OpenSea standard
+     * @dev Collection image can be set manually in OpenSea Studio
      */
-    function contractURI() public view returns (string memory) {
-        string memory imageData;
-
-        // Fetch animated WebP collection image from EthFS with error handling
-        try
-            IFileStore(0xFe1411d6864592549AdE050215482e4385dFa0FB)
-                .getFile("thumbnail.webp")
-                .read()
-        returns (string memory ethfsData) {
-            imageData = string(
-                abi.encodePacked("data:image/webp;base64,", ethfsData)
-            );
-        } catch {
-            // Fallback to empty image if EthFS fails
-            imageData = "";
-        }
+    function contractURI() public pure returns (string memory) {
         string memory json = string(
             abi.encodePacked(
-                "{",
-                '"name":"Geoplets",',
-                '"description":"Geoplet transforms geometry into living art. Inspired by Bauhaus and Suprematism, each piece embodies balance and motion - a fusion of code and creativity, fully preserved on-chain.",',
-                bytes(imageData).length > 0
-                    ? string(abi.encodePacked('"image":"', imageData, '",'))
-                    : "",
-                '"external_link":"https://geoplet.geoart.studio"',
-                "}"
+                '{"name":"Geoplets",',
+                '"description":"Geoplet transforms geometry into living art. Inspired by Bauhaus and Suprematism, each piece embodies balance and motion, a fusion of code and creativity, fully preserved on-chain.",',
+                '"external_url":"https://geoplet.geoart.studio"}'
             )
         );
 
         return
             string(
                 abi.encodePacked(
-                    "data:application/json;utf8,",
-                    json
+                    "data:application/json;base64,",
+                    Base64.encode(bytes(json))
                 )
             );
     }
@@ -446,6 +465,52 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
         );
         bytes memory animationData = SSTORE2.read(animationPointers[tokenId]);
         return string(animationData);
+    }
+
+    // ============ Burn Functions ============
+
+    /**
+     * @notice Burn (destroy) an NFT token
+     * @dev Only token owner or approved operator can burn
+     * @dev IMPORTANT: Burning does NOT transfer ERC20 balances - withdraw first!
+     * @dev SSTORE2 image/animation data remains in bytecode but becomes inaccessible
+     * @dev FID remains marked as minted to prevent re-minting same Farcaster ID
+     * @param tokenId The NFT token ID to burn
+     */
+    function burn(uint256 tokenId) external {
+        // Verify caller is owner or approved
+        require(
+            ownerOf(tokenId) == msg.sender ||
+                getApproved(tokenId) == msg.sender ||
+                isApprovedForAll(ownerOf(tokenId), msg.sender),
+            "Not authorized to burn"
+        );
+
+        // Clear SSTORE2 pointers (data remains in bytecode but becomes inaccessible)
+        delete imagePointers[tokenId];
+        delete animationPointers[tokenId];
+
+        // DO NOT clear fidMinted[tokenId] - prevent re-minting same FID
+        // The FID should remain permanently associated with this burned token
+
+        // Call OpenZeppelin's internal burn (clears owner, approvals, balances)
+        _burn(tokenId);
+
+        // Emit metadata update event per ERC-4906
+        emit MetadataUpdate(tokenId);
+    }
+
+    /**
+     * @notice Check if token has any ERC20 balance for a given token address
+     * @param tokenId The NFT token ID
+     * @param erc20Token The ERC20 token address to check
+     * @return True if token has claimable balance
+     */
+    function hasBalance(
+        uint256 tokenId,
+        address erc20Token
+    ) external view returns (bool) {
+        return tokenBalances[tokenId][erc20Token] > 0;
     }
 
     // ============ ERC20 Treasury Functions ============

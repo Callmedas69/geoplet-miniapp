@@ -32,18 +32,19 @@ async function getGeopletImageBuffer(fid: string): Promise<Buffer | null> {
 
     let imageUrl = metadata.image?.cachedUrl || metadata.image?.originalUrl;
 
-    // ✅ UTF-8 metadata fallback for on-chain data URIs
+    // ✅ Base64 metadata fallback for on-chain data URIs
     if (!imageUrl && metadata.tokenUri?.raw) {
       try {
         const raw = metadata.tokenUri.raw;
-        if (raw.includes("data:application/json;utf8,")) {
-          const jsonString = raw.split("data:application/json;utf8,")[1];
+        if (raw.includes("data:application/json;base64,")) {
+          const base64String = raw.split("data:application/json;base64,")[1];
+          const jsonString = Buffer.from(base64String, 'base64').toString('utf8');
           const decoded = JSON.parse(jsonString);
           imageUrl = decoded.image;
-          console.log("[OG] Decoded UTF-8 tokenURI image field:", imageUrl?.substring(0, 100) + "...");
+          console.log("[OG] Decoded base64 tokenURI image field:", imageUrl?.substring(0, 100) + "...");
         }
       } catch (e) {
-        console.error("[OG] Failed to decode UTF-8 metadata:", e);
+        console.error("[OG] Failed to decode base64 metadata:", e);
       }
     }
 

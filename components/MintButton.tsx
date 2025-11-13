@@ -112,11 +112,14 @@ export function MintButton({
     if (isSuccess && txHash && fid && !successCalledRef.current) {
       successCalledRef.current = true;
 
-      // Update payment tracking status to 'minted'
+      // Update payment tracking status to 'minted' with mint tx hash
       fetch(`/api/payment-tracking/${fid}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'minted' })
+        body: JSON.stringify({
+          status: 'minted',
+          mint_tx_hash: txHash
+        })
       }).catch(err => {
         console.error('[MINT] Failed to update payment tracking:', err);
         // Don't block success - mint succeeded
@@ -256,6 +259,7 @@ export function MintButton({
         body: JSON.stringify({
           fid: fid.toString(),
           paymentHeader: signature.paymentHeader,
+          userAddress: signature.voucher.to,
         }),
       });
 

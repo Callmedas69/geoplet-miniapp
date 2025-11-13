@@ -79,7 +79,7 @@ export async function PATCH(
   try {
     const { fid: fidParam } = await params;
     const fid = parseInt(fidParam);
-    const { status } = await request.json();
+    const { status, mint_tx_hash, refund_tx_hash } = await request.json();
 
     if (isNaN(fid)) {
       return NextResponse.json(
@@ -88,24 +88,38 @@ export async function PATCH(
       );
     }
 
-    if (!["settled", "minted", "failed"].includes(status)) {
+    if (!["settled", "minted", "failed", "refunded"].includes(status)) {
       return NextResponse.json(
-        { success: false, error: "Invalid status. Must be: settled, minted, or failed" },
+        { success: false, error: "Invalid status. Must be: settled, minted, failed, or refunded" },
         { status: 400 }
       );
     }
 
     console.log('[PAYMENT-TRACKING-PATCH] Updating status:', {
       fid,
-      newStatus: status
+      newStatus: status,
+      mint_tx_hash: mint_tx_hash || 'not provided',
+      refund_tx_hash: refund_tx_hash || 'not provided'
     });
+
+    const updateData: any = {
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    // Only include mint_tx_hash if provided
+    if (mint_tx_hash) {
+      updateData.mint_tx_hash = mint_tx_hash;
+    }
+
+    // Only include refund_tx_hash if provided
+    if (refund_tx_hash) {
+      updateData.refund_tx_hash = refund_tx_hash;
+    }
 
     const { data, error } = await supabaseAdmin
       .from("payment_tracking")
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq("fid", fid)
       .select()
       .single();
