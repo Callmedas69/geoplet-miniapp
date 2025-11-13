@@ -56,7 +56,7 @@ export const metadata: Metadata = {
       version: "1",
       imageUrl: `${appUrl}/embed-1200x800.webp`,
       button: {
-        title: "Geofying",
+        title: "Geopleting",
         action: {
           type: "launch_frame",
           name: "Geoplet",

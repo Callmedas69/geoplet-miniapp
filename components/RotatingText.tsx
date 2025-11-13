@@ -42,27 +42,29 @@ export function RotatingText({
           // Change text
           setCurrentIndex((prev) => (prev + 1) % messages.length);
 
-          // Wait for DOM update, then slide down and fade in
-          setTimeout(() => {
-            if (!textRef.current) return;
+          // Wait for React render + browser paint, then slide down and fade in
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              if (!textRef.current) return;
 
-            gsap.fromTo(
-              textRef.current,
-              { opacity: 0, y: 20 },
-              {
-                opacity: 1,
-                y: 0,
-                duration: 0.3,
-                ease: "power2.out",
-              }
-            );
-          }, 50);
+              gsap.fromTo(
+                textRef.current,
+                { opacity: 0, y: 20 },
+                {
+                  opacity: 1,
+                  y: 0,
+                  duration: 0.3,
+                  ease: "power2.out",
+                }
+              );
+            }, 100);
+          });
         },
       });
     }, interval);
 
     return () => clearInterval(rotateInterval);
-  }, [messages.length, interval]);
+  }, [messages, interval]);
 
   return (
     <div className="overflow-hidden">

@@ -64,9 +64,10 @@ export function SuccessModal({
   }, [fid]);
 
   // Transform raw base64 to data URI if needed (KISS: display layer transformation)
-  const displayImage = image && !image.startsWith("data:")
-    ? `data:image/webp;base64,${image}`
-    : image;
+  const displayImage =
+    image && !image.startsWith("data:")
+      ? `data:image/webp;base64,${image}`
+      : image;
 
   const baseScanUrl = txHash
     ? `${GEOPLET_CONFIG.explorers.basescan}/tx/${txHash}`
@@ -148,8 +149,8 @@ export function SuccessModal({
               <Image
                 src="/farcaster_logo.jpg"
                 alt="Farcaster"
-                width={48}
-                height={48}
+                width={36}
+                height={36}
                 className="rounded-full"
               />
             </button>
@@ -164,8 +165,8 @@ export function SuccessModal({
               title="Share on X"
             >
               <svg
-                width="24"
-                height="24"
+                width="16"
+                height="16"
                 viewBox="0 0 1200 1227"
                 fill="none"
                 className="text-white"

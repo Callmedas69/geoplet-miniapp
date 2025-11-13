@@ -52,8 +52,12 @@ export function MintButton({
   const { nft, fid } = useWarplets();
   const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
   const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
-  const { hasEnoughUSDC, balance, mintPrice, isLoading: isBalanceLoading } =
-    useUSDCBalance();
+  const {
+    hasEnoughUSDC,
+    balance,
+    mintPrice,
+    isLoading: isBalanceLoading,
+  } = useUSDCBalance();
   const { checkEligibility, simulateMint } = useContractSimulation();
 
   const [state, setState] = useState<ButtonState>("idle");
@@ -114,14 +118,14 @@ export function MintButton({
 
       // Update payment tracking status to 'minted' with mint tx hash
       fetch(`/api/payment-tracking/${fid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: 'minted',
-          mint_tx_hash: txHash
-        })
-      }).catch(err => {
-        console.error('[MINT] Failed to update payment tracking:', err);
+          status: "minted",
+          mint_tx_hash: txHash,
+        }),
+      }).catch((err) => {
+        console.error("[MINT] Failed to update payment tracking:", err);
         // Don't block success - mint succeeded
       });
 
@@ -299,7 +303,7 @@ export function MintButton({
         error instanceof Error ? error.message : "Failed to mint";
 
       // Handle specific errors
-      if (errorMessage.toLowerCase().includes("already minted")) {
+      if (errorMessage.toLowerCase().includes("minted")) {
         setState("already_minted");
       } else if (errorMessage.toLowerCase().includes("signature expired")) {
         setState("idle");
@@ -409,7 +413,7 @@ export function MintButton({
       case "success":
         return "Minted!";
       case "already_minted":
-        return "Already Minted";
+        return "Minted";
       default:
         return (
           <>

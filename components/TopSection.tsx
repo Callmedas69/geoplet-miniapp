@@ -19,7 +19,7 @@ export function TopSection() {
   return (
     <div
       id="top-section"
-      className="flex flex-col items-center px-4 pt-8 shrink-0"
+      className="flex flex-col items-center px-4 pt-4 shrink-0"
     >
       {/* Logo - Centered */}
       <h1 className={`pb-2 text-7xl ${spriteGraffity.className}`}>GEOPLET</h1>

@@ -40,9 +40,6 @@ export function BadgeSection() {
         ref={badgeContainerRef}
         className="flex flex-wrap items-center justify-center gap-2"
       >
-        <Badge variant="outline" className="badge-item text-xs font-medium">
-          ⚡ $GEOPLET
-        </Badge>
         <Badge
           variant="outline"
           className="badge-item text-xs font-medium flex items-center gap-1"
@@ -59,8 +56,8 @@ export function BadgeSection() {
         <Image
           src="/x402-button-large.webp"
           alt="x402 Payments enabled"
-          width={120}
-          height={30}
+          width={100}
+          height={20}
           className="badge-item"
         />
         <Badge

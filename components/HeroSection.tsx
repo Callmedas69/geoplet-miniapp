@@ -75,7 +75,7 @@ export function HeroSection({
                   "Balancing Suprematist chaos...",
                   "Painting the blockchain...",
                 ]}
-                interval={3500}
+                interval={1500}
                 className="text-lg font-medium"
               />
             </div>

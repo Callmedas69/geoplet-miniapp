@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import Image from "next/image";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { GeopletNFT } from "@/hooks/useGalleryNFTs";
@@ -17,6 +17,79 @@ interface NFTGalleryGridProps {
   hasMore: boolean;
   onLoadMore: () => void;
   userFid?: number | null; // User's FID (equals their Geoplet tokenId in 1:1 mapping)
+}
+
+/**
+ * Check if image URL is a data URI
+ * Data URIs start with "data:" prefix (e.g., data:image/webp;base64,...)
+ */
+function isDataUri(url: string): boolean {
+  return url.startsWith("data:");
+}
+
+/**
+ * NFT Image Component - Handles both HTTP URLs and data URIs
+ * Next.js Image only supports HTTP URLs, so we use native img for data URIs
+ */
+function NFTImage({
+  src,
+  alt,
+  className,
+  priority = false,
+  tokenId,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  priority?: boolean;
+  tokenId?: number;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const isData = isDataUri(src);
+
+  const handleError = () => {
+    console.error(
+      `Failed to load image for ${alt}${
+        tokenId ? ` (token #${tokenId})` : ""
+      }:`,
+      src.substring(0, 100)
+    );
+    setHasError(true);
+  };
+
+  // Show skeleton if empty src or error occurred
+  if (!src || src.trim() === "" || hasError) {
+    return (
+      <div className="w-full h-full bg-amber-50/80 border border-amber-200/40 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-100/60 to-transparent animate-[shimmer_2s_ease-in-out_infinite]" />
+      </div>
+    );
+  }
+
+  // Use native img for data URIs (Next.js Image doesn't support them)
+  if (isData) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        className={className}
+        onError={handleError}
+        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+      />
+    );
+  }
+
+  // Use Next.js Image for HTTP URLs (optimized)
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className={className}
+      priority={priority}
+      onError={handleError}
+    />
+  );
 }
 
 export function NFTGalleryGrid({
@@ -146,13 +219,13 @@ export function NFTGalleryGrid({
           <div className="relative w-full rounded-xl aspect-square border-2 border-dashed border-black/8 overflow-hidden">
             {myGeoplet ? (
               // Show user's NFT
-              <div className="relative w-full h-full">
-                <Image
+              <div className="relative w-full h-full rounded-xl">
+                <NFTImage
                   src={myGeoplet.image}
                   alt={myGeoplet.name}
-                  fill
                   className="object-contain rounded-xl"
                   priority
+                  tokenId={myGeoplet.tokenId}
                 />
               </div>
             ) : (
@@ -234,16 +307,15 @@ export function NFTGalleryGrid({
         {sortedNFTs.map((nft) => (
           <div
             key={nft.tokenId}
-            className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer hover:bg-blue-500 transition-colors"
+            className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer  transition-colors"
           >
             {/* NFT Image */}
             <div className="relative w-full h-full p-2">
-              <Image
+              <NFTImage
                 src={nft.image}
                 alt={nft.name}
-                fill
-                className="object-contain"
-                loading="lazy"
+                className="object-contain rounded-xl border-1 border-gray-300 border-dashed"
+                tokenId={nft.tokenId}
               />
             </div>
           </div>
