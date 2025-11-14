@@ -1,3 +1,5 @@
+// page.tsx
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -155,7 +157,9 @@ export default function Home() {
               // Sanitize image to prevent double-prefix bug
               const sanitizedImage = sanitizeImageData(savedImage);
               setGeneratedImage(sanitizedImage);
-              console.log("[PAYMENT-CHECK] Loaded and sanitized image from Supabase");
+              console.log(
+                "[PAYMENT-CHECK] Loaded and sanitized image from Supabase"
+              );
             }
           }
         } else {

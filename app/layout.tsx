@@ -1,3 +1,5 @@
+// layout.tsx
+
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -58,7 +60,8 @@ export const metadata: Metadata = {
       button: {
         title: "Geopleting",
         action: {
-          type: "launch_frame",
+          // type: "launch_frame",
+          type: "open_url",
           name: "Geoplet",
           url: appUrl,
           splashImageUrl: `${appUrl}/splash.webp`,
