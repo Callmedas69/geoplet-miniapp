@@ -43,12 +43,6 @@ export const GEOPLET_CONFIG = {
     basescan: 'https://basescan.org',
     opensea: 'https://opensea.io/assets/base',
   },
-
-  // RPC Configuration
-  rpc: {
-    base: 'https://mainnet.base.org', // Base official RPC (primary - used by wagmi)
-    alchemy: `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`, // Alchemy (NFT metadata only)
-  },
 } as const;
 
 // Re-export types for convenience

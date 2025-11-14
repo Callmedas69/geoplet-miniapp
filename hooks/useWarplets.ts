@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
-
-const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || '';
-const WARPLETS_ADDRESS = process.env.NEXT_PUBLIC_WARPLETS_ADDRESS || '';
-const ALCHEMY_BASE_URL = `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}`;
+import { getNFTById, transformRaribleItem, WARPLET_ADDRESS } from '@/lib/rarible';
 
 export interface WarpletNFT {
   tokenId: string;
@@ -15,29 +12,6 @@ export interface WarpletNFT {
   contract: {
     address: string;
     name: string;
-  };
-}
-
-// Alchemy getNFTMetadata response for single NFT
-interface AlchemyNFTMetadata {
-  contract: {
-    address: string;
-    name?: string;
-  };
-  tokenId: string;
-  name?: string;
-  description?: string;
-  image: {
-    cachedUrl?: string;
-    thumbnailUrl?: string;
-    originalUrl?: string;
-  };
-  raw: {
-    metadata?: {
-      image?: string;
-      name?: string;
-      description?: string;
-    };
   };
 }
 
@@ -79,45 +53,34 @@ export function useWarplets() {
           throw new Error('Unable to get Farcaster ID');
         }
 
-        // Build Alchemy API URL for single NFT metadata lookup
-        const params = new URLSearchParams({
-          contractAddress: WARPLETS_ADDRESS,
-          tokenId: userFid.toString(),
-          tokenType: 'ERC721',
-          refreshCache: 'false',
-        });
+        // Fetch Warplet NFT metadata from Rarible API
+        try {
+          const data = await getNFTById(WARPLET_ADDRESS, userFid.toString());
+          const raribleNFT = transformRaribleItem(data);
 
-        const url = `${ALCHEMY_BASE_URL}/getNFTMetadata?${params.toString()}`;
+          // Transform to Warplet format
+          const warplet: WarpletNFT = {
+            tokenId: raribleNFT.tokenId,
+            name: raribleNFT.name || `Warplet #${raribleNFT.tokenId}`,
+            description: raribleNFT.description || '',
+            imageUrl: raribleNFT.image || '',
+            thumbnailUrl: raribleNFT.image, // Rarible doesn't have separate thumbnails, use main image
+            contract: {
+              address: raribleNFT.contract.address,
+              name: raribleNFT.contract.name || 'Warplets',
+            },
+          };
 
-        const response = await fetch(url);
-
-        // Handle 404 - user doesn't own their FID Warplet
-        if (response.status === 404) {
-          setNft(null);
-          setError(null); // Not an error, just doesn't exist
-          return;
+          setNft(warplet);
+        } catch (err) {
+          // Handle 404 - user doesn't own their FID Warplet
+          if (err instanceof Error && (err.message.includes('404') || err.message.includes('not found'))) {
+            setNft(null);
+            setError(null); // Not an error, just doesn't exist
+            return;
+          }
+          throw err; // Re-throw other errors
         }
-
-        if (!response.ok) {
-          throw new Error(`Alchemy API error: ${response.statusText}`);
-        }
-
-        const data: AlchemyNFTMetadata = await response.json();
-
-        // Transform Alchemy response to our format
-        const warplet: WarpletNFT = {
-          tokenId: data.tokenId,
-          name: data.name || `Warplet #${data.tokenId}`,
-          description: data.description || '',
-          imageUrl: data.image?.cachedUrl || data.image?.originalUrl || data.raw.metadata?.image || '',
-          thumbnailUrl: data.image?.thumbnailUrl,
-          contract: {
-            address: data.contract.address,
-            name: data.contract.name || 'Warplets',
-          },
-        };
-
-        setNft(warplet);
       } catch (err: unknown) {
         console.error('Error fetching Warplet by FID:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch Warplet NFT');

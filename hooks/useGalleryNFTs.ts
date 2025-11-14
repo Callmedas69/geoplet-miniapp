@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
 import { useReadContract, usePublicClient } from 'wagmi';
 import { GeopletsABI } from '@/abi/GeopletsABI';
-
-const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+import { getNFTsFromCollection, transformRaribleItem, GEOPLET_ADDRESS } from '@/lib/rarible';
 
 export interface GeopletNFT {
   tokenId: number;
@@ -40,45 +39,25 @@ function decodeTokenURI(tokenURIString: string): string | null {
 }
 
 /**
- * Alchemy API NFT response structure (API V3)
- * @see https://docs.alchemy.com/reference/getnftsforcontract-v3
- * Note: Alchemy V3 returns tokenId as decimal strings, not hex
- * @see https://www.alchemy.com/docs/reference/alchemy-sdk-v2-to-v3-migration-guide
- */
-interface AlchemyNFT {
-  tokenId: string; // decimal string format (e.g., "100", "22420") - Alchemy V3 API standard
-  name?: string;
-  image?: {
-    cachedUrl?: string;
-    originalUrl?: string;
-  };
-  raw?: {
-    metadata?: {
-      image?: string;
-    };
-  };
-}
-
-/**
- * Hook to fetch all minted Geoplets from Alchemy
- * Validates against on-chain data to filter out stale cache
+ * Hook to fetch all minted Geoplets from Rarible API
+ * Validates against on-chain data with contract fallback for missing metadata
  */
 export function useGalleryNFTs() {
   const [nfts, setNfts] = useState<GeopletNFT[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [pageKey, setPageKey] = useState<string | undefined>(undefined);
+  const [continuation, setContinuation] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(true);
   const publicClient = usePublicClient();
 
-  // Read actual minted count from contract to detect stale Alchemy cache
+  // Read actual minted count from contract for validation
   const { data: totalSupply } = useReadContract({
     address: GEOPLET_CONFIG.address as `0x${string}`,
     abi: GeopletsABI,
     functionName: 'totalSupply',
   });
 
-  const fetchNFTs = useCallback(async (nextPageKey?: string, append: boolean = false) => {
+  const fetchNFTs = useCallback(async (nextContinuation?: string, append: boolean = false) => {
     if (append) {
       setIsLoadingMore(true);
     } else {
@@ -86,42 +65,30 @@ export function useGalleryNFTs() {
     }
 
     try {
-      const baseUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForContract`;
-      const params = new URLSearchParams({
-        contractAddress: GEOPLET_CONFIG.address,
-        withMetadata: 'true',
-        refreshCache: 'true',
-        pageSize: '20', // Load 20 NFTs per page
-      });
+      // Fetch from Rarible API
+      const data = await getNFTsFromCollection(GEOPLET_ADDRESS, nextContinuation);
 
-      // Add pageKey if provided (for pagination)
-      if (nextPageKey) {
-        params.append('pageKey', nextPageKey);
-      }
+      if (data.items && data.items.length > 0) {
+        console.log(`[Gallery] Rarible returned ${data.items.length} NFTs, contract totalSupply: ${totalSupply?.toString() || 'loading...'}`);
 
-      const response = await fetch(`${baseUrl}?${params}`);
-      const data = await response.json();
-
-      if (data.nfts && data.nfts.length > 0) {
-        console.log(`[Gallery] Alchemy returned ${data.nfts.length} NFTs, contract totalSupply: ${totalSupply?.toString() || 'loading...'}`);
-
-        // Step 1: Parse all NFTs and identify which need contract fallback
+        // Step 1: Transform and validate all NFTs
         const nftsWithMetadata = await Promise.all(
-          data.nfts.map(async (nft: AlchemyNFT) => {
-            // Parse tokenId as decimal (Alchemy V3 returns decimal strings)
+          data.items.map(async (item) => {
+            // Transform Rarible item to common format
+            const nft = transformRaribleItem(item);
             const tokenId = parseInt(nft.tokenId, 10);
 
             // Validate parsed tokenId
             if (isNaN(tokenId) || tokenId < 0) {
-              console.error(`[Gallery] Invalid tokenId from Alchemy: "${nft.tokenId}"`);
+              console.error(`[Gallery] Invalid tokenId from Rarible: "${nft.tokenId}"`);
               return null;
             }
 
-            let image = nft.image?.cachedUrl || nft.image?.originalUrl || nft.raw?.metadata?.image || '';
+            let image = nft.image;
 
-            // Step 2: If Alchemy has no metadata, read from contract directly
+            // Step 2: If Rarible has no metadata, read from contract directly
             if ((!image || image.trim() === '') && publicClient) {
-              console.log(`[Gallery] ⚠️ Token #${tokenId} has NO Alchemy metadata, reading from contract...`);
+              console.log(`[Gallery] ⚠️ Token #${tokenId} has NO Rarible metadata, reading from contract...`);
 
               try {
                 const tokenURI = await publicClient.readContract({
@@ -167,7 +134,7 @@ export function useGalleryNFTs() {
         // Filter out null entries
         const parsedNFTs = nftsWithMetadata.filter((nft): nft is GeopletNFT => nft !== null);
 
-        console.log(`[Gallery] Final result: ${parsedNFTs.length} valid NFTs (removed ${data.nfts.length - parsedNFTs.length} invalid)`);
+        console.log(`[Gallery] Final result: ${parsedNFTs.length} valid NFTs (removed ${data.items.length - parsedNFTs.length} invalid)`);
 
         // Update NFTs list (append if pagination, replace if initial load)
         if (append) {
@@ -176,15 +143,15 @@ export function useGalleryNFTs() {
           setNfts(parsedNFTs);
         }
 
-        // Update pagination state
-        const nextPageKey = data.pageKey;
-        setPageKey(nextPageKey);
-        setHasMore(!!nextPageKey);
+        // Update pagination state (Rarible uses "continuation" instead of "pageKey")
+        const nextContinuationToken = data.continuation;
+        setContinuation(nextContinuationToken);
+        setHasMore(!!nextContinuationToken);
 
-        console.log(`[Gallery] Pagination: ${nextPageKey ? `Has more (pageKey: ${nextPageKey.substring(0, 20)}...)` : 'No more pages'}`);
+        console.log(`[Gallery] Pagination: ${nextContinuationToken ? `Has more (continuation: ${nextContinuationToken.substring(0, 20)}...)` : 'No more pages'}`);
       }
     } catch (error) {
-      console.error('Failed to fetch NFTs:', error);
+      console.error('[Gallery] Failed to fetch NFTs:', error);
     } finally {
       if (append) {
         setIsLoadingMore(false);
@@ -198,20 +165,20 @@ export function useGalleryNFTs() {
     fetchNFTs();
   }, [fetchNFTs]);
 
-  // Load more NFTs using pageKey from previous response
+  // Load more NFTs using continuation token from previous response
   const loadMore = useCallback(() => {
-    if (!pageKey || isLoadingMore || isLoading) {
+    if (!continuation || isLoadingMore || isLoading) {
       console.log('[Gallery] loadMore() blocked:', {
-        hasPageKey: !!pageKey,
+        hasContinuation: !!continuation,
         isLoadingMore,
         isLoading,
       });
       return;
     }
 
-    console.log(`[Gallery] Loading more NFTs with pageKey: ${pageKey.substring(0, 20)}...`);
-    fetchNFTs(pageKey, true); // Pass pageKey and append=true
-  }, [pageKey, isLoadingMore, isLoading, fetchNFTs]);
+    console.log(`[Gallery] Loading more NFTs with continuation: ${continuation.substring(0, 20)}...`);
+    fetchNFTs(continuation, true); // Pass continuation and append=true
+  }, [continuation, isLoadingMore, isLoading, fetchNFTs]);
 
   return {
     nfts,

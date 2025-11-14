@@ -71,7 +71,7 @@ export function WarpletDisplay({
                 "Harmonizing shapes and colors...",
                 "Crafting mathematical beauty...",
               ]}
-              interval={1500}
+              interval={2000}
               className="text-lg font-medium text-gray-700"
             />
           </div>

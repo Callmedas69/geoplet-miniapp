@@ -13,7 +13,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Button } from "./ui/button";
-import { Loader2, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useGeoplet } from "@/hooks/useGeoplet";
 import { useContractSimulation } from "@/hooks/useContractSimulation";
@@ -82,14 +82,14 @@ export function MintPaidButton({
 
       // Update payment tracking status to 'minted' with mint tx hash
       fetch(`/api/payment-tracking/${fid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: 'minted',
-          mint_tx_hash: txHash
-        })
-      }).catch(err => {
-        console.error('[MINT-PAID] Failed to update payment tracking:', err);
+          status: "minted",
+          mint_tx_hash: txHash,
+        }),
+      }).catch((err) => {
+        console.error("[MINT-PAID] Failed to update payment tracking:", err);
         // Don't block success - mint succeeded
       });
 
@@ -129,7 +129,7 @@ export function MintPaidButton({
       console.log("[MINT-PAID] ✅ Image sanitized", {
         originalLength: generatedImage.length,
         sanitizedLength: sanitizedImage.length,
-        preview: sanitizedImage.substring(0, 50) + "..."
+        preview: sanitizedImage.substring(0, 50) + "...",
       });
 
       // Validate image size
@@ -162,7 +162,10 @@ export function MintPaidButton({
       }
 
       // Step 2: Get fresh signature (NO x402 payment)
-      console.log("[MINT-PAID] Step 2: Getting fresh signature", { fid, address });
+      console.log("[MINT-PAID] Step 2: Getting fresh signature", {
+        fid,
+        address,
+      });
       setState("getting_signature");
 
       const signatureResponse = await fetch("/api/get-mint-signature-paid", {
@@ -241,11 +244,11 @@ export function MintPaidButton({
       // Update payment tracking to 'failed' status
       if (fid) {
         fetch(`/api/payment-tracking/${fid}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'failed' })
-        }).catch(err => {
-          console.error('[MINT-PAID] Failed to update status to failed:', err);
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "failed" }),
+        }).catch((err) => {
+          console.error("[MINT-PAID] Failed to update status to failed:", err);
         });
       }
 
@@ -254,14 +257,7 @@ export function MintPaidButton({
       haptics.error();
       toast.error(errorMessage);
     }
-  }, [
-    fid,
-    generatedImage,
-    address,
-    checkEligibility,
-    simulateMint,
-    mintNFT,
-  ]);
+  }, [fid, generatedImage, address, checkEligibility, simulateMint, mintNFT]);
 
   // Button content
   const getButtonContent = () => {
@@ -269,49 +265,45 @@ export function MintPaidButton({
       case "checking_eligibility":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Checking eligibility...",
                 "Verifying FID status...",
                 "Validating image...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
       case "getting_signature":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Generating signature...",
                 "Preparing mint...",
                 "Almost ready...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
       case "simulating":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Simulating contract...",
                 "Checking eligibility...",
                 "Validating transaction...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
       case "minting":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Minting on Base...",
@@ -319,7 +311,7 @@ export function MintPaidButton({
                 "Immortalizing art...",
                 "Delivering Geoplet...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
@@ -327,10 +319,10 @@ export function MintPaidButton({
         return "Minted!";
       default:
         return (
-          <>
+          <div className="text-lg">
             <Sparkles className="w-5 h-5" />
             MINT (paid)
-          </>
+          </div>
         );
     }
   };

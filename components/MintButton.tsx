@@ -348,7 +348,7 @@ export function MintButton({
                 "Verifying FID status...",
                 "Validating image...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
@@ -361,7 +361,7 @@ export function MintButton({
                 "Verifying payment...",
                 "Processing USDC...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
@@ -374,7 +374,7 @@ export function MintButton({
                 "Checking eligibility...",
                 "Validating transaction...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
@@ -387,7 +387,7 @@ export function MintButton({
                 "Transferring USDC...",
                 "Confirming onchain...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
@@ -401,7 +401,7 @@ export function MintButton({
                 "Immortalizing art...",
                 "Delivering Geoplet...",
               ]}
-              interval={1500}
+              interval={2000}
             />
           </>
         );
@@ -411,11 +411,11 @@ export function MintButton({
         return "Minted";
       default:
         return (
-          <>
+          <div className="text-lg">
             <Sparkles className="w-5 h-5" />
-            MINT ( <TokenUSDC className="w-5 h-5" variant="branded" />{" "}
+            MINT ( <TokenUSDC className="w-8 h-8" variant="branded" />
             {PAYMENT_CONFIG.MINT.price})
-          </>
+          </div>
         );
     }
   };

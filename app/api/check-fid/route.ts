@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Create public client for reading contract (Base Mainnet)
     const publicClient = createPublicClient({
       chain: GEOPLET_CONFIG.chain,
-      transport: http(GEOPLET_CONFIG.rpc.alchemy),
+      transport: http('https://mainnet.base.org'), // Base official RPC
     });
 
     // Check if FID is minted

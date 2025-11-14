@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { GEOPLET_CONFIG } from "@/lib/contracts";
+import { getNFTById, transformRaribleItem, GEOPLET_ADDRESS } from "@/lib/rarible";
 
 interface SharePageClientProps {
   params: Promise<{ fid: string }>;
@@ -16,22 +16,16 @@ export default function SharePageClient({ params }: SharePageClientProps) {
       const { fid } = await params;
 
       try {
-        // Check if FID is minted
-        const baseUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}/getNFTMetadata`;
-        const urlParams = new URLSearchParams({
-          contractAddress: GEOPLET_CONFIG.address,
-          tokenId: fid,
-          refreshCache: "false",
-        });
+        // Check if FID is minted by fetching from Rarible
+        const data = await getNFTById(GEOPLET_ADDRESS, fid);
+        const nft = transformRaribleItem(data);
 
-        const response = await fetch(`${baseUrl}?${urlParams}`);
-        const data = await response.json();
-
-        // If not minted, redirect to home
-        if (!data.image) {
+        // If not minted (no image), redirect to home
+        if (!nft.image) {
           router.push("/");
         }
       } catch (error) {
+        // 404 error means NFT not minted, redirect to home
         console.error("Failed to check mint status:", error);
         router.push("/");
       }

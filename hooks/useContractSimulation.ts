@@ -60,7 +60,7 @@ export function useContractSimulation() {
       // Create public client for Base network
       const publicClient = createPublicClient({
         chain: base,
-        transport: http(GEOPLET_CONFIG.rpc.alchemy),
+        transport: http('https://mainnet.base.org'), // Base official RPC
       });
 
       // Check 1: FID already minted?
@@ -172,7 +172,7 @@ export function useContractSimulation() {
       // Create public client for Base network
       const publicClient = createPublicClient({
         chain: base,
-        transport: http(GEOPLET_CONFIG.rpc.alchemy),
+        transport: http('https://mainnet.base.org'), // Base official RPC
       });
 
       // Simulate the mintGeoplet transaction

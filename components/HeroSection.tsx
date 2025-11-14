@@ -59,19 +59,26 @@ export function HeroSection({
 
         {/* Loading Overlay */}
         {isGenerating && (
-          <div className="flex flex-col items-center gap-4 text-black">
-            <RotatingText
-              messages={[
-                "Summoning geometric harmony...",
-                "Aligning Bauhaus angles...",
-                "Wobbling pixels on-chain...",
-                "Infusing Base energy...",
-                "Balancing Suprematist chaos...",
-                "Painting the blockchain...",
-              ]}
-              interval={1500}
-              className="text-lg font-medium"
-            />
+          <div
+            className="absolute inset-0 rounded-2xl flex items-center justify-center z-20"
+            role="status"
+            aria-live="polite"
+            aria-label="Generating geometric art"
+          >
+            <div className="flex flex-col items-center gap-4 text-black">
+              <RotatingText
+                messages={[
+                  "Summoning geometric harmony...",
+                  "Aligning Bauhaus angles...",
+                  "Wobbling pixels on-chain...",
+                  "Infusing Base energy...",
+                  "Balancing Suprematist chaos...",
+                  "Painting the blockchain...",
+                ]}
+                interval={2000}
+                className="text-lg font-medium"
+              />
+            </div>
           </div>
         )}
 
