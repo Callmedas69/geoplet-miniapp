@@ -61,12 +61,33 @@ async function getGeopletImageBuffer(fid: string): Promise<Buffer | null> {
     if (imageUrl.startsWith("data:")) {
       // Data URI - extract base64 and decode directly
       console.log("[OG] Image is data URI, decoding base64...");
-      const base64Data = imageUrl.split(",")[1];
-      if (!base64Data) {
-        console.error("[OG] Invalid data URI format");
+      console.log("[OG] Original format:", imageUrl.substring(0, 100) + "...");
+
+      // Strip ALL data URI prefixes (defensive against double-prefix bug)
+      // Same logic as sanitizeImageData() from lib/generators.ts
+      let cleanBase64 = imageUrl;
+      while (cleanBase64.includes('data:image/')) {
+        const parts = cleanBase64.split(',');
+        parts.shift(); // Remove prefix part
+        cleanBase64 = parts.join(',');
+      }
+
+      // Clean whitespace, quotes, and escape sequences
+      cleanBase64 = cleanBase64.trim().replace(/['"\\]/g, '');
+
+      // Validate base64 format
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64)) {
+        console.error("[OG] Invalid base64 format after sanitization:", cleanBase64.substring(0, 50) + "...");
         return null;
       }
-      imageBuffer = Buffer.from(base64Data, "base64");
+
+      if (cleanBase64.length === 0) {
+        console.error("[OG] No valid base64 data found after sanitization");
+        return null;
+      }
+
+      console.log("[OG] Sanitized base64 length:", cleanBase64.length, "chars");
+      imageBuffer = Buffer.from(cleanBase64, "base64");
     } else {
       // External URL - fetch it
       console.log("[OG] Image is external URL, fetching...");
@@ -117,7 +138,18 @@ export async function GET(
     const geopletImageBuffer = await getGeopletImageBuffer(fid);
 
     if (!geopletImageBuffer) {
-      return new Response("Geoplet not found", { status: 404 });
+      console.log("[OG] Geoplet not found, serving static fallback image");
+
+      // Fallback: Serve existing static embed image
+      const fallbackPath = path.join(process.cwd(), 'public/embed-1200x800.webp');
+      const fallbackBuffer = readFileSync(fallbackPath);
+
+      return new Response(fallbackBuffer, {
+        headers: {
+          'Content-Type': 'image/webp',
+          'Cache-Control': 'public, max-age=86400, s-maxage=86400', // 24 hour cache
+        },
+      });
     }
 
     // Convert Buffer to base64 data URI for ImageResponse <img> tag

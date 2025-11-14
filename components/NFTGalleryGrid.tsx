@@ -14,6 +14,7 @@ import { haptics } from "@/lib/haptics";
 interface NFTGalleryGridProps {
   nfts: GeopletNFT[];
   isLoading: boolean;
+  isLoadingMore?: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
   userFid?: number | null; // User's FID (equals their Geoplet tokenId in 1:1 mapping)
@@ -95,6 +96,7 @@ function NFTImage({
 export function NFTGalleryGrid({
   nfts,
   isLoading,
+  isLoadingMore = false,
   hasMore,
   onLoadMore,
   userFid,
@@ -118,7 +120,7 @@ export function NFTGalleryGrid({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && hasMore && !isLoading) {
+        if (entry.isIntersecting && hasMore && !isLoading && !isLoadingMore) {
           onLoadMore();
         }
       },
@@ -128,7 +130,7 @@ export function NFTGalleryGrid({
     observer.observe(observerRef.current);
 
     return () => observer.disconnect();
-  }, [hasMore, isLoading, onLoadMore]);
+  }, [hasMore, isLoading, isLoadingMore, onLoadMore]);
 
   // Share handlers - Use dynamic OG embeds
   const handleShareFarcaster = async () => {
@@ -340,7 +342,9 @@ export function NFTGalleryGrid({
           ref={observerRef}
           className="h-20 flex items-center justify-center"
         >
-          <p className="text-gray-600 text-sm">Loading more...</p>
+          {isLoadingMore && (
+            <p className="text-gray-600 text-sm">Loading more...</p>
+          )}
         </div>
       )}
     </div>

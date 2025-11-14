@@ -1,9 +1,9 @@
 // Geoplets ERC721 with EIP-712 Signature Validation + Animation Upgrade + On-Chain Attributes
-// Generated from: Geoplets (Geoplets.sol) - V5 with Modular Attributes Library
-// Deployed: 2025-11-13
-// Contract: 0xFbb5174FF8970B76648a9E7cCA05D4036958276A
+// Generated from: Geoplets (Geoplets.sol) - V6 with Reroll Feature (Burn & Re-mint)
+// Deployed: 2025-11-14
+// Contract: 0x999aC3B6571fEfb770EA3A836E82Cc45Cd1e653F
 // Network: Base Mainnet (Chain ID: 8453)
-// Features: Base64 inline metadata, ERC-4906 events, Animation upgrades, ERC20 treasury, Burn function, On-chain attributes
+// Features: Base64 inline metadata, ERC-4906 events, Animation upgrades, ERC20 treasury, Reroll feature (burn/re-mint), On-chain attributes
 
 export const GeopletsABI = [
   {
@@ -122,6 +122,19 @@ export const GeopletsABI = [
   },
   {
     "type": "function",
+    "name": "burningEnabled",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "contractURI",
     "inputs": [],
     "outputs": [
@@ -221,6 +234,25 @@ export const GeopletsABI = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "fidBurned",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -596,6 +628,19 @@ export const GeopletsABI = [
   },
   {
     "type": "function",
+    "name": "setBurningEnabled",
+    "inputs": [
+      {
+        "name": "enabled",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setMaxSupply",
     "inputs": [
       {
@@ -962,6 +1007,19 @@ export const GeopletsABI = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BurningToggled",
+    "inputs": [
+      {
+        "name": "enabled",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -1376,7 +1434,7 @@ export const GeopletsABI = [
 // ============ Contract Addresses ============
 
 export const GEOPLET_ADDRESSES = {
-  baseMainnet: "0xFbb5174FF8970B76648a9E7cCA05D4036958276A" as `0x${string}`, // Production deployment - 2025-11-13 (Attributes + Mobile Wallet Support)
+  baseMainnet: "0x999aC3B6571fEfb770EA3A836E82Cc45Cd1e653F" as `0x${string}`, // Production deployment - 2025-11-14 (Reroll Feature + Attributes)
 } as const;
 
 // ============ EIP-712 Configuration ============

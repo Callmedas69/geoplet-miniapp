@@ -66,6 +66,9 @@ interface AlchemyNFT {
 export function useGalleryNFTs() {
   const [nfts, setNfts] = useState<GeopletNFT[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [pageKey, setPageKey] = useState<string | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(true);
   const publicClient = usePublicClient();
 
   // Read actual minted count from contract to detect stale Alchemy cache
@@ -75,15 +78,26 @@ export function useGalleryNFTs() {
     functionName: 'totalSupply',
   });
 
-  const fetchNFTs = useCallback(async () => {
-    setIsLoading(true);
+  const fetchNFTs = useCallback(async (nextPageKey?: string, append: boolean = false) => {
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+    }
+
     try {
       const baseUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForContract`;
       const params = new URLSearchParams({
         contractAddress: GEOPLET_CONFIG.address,
         withMetadata: 'true',
         refreshCache: 'true',
+        pageSize: '20', // Load 20 NFTs per page
       });
+
+      // Add pageKey if provided (for pagination)
+      if (nextPageKey) {
+        params.append('pageKey', nextPageKey);
+      }
 
       const response = await fetch(`${baseUrl}?${params}`);
       const data = await response.json();
@@ -154,12 +168,29 @@ export function useGalleryNFTs() {
         const parsedNFTs = nftsWithMetadata.filter((nft): nft is GeopletNFT => nft !== null);
 
         console.log(`[Gallery] Final result: ${parsedNFTs.length} valid NFTs (removed ${data.nfts.length - parsedNFTs.length} invalid)`);
-        setNfts(parsedNFTs);
+
+        // Update NFTs list (append if pagination, replace if initial load)
+        if (append) {
+          setNfts(prev => [...prev, ...parsedNFTs]);
+        } else {
+          setNfts(parsedNFTs);
+        }
+
+        // Update pagination state
+        const nextPageKey = data.pageKey;
+        setPageKey(nextPageKey);
+        setHasMore(!!nextPageKey);
+
+        console.log(`[Gallery] Pagination: ${nextPageKey ? `Has more (pageKey: ${nextPageKey.substring(0, 20)}...)` : 'No more pages'}`);
       }
     } catch (error) {
       console.error('Failed to fetch NFTs:', error);
     } finally {
-      setIsLoading(false);
+      if (append) {
+        setIsLoadingMore(false);
+      } else {
+        setIsLoading(false);
+      }
     }
   }, [totalSupply, publicClient]);
 
@@ -167,12 +198,28 @@ export function useGalleryNFTs() {
     fetchNFTs();
   }, [fetchNFTs]);
 
+  // Load more NFTs using pageKey from previous response
+  const loadMore = useCallback(() => {
+    if (!pageKey || isLoadingMore || isLoading) {
+      console.log('[Gallery] loadMore() blocked:', {
+        hasPageKey: !!pageKey,
+        isLoadingMore,
+        isLoading,
+      });
+      return;
+    }
+
+    console.log(`[Gallery] Loading more NFTs with pageKey: ${pageKey.substring(0, 20)}...`);
+    fetchNFTs(pageKey, true); // Pass pageKey and append=true
+  }, [pageKey, isLoadingMore, isLoading, fetchNFTs]);
+
   return {
     nfts,
     isLoading,
-    hasMore: false,
-    loadMore: () => {},
+    isLoadingMore,
+    hasMore,
+    loadMore,
     totalCount: nfts.length,
-    refetch: fetchNFTs,
+    refetch: () => fetchNFTs(),
   };
 }

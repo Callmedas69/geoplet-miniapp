@@ -61,6 +61,12 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
     // Emergency pause for minting
     bool public mintingPaused = false;
 
+    // Control burning globally
+    bool public burningEnabled;
+
+    // Track burn history for pricing (backend checks for 2x charge)
+    mapping(uint256 => bool) public fidBurned;
+
     // EIP-712 Signature Validation
     address public signerWallet;
     mapping(bytes32 => bool) public usedSignatures;
@@ -114,6 +120,8 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
     event WithdrawalsToggled(bool enabled);
 
     event MintingPaused(bool paused);
+
+    event BurningToggled(bool enabled);
 
     event EmergencyWithdrawExcess(address indexed token, uint256 amount);
 
@@ -474,10 +482,13 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
      * @dev Only token owner or approved operator can burn
      * @dev IMPORTANT: Burning does NOT transfer ERC20 balances - withdraw first!
      * @dev SSTORE2 image/animation data remains in bytecode but becomes inaccessible
-     * @dev FID remains marked as minted to prevent re-minting same Farcaster ID
+     * @dev FID can be re-minted after burning (reroll feature)
      * @param tokenId The NFT token ID to burn
      */
     function burn(uint256 tokenId) external {
+        // Verify burning is enabled
+        require(burningEnabled, "Burning disabled");
+
         // Verify caller is owner or approved
         require(
             ownerOf(tokenId) == msg.sender ||
@@ -490,8 +501,11 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
         delete imagePointers[tokenId];
         delete animationPointers[tokenId];
 
-        // DO NOT clear fidMinted[tokenId] - prevent re-minting same FID
-        // The FID should remain permanently associated with this burned token
+        // Track burn history for backend pricing logic
+        fidBurned[tokenId] = true;
+
+        // Clear FID minted flag to allow re-minting (reroll feature)
+        delete fidMinted[tokenId];
 
         // Call OpenZeppelin's internal burn (clears owner, approvals, balances)
         _burn(tokenId);
@@ -669,6 +683,15 @@ contract GeoPlets is ERC721, Ownable, ReentrancyGuard, EIP712 {
     function setMintingPaused(bool paused) external onlyOwner {
         mintingPaused = paused;
         emit MintingPaused(paused);
+    }
+
+    /**
+     * @notice Enable or disable burning globally
+     * @param enabled True to enable, false to disable
+     */
+    function setBurningEnabled(bool enabled) external onlyOwner {
+        burningEnabled = enabled;
+        emit BurningToggled(enabled);
     }
 
     /**

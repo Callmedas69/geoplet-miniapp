@@ -14,7 +14,7 @@ import { BeforeMintShareBar } from "@/components/BeforeMintShareBar";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useGenerationStorage } from "@/hooks/useGenerationStorage";
 import { useSplashTransition } from "@/hooks/useSplashTransition";
-import { checkFidMinted } from "@/lib/generators";
+import { checkFidMinted, sanitizeImageData } from "@/lib/generators";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
 import { toast } from "sonner";
 
@@ -152,11 +152,10 @@ export default function Home() {
           if (!generatedImage) {
             const savedImage = await loadGeneration(fid);
             if (savedImage) {
-              const dataUri = savedImage.startsWith("data:")
-                ? savedImage
-                : `data:image/png;base64,${savedImage}`;
-              setGeneratedImage(dataUri);
-              console.log("[PAYMENT-CHECK] Loaded image from Supabase");
+              // Sanitize image to prevent double-prefix bug
+              const sanitizedImage = sanitizeImageData(savedImage);
+              setGeneratedImage(sanitizedImage);
+              console.log("[PAYMENT-CHECK] Loaded and sanitized image from Supabase");
             }
           }
         } else {

@@ -11,7 +11,7 @@ const spriteGraffiti = localFont({
 });
 
 export function GallerySection() {
-  const { nfts, isLoading, hasMore, loadMore, refetch } = useGalleryNFTs();
+  const { nfts, isLoading, isLoadingMore, hasMore, loadMore, refetch } = useGalleryNFTs();
   const { fid } = useWarplets();
 
   return (
@@ -27,6 +27,7 @@ export function GallerySection() {
       <NFTGalleryGrid
         nfts={nfts}
         isLoading={isLoading}
+        isLoadingMore={isLoadingMore}
         hasMore={hasMore}
         onLoadMore={loadMore}
         userFid={fid}

@@ -56,13 +56,12 @@ export function BeforeMintShareBar({
 
   return (
     <div className={containerClasses}>
-      <div className="flex items-center justify-center gap-4 px-2">
+      <div className="flex items-center justify-center gap-4 px-2 pt-4">
         {/* Farcaster Share Icon */}
         <button
           type="button"
           onClick={handleShareFarcaster}
-          disabled={!fid}
-          className="w-8 h-8 rounded-full bg-[#6a3cff] hover:bg-[#c7a9fd] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="w-8 h-8 rounded-full bg-[#6a3cff] hover:bg-[#c7a9fd] transition-colors flex items-center justify-center"
           aria-label="Share to Farcaster"
           title="Share to Farcaster"
         >
@@ -80,8 +79,7 @@ export function BeforeMintShareBar({
         <button
           type="button"
           onClick={handleShareX}
-          disabled={!fid}
-          className="w-8 h-8 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="w-8 h-8 rounded-full bg-black hover:bg-gray-800 transition-colors flex items-center justify-center"
           aria-label="Share on X"
           title="Share on X"
         >

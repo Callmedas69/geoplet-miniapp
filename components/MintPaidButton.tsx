@@ -17,7 +17,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useGeoplet } from "@/hooks/useGeoplet";
 import { useContractSimulation } from "@/hooks/useContractSimulation";
-import { validateImageSize } from "@/lib/generators";
+import { validateImageSize, sanitizeImageData } from "@/lib/generators";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
 import { RotatingText } from "./RotatingText";
@@ -123,8 +123,17 @@ export function MintPaidButton({
     abortControllerRef.current = new AbortController();
 
     try {
+      // Sanitize image to prevent double-prefix bug
+      console.log("[MINT-PAID] Sanitizing image data...");
+      const sanitizedImage = sanitizeImageData(generatedImage);
+      console.log("[MINT-PAID] ✅ Image sanitized", {
+        originalLength: generatedImage.length,
+        sanitizedLength: sanitizedImage.length,
+        preview: sanitizedImage.substring(0, 50) + "..."
+      });
+
       // Validate image size
-      const validation = validateImageSize(generatedImage);
+      const validation = validateImageSize(sanitizedImage);
       if (!validation.valid) {
         haptics.error();
         toast.error(validation.error || "Image validation failed");
@@ -137,7 +146,7 @@ export function MintPaidButton({
 
       const eligibilityResult = await checkEligibility(
         fid.toString(),
-        generatedImage
+        sanitizedImage
       );
 
       if (!eligibilityResult.success) {
@@ -195,7 +204,7 @@ export function MintPaidButton({
 
       const simulationResult = await simulateMint(
         signature.voucher,
-        generatedImage,
+        sanitizedImage,
         signature.signature
       );
 
@@ -214,7 +223,7 @@ export function MintPaidButton({
       // Step 4: Execute mint transaction
       console.log("[MINT-PAID] Step 4: Executing mint transaction");
       setState("minting");
-      await mintNFT(signature, generatedImage);
+      await mintNFT(signature, sanitizedImage);
 
       // Success handled in useEffect
     } catch (error) {
