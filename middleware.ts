@@ -14,7 +14,7 @@ export function middleware(request: NextRequest) {
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: https:; " +
-    "connect-src 'self' https://base-mainnet.g.alchemy.com https://api.onchain.fi"
+    "connect-src 'self' https://mainnet.base.org https://base-mainnet.g.alchemy.com https://api.onchain.fi"
   );
 
   // Add headers for social media crawlers and image optimization

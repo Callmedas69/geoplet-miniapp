@@ -46,7 +46,8 @@ export const GEOPLET_CONFIG = {
 
   // RPC Configuration
   rpc: {
-    alchemy: `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
+    base: 'https://mainnet.base.org', // Base official RPC (primary - used by wagmi)
+    alchemy: `https://base-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`, // Alchemy (NFT metadata only)
   },
 } as const;
 

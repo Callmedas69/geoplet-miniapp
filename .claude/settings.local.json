@@ -84,7 +84,8 @@
       "Bash(npx tailwindcss --help:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "WebFetch(domain:docs.alchemy.com)"
+      "WebFetch(domain:docs.alchemy.com)",
+      "WebFetch(domain:docs.base.org)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -20,7 +20,7 @@ import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 import { validateImageSize, checkFidMinted } from "@/lib/generators";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
-import { TokenUSDC } from "@web3icons/react";
+import { TokenCUSDC, TokenUSDC } from "@web3icons/react";
 import { RotatingText } from "./RotatingText";
 import { PAYMENT_CONFIG } from "@/lib/payment-config";
 import { useContractSimulation } from "@/hooks/useContractSimulation";
@@ -342,7 +342,6 @@ export function MintButton({
       case "checking_eligibility":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Checking eligibility...",
@@ -356,7 +355,6 @@ export function MintButton({
       case "paying":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Initiating x402...",
@@ -370,7 +368,6 @@ export function MintButton({
       case "simulating":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Simulating contract...",
@@ -384,7 +381,6 @@ export function MintButton({
       case "settling":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Settling payment...",
@@ -398,7 +394,6 @@ export function MintButton({
       case "minting":
         return (
           <>
-            <Loader2 className="w-5 h-5 animate-spin" />
             <RotatingText
               messages={[
                 "Minting on Base...",
@@ -418,7 +413,8 @@ export function MintButton({
         return (
           <>
             <Sparkles className="w-5 h-5" />
-            MINT (${PAYMENT_CONFIG.MINT.price})
+            MINT ( <TokenUSDC className="w-5 h-5" variant="branded" />{" "}
+            {PAYMENT_CONFIG.MINT.price})
           </>
         );
     }

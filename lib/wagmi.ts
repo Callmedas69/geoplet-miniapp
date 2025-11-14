@@ -2,13 +2,11 @@ import { http, createConfig } from 'wagmi';
 import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
 
-const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || '';
-
 export const config = createConfig({
   chains: [base],
   connectors: [farcasterMiniApp()],
   transports: {
-    [base.id]: http(`https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`),
+    [base.id]: http('https://mainnet.base.org'), // Base official RPC - eliminates cache mismatch with mobile wallets
   },
   ssr: true,
 });
