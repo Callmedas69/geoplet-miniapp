@@ -374,7 +374,7 @@ export default function Home() {
 
   return (
     <>
-      {/* Splash Screen */}
+      {/*   h Screen */}
       {isPageLoading && <SplashScreen />}
 
       {/* Main Content */}
