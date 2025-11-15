@@ -79,7 +79,8 @@ async function generateGeometricArt(
     - Use clean sharp edges and straight lines
     - Keep the character's exact pose as shown in reference image
     - Keep the character's exact body shape as shown in reference image
-    - Plain solid pastel color background with more empty space around the smaller character`;
+    - Plain solid pastel color background with more empty space around the smaller character
+- Resize the character 50% smaller`;
 
 
     log(`📝 Prompt: ${prompt}`);
