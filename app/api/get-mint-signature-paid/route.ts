@@ -8,10 +8,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createWalletClient, http, type Address, recoverTypedDataAddress, isAddressEqual } from 'viem';
+import { createWalletClient, createPublicClient, http, type Address, recoverTypedDataAddress, isAddressEqual } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { base } from 'viem/chains';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
 import { supabaseAdmin } from '@/lib/supabase';
+
+// Public client for Base chain time diagnostic
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http(process.env.NEXT_PUBLIC_BASE_RPC_URL),
+});
 
 // Signer private key (same as regular mint endpoint)
 const PRIVATE_KEY = process.env.SIGNER_PRIVATE_KEY;
@@ -141,6 +148,23 @@ async function generateMintSignature(
     account,
     chain: GEOPLET_CONFIG.chain,
     transport: http(),
+  });
+
+  // ✅ TIME SKEW DIAGNOSTIC: Measure server vs chain time difference
+  const serverTime = Math.floor(Date.now() / 1000);
+  const block = await publicClient.getBlock();
+  const chainTime = Number(block.timestamp);
+  const skew = serverTime - chainTime;
+
+  console.log('🕐 TIME DIAGNOSTIC [get-mint-signature-paid]:', {
+    serverTime,
+    chainTime,
+    skewSeconds: skew,
+    skewMinutes: (skew / 60).toFixed(1),
+    generatedDeadline: serverTime + (15 * 60),
+    contractValidatesAt: chainTime,
+    userAddress: to,
+    fid,
   });
 
   // Generate voucher with 15-minute validity
