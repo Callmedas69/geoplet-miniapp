@@ -60,7 +60,7 @@ export function HeroSection({
         {/* Loading Overlay */}
         {isGenerating && (
           <div
-            className="absolute inset-0 rounded-2xl flex items-center justify-center z-20"
+            className="absolute inset-0 rounded-2xl bg-cream flex items-center justify-center z-20"
             role="status"
             aria-live="polite"
             aria-label="Generating geometric art"
@@ -74,6 +74,16 @@ export function HeroSection({
                   "Infusing Base energy...",
                   "Balancing Suprematist chaos...",
                   "Painting the blockchain...",
+                  "Making a masterpiece takes a little longer...",
+                  "Hold on, your art is almost awakened...",
+                  "Excellence takes a few more seconds...",
+                  "Precision is being fine-tuned...",
+                  "We’re polishing the final pixels...",
+                  "Greatness is being assembled...",
+                  "Your creation is reaching perfection...",
+                  "Crafting something timeless for you...",
+                  "Refining every angle with care...",
+                  "Your masterpiece is nearly ready...",
                 ]}
                 interval={2000}
                 className="text-lg font-medium"

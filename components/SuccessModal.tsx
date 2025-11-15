@@ -138,11 +138,12 @@ export function SuccessModal({
           {/* Share Buttons - Only 2 Icons */}
           <div className="flex items-center justify-center gap-4 px-2">
             {/* Farcaster Share Icon */}
+
             <button
               type="button"
               onClick={handleShareFarcaster}
               disabled={!fid}
-              className="touch-target p-3 rounded-full hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+              className="w-8 h-8 rounded-full bg-[#6a3cff] hover:bg-[#c7a9fd] transition-colors flex items-center justify-center"
               aria-label="Share to Farcaster"
               title="Share to Farcaster"
             >
@@ -151,16 +152,16 @@ export function SuccessModal({
                 alt="Farcaster"
                 width={36}
                 height={36}
-                className="rounded-full"
               />
             </button>
 
             {/* X/Twitter Share Icon */}
+
             <button
               type="button"
               onClick={handleShareX}
               disabled={!fid}
-              className="touch-target p-3 rounded-full bg-black hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-8 h-8 rounded-full bg-black hover:bg-gray-800 transition-colors flex items-center justify-center"
               aria-label="Share on X"
               title="Share on X"
             >
