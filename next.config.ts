@@ -34,7 +34,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'imagedelivery.net',
+        hostname: 'api.rarible.org',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.imagedelivery.net',
       },
     ],
   },

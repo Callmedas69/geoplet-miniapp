@@ -22,9 +22,22 @@ export function WarpletDisplay({
 }: WarpletDisplayProps) {
   const thumbnailRef = useRef<HTMLDivElement>(null);
 
-  // Add data URI prefix if generatedImage is raw base64 (KISS: display layer transformation)
+  console.log('[WARPLET-DISPLAY] Rendering with:', {
+    imageUrl,
+    tokenId,
+    hasGeneratedImage: !!generatedImage,
+    imageUrlLength: imageUrl?.length || 0,
+  });
+
+  // Format generatedImage based on type (KISS: display layer transformation)
+  // - HTTP URLs (from Rarible): Use as-is
+  // - Data URIs: Use as-is
+  // - Raw base64: Add data URI prefix
   const formattedGenerated =
-    generatedImage && !generatedImage.startsWith("data:")
+    generatedImage &&
+    !generatedImage.startsWith("data:") &&
+    !generatedImage.startsWith("http://") &&
+    !generatedImage.startsWith("https://")
       ? `data:image/webp;base64,${generatedImage}`
       : generatedImage;
 

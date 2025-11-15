@@ -1,17 +1,17 @@
 /**
- * Rarible API Integration
+ * Rarible API Integration (Client-Side)
  *
- * Provides NFT metadata fetching using Rarible API v0.1
- * Replaces Alchemy NFT API for better Base network support
+ * Provides NFT metadata fetching via server-side API route
+ * Server route keeps API key secure and eliminates CORS issues
+ *
+ * Following KISS Principle - simple client wrapper
  */
 
-// Configuration
-const RARIBLE_API_KEY = process.env.NEXT_PUBLIC_RARIBLE_API_KEY || '';
-const RARIBLE_BASE_URL = 'https://api.rarible.org/v0.1';
+import { GEOPLET_ADDRESSES } from '@/abi/GeopletsABI';
 
 // Contract addresses
-export const GEOPLET_ADDRESS = '0x999aC3B6571fEfb770EA3A836E82Cc45Cd1e653F';
-export const WARPLET_ADDRESS = '0x699727f9e01a822efdcf7333073f0461e5914b4e';
+export const GEOPLET_ADDRESS = GEOPLET_ADDRESSES.baseMainnet;
+export const WARPLET_ADDRESS = process.env.NEXT_PUBLIC_WARPLETS_ADDRESS as `0x${string}`;
 
 /**
  * Rarible API item structure
@@ -73,26 +73,24 @@ export interface NFTMetadata {
 }
 
 /**
- * Fetch from Rarible API with authentication
+ * Fetch from our Rarible API proxy route
+ * Server-side route handles authentication and CORS
  */
 async function raribleFetch(endpoint: string): Promise<any> {
-  if (!RARIBLE_API_KEY) {
-    throw new Error('RARIBLE_API_KEY not configured');
-  }
-
-  const response = await fetch(`${RARIBLE_BASE_URL}${endpoint}`, {
-    headers: {
-      'X-API-KEY': RARIBLE_API_KEY,
-      'Content-Type': 'application/json',
-    },
-  });
+  const response = await fetch(endpoint);
 
   if (!response.ok) {
     const error = await response.text().catch(() => response.statusText);
-    throw new Error(`Rarible API error: ${response.status} ${error}`);
+    throw new Error(`Rarible API proxy error: ${response.status} ${error}`);
   }
 
-  return response.json();
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || 'Rarible API request failed');
+  }
+
+  return result.data;
 }
 
 /**
@@ -100,15 +98,19 @@ async function raribleFetch(endpoint: string): Promise<any> {
  *
  * @param contractAddress - Contract address (without chain prefix)
  * @param tokenId - Token ID as string
- * @returns Rarible item data
+ * @returns NFT metadata
  */
 export async function getNFTById(
   contractAddress: string,
   tokenId: string
-): Promise<RaribleItem> {
-  // Format: BASE:0x{contractAddress}:{tokenId}
-  const itemId = `BASE:${contractAddress}:${tokenId}`;
-  return raribleFetch(`/items/${itemId}`);
+): Promise<NFTMetadata> {
+  const params = new URLSearchParams({
+    type: 'single',
+    contractAddress,
+    tokenId,
+  });
+
+  return raribleFetch(`/api/rarible?${params.toString()}`);
 }
 
 /**
@@ -116,43 +118,48 @@ export async function getNFTById(
  *
  * @param contractAddress - Contract address (without chain prefix)
  * @param continuation - Pagination token from previous response
+ * @param size - Number of items per page (default: 20)
  * @returns Collection response with items and pagination token
  */
 export async function getNFTsFromCollection(
   contractAddress: string,
-  continuation?: string
-): Promise<RaribleCollectionResponse> {
-  // Format: BASE:0x{contractAddress} (URL-encoded to BASE%3A0x...)
-  const collectionId = encodeURIComponent(`BASE:${contractAddress}`);
-  const queryParams = continuation ? `&continuation=${continuation}` : '';
+  continuation?: string,
+  size: number = 20
+): Promise<{ items: NFTMetadata[]; continuation?: string }> {
+  const params = new URLSearchParams({
+    type: 'collection',
+    contractAddress,
+    size: size.toString(),
+  });
 
-  return raribleFetch(`/items/byCollection?collection=${collectionId}${queryParams}`);
+  if (continuation) {
+    params.append('continuation', continuation);
+  }
+
+  return raribleFetch(`/api/rarible?${params.toString()}`);
 }
 
 /**
  * Transform Rarible item to common NFT format
- *
- * Handles parsing of chain-prefixed addresses and extracts
- * relevant metadata fields.
- *
- * @param item - Rarible API item
- * @returns Normalized NFT metadata
+ * @deprecated - Transformation now handled server-side in /api/rarible
+ * This function is kept for backward compatibility only
  */
-export function transformRaribleItem(item: RaribleItem): NFTMetadata {
-  // Extract owner address (remove chain prefix)
-  // "ETHEREUM:0x..." or "BASE:0x..." → "0x..."
+export function transformRaribleItem(item: any): NFTMetadata {
+  // If already transformed by server, return as-is
+  if (item.contract && typeof item.contract === 'object' && item.contract.address) {
+    return item as NFTMetadata;
+  }
+
+  // Legacy transformation (for backward compatibility)
   const owner = item.ownerIfSingle?.includes(':')
     ? item.ownerIfSingle.split(':')[1]
     : item.ownerIfSingle;
 
-  // Extract contract address (remove chain prefix)
-  // "BASE:0x..." → "0x..."
   const contractAddress = item.contract?.includes(':')
     ? item.contract.split(':')[1]
     : item.contract || '';
 
-  // Extract image URL from content array
-  const image = item.meta?.content?.find(c => c['@type'] === 'IMAGE')?.url || '';
+  const image = item.meta?.content?.find((c: any) => c['@type'] === 'IMAGE')?.url || '';
 
   return {
     tokenId: item.tokenId,
@@ -181,7 +188,6 @@ export async function getNFTsByIds(
 ): Promise<NFTMetadata[]> {
   const promises = tokenIds.map(id =>
     getNFTById(contractAddress, id)
-      .then(transformRaribleItem)
       .catch(error => {
         console.error(`[RARIBLE] Failed to fetch NFT ${id}:`, error);
         return null;

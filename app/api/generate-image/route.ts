@@ -46,7 +46,8 @@ async function generateGeometricArt(
       'gateway.pinata.cloud',
       'res.cloudinary.com',        // Cloudinary CDN (Warpcast/Farcaster images)
       'imagedelivery.net',          // Cloudflare Images (Warpcast/Farcaster images)
-      `ipfs.raribleuserdata.com`,
+      'ipfs.raribleuserdata.com',   // Rarible IPFS gateway
+      'api.rarible.org',            // Rarible API embedded content
     ];
 
     const url = new URL(imageUrl);
@@ -72,6 +73,7 @@ async function generateGeometricArt(
     log(`🎨 Generating geometric interpretation with gpt-image-1...`);
 
     const prompt = `Transform this image into bauhaus and suprematism geometric art style with these strict rules:
+    - The character 50% smaller than reference image
     - Add random monsters attributes for halloween party
     - Use solid flat colors with subtle shading between shapes to create 3D depth
     - Use clean sharp edges and straight lines

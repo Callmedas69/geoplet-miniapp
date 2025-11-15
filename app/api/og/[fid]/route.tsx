@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { NextRequest } from "next/server";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
+import { getNFTById, transformRaribleItem, GEOPLET_ADDRESS } from "@/lib/rarible";
 import { readFileSync } from "fs";
 import path from "path";
 
@@ -19,41 +20,19 @@ const schoolbellFontData = readFileSync(
 // Fetch and convert Geoplet image to PNG Buffer (KISS: no proxy, direct processing)
 async function getGeopletImageBuffer(fid: string): Promise<Buffer | null> {
   try {
-    // 1. Fetch NFT metadata from Alchemy
-    const baseUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}/getNFTMetadata`;
-    const params = new URLSearchParams({
-      contractAddress: GEOPLET_CONFIG.address,
-      tokenId: fid,
-      refreshCache: "false",
-    });
+    // 1. Fetch NFT metadata from Rarible API
+    console.log("[OG] Fetching NFT metadata from Rarible for FID:", fid);
+    const data = await getNFTById(GEOPLET_ADDRESS, fid);
+    const nft = transformRaribleItem(data);
 
-    const metadataResponse = await fetch(`${baseUrl}?${params}`);
-    const metadata = await metadataResponse.json();
+    const imageUrl = nft.image;
 
-    let imageUrl = metadata.image?.cachedUrl || metadata.image?.originalUrl;
-
-    // ✅ Base64 metadata fallback for on-chain data URIs
-    if (!imageUrl && metadata.tokenUri?.raw) {
-      try {
-        const raw = metadata.tokenUri.raw;
-        if (raw.includes("data:application/json;base64,")) {
-          const base64String = raw.split("data:application/json;base64,")[1];
-          const jsonString = Buffer.from(base64String, 'base64').toString('utf8');
-          const decoded = JSON.parse(jsonString);
-          imageUrl = decoded.image;
-          console.log("[OG] Decoded base64 tokenURI image field:", imageUrl?.substring(0, 100) + "...");
-        }
-      } catch (e) {
-        console.error("[OG] Failed to decode base64 metadata:", e);
-      }
-    }
-
-    if (!imageUrl) {
-      console.log("[OG] No image found in Alchemy metadata");
+    if (!imageUrl || imageUrl.trim() === '') {
+      console.log("[OG] No image found in Rarible metadata for FID:", fid);
       return null;
     }
 
-    console.log("[OG] Found Geoplet image:", imageUrl.substring(0, 100) + "...");
+    console.log("[OG] Found Geoplet image from Rarible:", imageUrl.substring(0, 100) + "...");
 
     // 2. Handle data URI (inline base64) vs external URL
     let imageBuffer: Buffer;
@@ -147,7 +126,7 @@ export async function GET(
       return new Response(fallbackBuffer, {
         headers: {
           'Content-Type': 'image/webp',
-          'Cache-Control': 'public, max-age=86400, s-maxage=86400', // 24 hour cache
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
       });
     }
@@ -262,9 +241,7 @@ export async function GET(
           },
         ],
         headers: {
-          // Immutable cache for NFT images (following Farcaster miniapp-img pattern)
-          "Cache-Control":
-            "public, max-age=31536000, s-maxage=31536000, immutable",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
         },
       }
     );

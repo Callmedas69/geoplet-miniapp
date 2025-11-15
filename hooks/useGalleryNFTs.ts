@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { GEOPLET_CONFIG } from '@/lib/contracts';
 import { useReadContract, usePublicClient } from 'wagmi';
 import { GeopletsABI } from '@/abi/GeopletsABI';
-import { getNFTsFromCollection, transformRaribleItem, GEOPLET_ADDRESS } from '@/lib/rarible';
+import { getNFTsFromCollection, GEOPLET_ADDRESS } from '@/lib/rarible';
 
 export interface GeopletNFT {
   tokenId: number;
@@ -57,6 +57,16 @@ export function useGalleryNFTs() {
     functionName: 'totalSupply',
   });
 
+  // Use refs to avoid re-renders (KISS: stable references)
+  const publicClientRef = useRef(publicClient);
+  const totalSupplyRef = useRef(totalSupply);
+
+  // Update refs when values change (doesn't trigger re-render)
+  useEffect(() => {
+    publicClientRef.current = publicClient;
+    totalSupplyRef.current = totalSupply;
+  }, [publicClient, totalSupply]);
+
   const fetchNFTs = useCallback(async (nextContinuation?: string, append: boolean = false) => {
     if (append) {
       setIsLoadingMore(true);
@@ -65,17 +75,18 @@ export function useGalleryNFTs() {
     }
 
     try {
-      // Fetch from Rarible API
-      const data = await getNFTsFromCollection(GEOPLET_ADDRESS, nextContinuation);
+      // Fetch from Rarible API with pagination (20 items per page)
+      const data = await getNFTsFromCollection(GEOPLET_ADDRESS, nextContinuation, 20);
 
-      if (data.items && data.items.length > 0) {
-        console.log(`[Gallery] Rarible returned ${data.items.length} NFTs, contract totalSupply: ${totalSupply?.toString() || 'loading...'}`);
+      // Handle both empty and non-empty responses
+      const hasItems = data.items && data.items.length > 0;
 
-        // Step 1: Transform and validate all NFTs
+      if (hasItems) {
+        console.log(`[Gallery] Rarible returned ${data.items.length} NFTs, contract totalSupply: ${totalSupplyRef.current?.toString() || 'loading...'}`);
+
+        // Step 1: Validate all NFTs (already transformed by API route)
         const nftsWithMetadata = await Promise.all(
-          data.items.map(async (item) => {
-            // Transform Rarible item to common format
-            const nft = transformRaribleItem(item);
+          data.items.map(async (nft) => {
             const tokenId = parseInt(nft.tokenId, 10);
 
             // Validate parsed tokenId
@@ -87,11 +98,11 @@ export function useGalleryNFTs() {
             let image = nft.image;
 
             // Step 2: If Rarible has no metadata, read from contract directly
-            if ((!image || image.trim() === '') && publicClient) {
+            if ((!image || image.trim() === '') && publicClientRef.current) {
               console.log(`[Gallery] ⚠️ Token #${tokenId} has NO Rarible metadata, reading from contract...`);
 
               try {
-                const tokenURI = await publicClient.readContract({
+                const tokenURI = await publicClientRef.current.readContract({
                   address: GEOPLET_CONFIG.address as `0x${string}`,
                   abi: GeopletsABI,
                   functionName: 'tokenURI',
@@ -146,9 +157,18 @@ export function useGalleryNFTs() {
         // Update pagination state (Rarible uses "continuation" instead of "pageKey")
         const nextContinuationToken = data.continuation;
         setContinuation(nextContinuationToken);
-        setHasMore(!!nextContinuationToken);
 
-        console.log(`[Gallery] Pagination: ${nextContinuationToken ? `Has more (continuation: ${nextContinuationToken.substring(0, 20)}...)` : 'No more pages'}`);
+        // KISS: Only continue pagination if we got items AND have continuation
+        // Rarible sometimes returns continuation even when 0 items (prevents infinite loop)
+        const shouldLoadMore = !!nextContinuationToken && parsedNFTs.length > 0;
+        setHasMore(shouldLoadMore);
+
+        console.log(`[Gallery] Pagination: ${shouldLoadMore ? `Has more (continuation: ${nextContinuationToken.substring(0, 20)}...)` : `No more pages (items: ${parsedNFTs.length}, continuation: ${!!nextContinuationToken})`}`);
+      } else {
+        // KISS: 0 items returned - STOP pagination to prevent infinite loop
+        console.log('[Gallery] ⚠️ Rarible returned 0 items - stopping pagination');
+        setHasMore(false);
+        setContinuation(undefined);
       }
     } catch (error) {
       console.error('[Gallery] Failed to fetch NFTs:', error);
@@ -159,11 +179,13 @@ export function useGalleryNFTs() {
         setIsLoading(false);
       }
     }
-  }, [totalSupply, publicClient]);
+  }, []); // Empty dependencies - uses refs for stable reference
 
+  // Initial load - run once on mount only (KISS: prevents infinite loop)
   useEffect(() => {
     fetchNFTs();
-  }, [fetchNFTs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty array = run once on mount
 
   // Load more NFTs using continuation token from previous response
   const loadMore = useCallback(() => {
@@ -178,7 +200,7 @@ export function useGalleryNFTs() {
 
     console.log(`[Gallery] Loading more NFTs with continuation: ${continuation.substring(0, 20)}...`);
     fetchNFTs(continuation, true); // Pass continuation and append=true
-  }, [continuation, isLoadingMore, isLoading, fetchNFTs]);
+  }, [continuation, isLoadingMore, isLoading]); // Removed fetchNFTs dependency
 
   return {
     nfts,

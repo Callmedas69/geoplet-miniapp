@@ -18,7 +18,7 @@ import { useGenerationStorage } from "@/hooks/useGenerationStorage";
 import { useSplashTransition } from "@/hooks/useSplashTransition";
 import { checkFidMinted, sanitizeImageData } from "@/lib/generators";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
-import { getNFTById, transformRaribleItem, GEOPLET_ADDRESS } from "@/lib/rarible";
+import { getNFTById, GEOPLET_ADDRESS } from "@/lib/rarible";
 import { toast } from "sonner";
 
 export default function Home() {
@@ -83,8 +83,7 @@ export default function Home() {
         setIsMinted(true);
 
         try {
-          const data = await getNFTById(GEOPLET_ADDRESS, fid.toString());
-          const nft = transformRaribleItem(data);
+          const nft = await getNFTById(GEOPLET_ADDRESS, fid.toString());
 
           if (nft.image) {
             setGeneratedImage(nft.image);
@@ -199,8 +198,7 @@ export default function Home() {
           setIsMinted(true);
 
           try {
-            const data = await getNFTById(GEOPLET_ADDRESS, fid.toString());
-            const nft = transformRaribleItem(data);
+            const nft = await getNFTById(GEOPLET_ADDRESS, fid.toString());
 
             if (nft.image) {
               setGeneratedImage(nft.image);

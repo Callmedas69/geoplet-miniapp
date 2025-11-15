@@ -5,6 +5,7 @@ import Image from "next/image";
 import { sdk } from "@farcaster/miniapp-sdk";
 import { GeopletNFT } from "@/hooks/useGalleryNFTs";
 import { useUserNFTs } from "@/hooks/useUserNFTs";
+import { getNFTById, GEOPLET_ADDRESS } from "@/lib/rarible";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
 import { SHARE_CONFIG } from "@/lib/share-config";
 import { ExpandableShareButton } from "./ExpandableShareButton";
@@ -109,10 +110,44 @@ export function NFTGalleryGrid({
     return [...nfts].sort((a, b) => b.tokenId - a.tokenId);
   }, [nfts]);
 
-  // Get user's Geoplet (each user only has 1)
-  const myGeoplet = useMemo(() => {
-    return isConnected && userNFTs.length > 0 ? userNFTs[0] : null;
-  }, [isConnected, userNFTs]);
+  // Fetch user's Geoplet directly by FID (FID = tokenId in 1:1 mapping)
+  const [myGeoplet, setMyGeoplet] = useState<GeopletNFT | null>(null);
+  const cachedFidRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!userFid) {
+      setMyGeoplet(null);
+      cachedFidRef.current = null;
+      return;
+    }
+
+    // KISS: Cache check - prevent refetching same NFT using ref
+    if (cachedFidRef.current === userFid) {
+      console.log('[FEATURED-NFT] Using cached data for FID:', userFid);
+      return;
+    }
+
+    // Fetch user's specific NFT from Rarible by FID (only if not cached)
+    console.log('[FEATURED-NFT] Fetching from Rarible for FID:', userFid);
+    getNFTById(GEOPLET_ADDRESS, userFid.toString())
+      .then(nft => {
+        setMyGeoplet({
+          tokenId: parseInt(nft.tokenId, 10),
+          name: nft.name,
+          image: nft.image,
+        });
+        cachedFidRef.current = userFid; // Cache the FID in ref
+        console.log('[FEATURED-NFT] Fetched and cached:', {
+          fid: userFid,
+          tokenId: nft.tokenId,
+          image: nft.image.substring(0, 100),
+        });
+      })
+      .catch(error => {
+        console.error('[FEATURED-NFT] Failed to fetch:', error);
+        setMyGeoplet(null);
+      });
+  }, [userFid]); // Only userFid dependency - no loop!
 
   // Infinite scroll using Intersection Observer
   useEffect(() => {

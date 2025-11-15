@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
       "nft-cdn.alchemy.com",
       "res.cloudinary.com",
       "ipfs.raribleuserdata.com",
+      "api.rarible.org",
       "imagedelivery.net",
       "ipfs.io",
       "gateway.pinata.cloud",

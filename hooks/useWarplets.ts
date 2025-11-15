@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
-import { getNFTById, transformRaribleItem, WARPLET_ADDRESS } from '@/lib/rarible';
+import { getNFTById, WARPLET_ADDRESS } from '@/lib/rarible';
 
 export interface WarpletNFT {
   tokenId: string;
@@ -55,8 +55,7 @@ export function useWarplets() {
 
         // Fetch Warplet NFT metadata from Rarible API
         try {
-          const data = await getNFTById(WARPLET_ADDRESS, userFid.toString());
-          const raribleNFT = transformRaribleItem(data);
+          const raribleNFT = await getNFTById(WARPLET_ADDRESS, userFid.toString());
 
           // Transform to Warplet format
           const warplet: WarpletNFT = {
@@ -70,6 +69,13 @@ export function useWarplets() {
               name: raribleNFT.contract.name || 'Warplets',
             },
           };
+
+          console.log('[WARPLET-FETCH] Image URLs:', {
+            imageUrl: raribleNFT.image,
+            thumbnailUrl: raribleNFT.image,
+            tokenId: raribleNFT.tokenId,
+            name: warplet.name,
+          });
 
           setNft(warplet);
         } catch (err) {
