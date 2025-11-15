@@ -46,6 +46,7 @@ async function generateGeometricArt(
       'gateway.pinata.cloud',
       'res.cloudinary.com',        // Cloudinary CDN (Warpcast/Farcaster images)
       'imagedelivery.net',          // Cloudflare Images (Warpcast/Farcaster images)
+      `ipfs.raribleuserdata.com`,
     ];
 
     const url = new URL(imageUrl);
