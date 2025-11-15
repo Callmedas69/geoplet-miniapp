@@ -88,7 +88,7 @@ export default function RootLayout({
           </ClientLayout>
         </Providers>
         <Toaster
-          position="bottom-right"
+          position="top-center"
           toastOptions={{
             style: {
               fontFamily: "inherit",

@@ -10,6 +10,7 @@ interface WarpletDisplayProps {
   tokenId: string;
   generatedImage?: string | null;
   isMinted?: boolean;
+  isGenerating?: boolean;
   alt?: string;
 }
 
@@ -18,6 +19,7 @@ export function WarpletDisplay({
   tokenId,
   generatedImage,
   isMinted = false,
+  isGenerating = false,
   alt = "Warplet NFT",
 }: WarpletDisplayProps) {
   const thumbnailRef = useRef<HTMLDivElement>(null);
@@ -73,7 +75,8 @@ export function WarpletDisplay({
 
       <div className="relative w-full h-full flex items-center justify-center">
         {/* Main Area: Rotating Text or Geoplet */}
-        {!formattedGenerated ? (
+        {/* Hide RotatingText when overlay is active (isGenerating=true) to prevent overlap */}
+        {!formattedGenerated && !isGenerating ? (
           <div className="flex flex-col items-center justify-center text-center px-8">
             <RotatingText
               messages={[
@@ -88,6 +91,9 @@ export function WarpletDisplay({
               className="text-lg font-medium text-gray-700"
             />
           </div>
+        ) : !formattedGenerated ? (
+          // isGenerating=true: Show nothing, overlay handles the UI
+          null
         ) : (
           <>
             <Image

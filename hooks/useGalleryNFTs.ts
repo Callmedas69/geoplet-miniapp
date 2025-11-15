@@ -11,6 +11,10 @@ export interface GeopletNFT {
   name: string;
   image: string;
   owner?: string;
+  attributes?: Array<{
+    key: string;
+    value: string;
+  }>;
 }
 
 /**

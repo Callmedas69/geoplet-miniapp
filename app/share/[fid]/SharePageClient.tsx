@@ -2,7 +2,11 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getNFTById, transformRaribleItem, GEOPLET_ADDRESS } from "@/lib/rarible";
+import {
+  getNFTById,
+  transformRaribleItem,
+  GEOPLET_ADDRESS,
+} from "@/lib/rarible";
 
 interface SharePageClientProps {
   params: Promise<{ fid: string }>;
@@ -16,7 +20,7 @@ export default function SharePageClient({ params }: SharePageClientProps) {
       const { fid } = await params;
 
       try {
-        // Check if FID is minted by fetching from Rarible
+        // Fetch NFT metadata from Rarible
         const data = await getNFTById(GEOPLET_ADDRESS, fid);
         const nft = transformRaribleItem(data);
 
@@ -25,7 +29,6 @@ export default function SharePageClient({ params }: SharePageClientProps) {
           router.push("/");
         }
       } catch (error) {
-        // 404 error means NFT not minted, redirect to home
         console.error("Failed to check mint status:", error);
         router.push("/");
       }
@@ -34,16 +37,27 @@ export default function SharePageClient({ params }: SharePageClientProps) {
     checkAndRedirect();
   }, [params, router]);
 
+  /**
+   * Open the official Farcaster Miniapp using Universal Link.
+   * Mobile  → opens Farcaster app automatically.
+   * Browser → opens miniapp drawer.
+   */
+  const openMiniApp = () => {
+    window.location.href =
+      "https://farcaster.xyz/miniapps/qSFv2sErypbU/geoplet";
+  };
+
   return (
     <div className="min-h-screen bg-[#f3daa1] flex flex-col items-center justify-center p-4">
       <div className="max-w-2xl w-full text-center space-y-6">
-        <h1 className="text-6xl font-bold text-black">🎨</h1>
         <h2 className="text-3xl font-bold text-black">Geoplet Minted!</h2>
+
         <p className="text-lg text-black/80">
           Open in Farcaster to view this Geoplet NFT
         </p>
+
         <button
-          onClick={() => router.push("/")}
+          onClick={openMiniApp}
           className="px-8 py-4 bg-black text-white rounded-lg font-medium hover:bg-black/90 transition-colors"
         >
           Open App

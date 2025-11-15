@@ -12,7 +12,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { Button } from "./ui/button";
-import { Loader2, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useWarplets } from "@/hooks/useWarplets";
 import { useGeoplet } from "@/hooks/useGeoplet";
 import { usePayment, type MintSignatureResponse } from "@/hooks/usePayment";
@@ -20,7 +20,7 @@ import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 import { validateImageSize, checkFidMinted } from "@/lib/generators";
 import { haptics } from "@/lib/haptics";
 import { toast } from "sonner";
-import { TokenCUSDC, TokenUSDC } from "@web3icons/react";
+import { TokenUSDC } from "@web3icons/react";
 import { RotatingText } from "./RotatingText";
 import { PAYMENT_CONFIG } from "@/lib/payment-config";
 import { useContractSimulation } from "@/hooks/useContractSimulation";
@@ -49,19 +49,19 @@ export function MintButton({
   onSuccess,
 }: MintButtonProps) {
   const { address } = useAccount();
-  const { nft, fid } = useWarplets();
-  const { mintNFT, isLoading: isMinting, isSuccess, txHash } = useGeoplet();
+  const { fid } = useWarplets();
+  const { mintNFT, isSuccess, txHash } = useGeoplet();
   const { requestMintSignature } = usePayment(PAYMENT_CONFIG.MINT);
   const {
     hasEnoughUSDC,
-    balance,
-    mintPrice,
     isLoading: isBalanceLoading,
   } = useUSDCBalance();
   const { checkEligibility, simulateMint } = useContractSimulation();
 
   const [state, setState] = useState<ButtonState>("idle");
   const [isCheckingMintStatus, setIsCheckingMintStatus] = useState(false);
+  // State managed but not read - used for cleanup/reset logic throughout mint flow
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [signatureData, setSignatureData] =
     useState<MintSignatureResponse | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);

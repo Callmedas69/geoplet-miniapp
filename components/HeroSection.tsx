@@ -98,6 +98,7 @@ export function HeroSection({
           tokenId={warpletTokenId}
           generatedImage={generatedImage}
           isMinted={isMinted}
+          isGenerating={isGenerating}
           alt={`Warplet #${warpletTokenId}`}
         />
       </div>

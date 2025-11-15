@@ -87,8 +87,30 @@ async function getGeopletImageBuffer(fid: string): Promise<Buffer | null> {
 
     console.log("[OG] Image buffer size:", imageBuffer.length, "bytes");
 
+    // Security: Validate image size before processing (prevent DoS)
+    const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (imageBuffer.length > MAX_IMAGE_SIZE) {
+      console.warn("[OG] Image too large:", imageBuffer.length, "bytes (max:", MAX_IMAGE_SIZE, ")");
+      return null; // Fallback to static image
+    }
+
     // 3. Convert to PNG using Sharp (ensures @vercel/og compatibility)
     const sharp = (await import("sharp")).default;
+
+    // Get metadata to validate dimensions before processing
+    const metadata = await sharp(imageBuffer).metadata();
+    const MAX_DIMENSION = 4096; // Max width or height in pixels
+
+    if (metadata.width && metadata.width > MAX_DIMENSION) {
+      console.warn("[OG] Image width too large:", metadata.width, "px (max:", MAX_DIMENSION, ")");
+      return null;
+    }
+
+    if (metadata.height && metadata.height > MAX_DIMENSION) {
+      console.warn("[OG] Image height too large:", metadata.height, "px (max:", MAX_DIMENSION, ")");
+      return null;
+    }
+
     const pngBuffer = await sharp(imageBuffer)
       .resize(500, 500, {
         fit: "inside",

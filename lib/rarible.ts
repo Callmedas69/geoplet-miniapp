@@ -5,9 +5,15 @@
  * Server route keeps API key secure and eliminates CORS issues
  *
  * Following KISS Principle - simple client wrapper
+ * Enhanced with caching and retry logic for performance and reliability
  */
 
 import { GEOPLET_ADDRESSES } from '@/abi/GeopletsABI';
+import { fetchWithRetry } from '@/lib/fetch-utils';
+
+// Client-side cache for NFT metadata (5-minute TTL)
+const clientCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Contract addresses
 export const GEOPLET_ADDRESS = GEOPLET_ADDRESSES.baseMainnet;
@@ -75,9 +81,33 @@ export interface NFTMetadata {
 /**
  * Fetch from our Rarible API proxy route
  * Server-side route handles authentication and CORS
+ * Handles both client-side (browser) and server-side (OG generation) contexts
+ * Enhanced with client-side caching and retry logic
  */
 async function raribleFetch(endpoint: string): Promise<any> {
-  const response = await fetch(endpoint);
+  // Construct absolute URL for server-side fetch (OG image generation)
+  // Client-side can use relative URLs, server-side needs absolute URLs
+  const baseUrl = typeof window === 'undefined'
+    ? (process.env.NEXT_PUBLIC_APP_URL || '')
+    : '';
+  const absoluteUrl = baseUrl ? `${baseUrl}${endpoint}` : endpoint;
+
+  // Check client-side cache (only in browser)
+  if (typeof window !== 'undefined') {
+    const cached = clientCache.get(absoluteUrl);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log('[rarible] Using cached data for:', endpoint);
+      return cached.data;
+    }
+  }
+
+  // Fetch with retry and timeout (5s timeout, 3 retries)
+  const response = await fetchWithRetry(absoluteUrl, undefined, {
+    maxRetries: 3,
+    timeoutMs: 5000,
+    retryOn5xx: true,
+    retryOnTimeout: true,
+  });
 
   if (!response.ok) {
     const error = await response.text().catch(() => response.statusText);
@@ -88,6 +118,14 @@ async function raribleFetch(endpoint: string): Promise<any> {
 
   if (!result.success) {
     throw new Error(result.error || 'Rarible API request failed');
+  }
+
+  // Store in client-side cache (only in browser)
+  if (typeof window !== 'undefined') {
+    clientCache.set(absoluteUrl, {
+      data: result.data,
+      timestamp: Date.now(),
+    });
   }
 
   return result.data;

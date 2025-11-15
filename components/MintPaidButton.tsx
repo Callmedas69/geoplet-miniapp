@@ -319,7 +319,7 @@ export function MintPaidButton({
         return "Minted!";
       default:
         return (
-          <div className="text-lg flex flex-row">
+          <div className="text-lg flex flex-row font-semibold">
             <Sparkles className="w-5 h-5" />
             MINT (paid)
           </div>

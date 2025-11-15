@@ -22,6 +22,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// Request deduplication cache
+// Prevents multiple simultaneous requests for the same data
+const requestCache = new Map<string, Promise<any>>();
+const DEDUP_TTL = 5000; // 5 seconds
+
 /**
  * Rarible API response structure
  */
@@ -155,9 +160,37 @@ export async function GET(request: NextRequest) {
       }
 
       const itemId = `BASE:${contractAddress}:${tokenId}`;
+      const cacheKey = `single-${itemId}`;
+
+      // Check if same request is already in flight (deduplication)
+      if (requestCache.has(cacheKey)) {
+        console.log(`[RARIBLE-API] Deduplicating request for: ${itemId}`);
+        const data = await requestCache.get(cacheKey);
+        const transformed = transformRaribleItem(data);
+        return NextResponse.json(
+          { success: true, data: transformed },
+          {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+            }
+          }
+        );
+      }
+
       console.log(`[RARIBLE-API] Fetching single NFT: ${itemId}`);
 
-      const data = await raribleFetch(`/items/${itemId}`);
+      // Create fetch promise and cache it for deduplication
+      const fetchPromise = raribleFetch(`/items/${itemId}`);
+      requestCache.set(cacheKey, fetchPromise);
+
+      // Clear cache after TTL
+      fetchPromise.finally(() => {
+        setTimeout(() => requestCache.delete(cacheKey), DEDUP_TTL);
+      });
+
+      const data = await fetchPromise;
       const transformed = transformRaribleItem(data);
 
       console.log(`[RARIBLE-API] Success: ${transformed.name} - Image URL length: ${transformed.image.length}`);
@@ -179,13 +212,45 @@ export async function GET(request: NextRequest) {
       const collectionId = encodeURIComponent(`BASE:${contractAddress}`);
       const sizeParam = `&size=${size}`;
       const continuationParam = continuation ? `&continuation=${continuation}` : '';
+      const cacheKey = `collection-${collectionId}-${size}-${continuation || 'first'}`;
+
+      // Check if same request is already in flight (deduplication)
+      if (requestCache.has(cacheKey)) {
+        console.log(`[RARIBLE-API] Deduplicating collection request for: ${collectionId}`);
+        const data: RaribleCollectionResponse = await requestCache.get(cacheKey);
+        const transformed = data.items.map(item => transformRaribleItem(item));
+        return NextResponse.json(
+          {
+            success: true,
+            data: {
+              items: transformed,
+              continuation: data.continuation,
+            },
+          },
+          {
+            status: 200,
+            headers: {
+              ...corsHeaders,
+              'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+            }
+          }
+        );
+      }
 
       console.log(`[RARIBLE-API] Fetching collection: ${collectionId} (size: ${size})`);
 
-      const data: RaribleCollectionResponse = await raribleFetch(
+      // Create fetch promise and cache it for deduplication
+      const fetchPromise = raribleFetch(
         `/items/byCollection?collection=${collectionId}${sizeParam}${continuationParam}`
       );
+      requestCache.set(cacheKey, fetchPromise);
 
+      // Clear cache after TTL
+      fetchPromise.finally(() => {
+        setTimeout(() => requestCache.delete(cacheKey), DEDUP_TTL);
+      });
+
+      const data: RaribleCollectionResponse = await fetchPromise;
       const transformed = data.items.map(item => transformRaribleItem(item));
 
       console.log(`[RARIBLE-API] Success: ${transformed.length} items fetched`);

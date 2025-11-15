@@ -86,7 +86,9 @@
       "Bash(git commit:*)",
       "WebFetch(domain:docs.alchemy.com)",
       "WebFetch(domain:docs.base.org)",
-      "Bash(else echo \"⚠️  .next folder not found\")"
+      "Bash(else echo \"⚠️  .next folder not found\")",
+      "Bash(else echo \"✗ .next not found\")",
+      "Bash(else echo \"✗ No node_modules cache found\")"
     ]
   },
   "enableAllProjectMcpServers": true,

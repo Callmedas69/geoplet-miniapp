@@ -152,6 +152,7 @@ export function SuccessModal({
                 alt="Farcaster"
                 width={36}
                 height={36}
+                className="rounded-full"
               />
             </button>
 

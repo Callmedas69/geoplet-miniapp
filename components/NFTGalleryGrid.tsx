@@ -9,6 +9,7 @@ import { getNFTById, GEOPLET_ADDRESS } from "@/lib/rarible";
 import { GEOPLET_CONFIG } from "@/lib/contracts";
 import { SHARE_CONFIG } from "@/lib/share-config";
 import { ExpandableShareButton } from "./ExpandableShareButton";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 
@@ -116,6 +117,9 @@ export function NFTGalleryGrid({
 
   useEffect(() => {
     if (!userFid) {
+      // Intentional: Clear featured NFT state when user logs out or FID becomes unavailable
+      // This prevents showing stale data and is valid state synchronization, not a cascading render
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       setMyGeoplet(null);
       cachedFidRef.current = null;
       return;
@@ -135,12 +139,14 @@ export function NFTGalleryGrid({
           tokenId: parseInt(nft.tokenId, 10),
           name: nft.name,
           image: nft.image,
+          attributes: nft.attributes, // Include rarity/trait data
         });
         cachedFidRef.current = userFid; // Cache the FID in ref
         console.log('[FEATURED-NFT] Fetched and cached:', {
           fid: userFid,
           tokenId: nft.tokenId,
           image: nft.image.substring(0, 100),
+          attributes: nft.attributes?.length || 0,
         });
       })
       .catch(error => {
@@ -285,6 +291,20 @@ export function NFTGalleryGrid({
             <>
               <div>
                 <p className="text-xl font-medium">{myGeoplet.name}</p>
+
+                {/* Rarity Display */}
+                {myGeoplet.attributes && myGeoplet.attributes.length > 0 && (
+                  (() => {
+                    const rarityAttr = myGeoplet.attributes.find(
+                      (attr) => attr.key.toLowerCase() === 'rarity'
+                    );
+                    return rarityAttr ? (
+                      <Badge variant="secondary" className="mt-2 w-fit">
+                        {rarityAttr.value}
+                      </Badge>
+                    ) : null;
+                  })()
+                )}
               </div>
               <div>
                 {/* NFT Marketplace Links & Share - Use FID directly since FID = tokenId (1:1 mapping) */}
