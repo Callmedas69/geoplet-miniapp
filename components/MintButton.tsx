@@ -411,9 +411,9 @@ export function MintButton({
         return "Minted";
       default:
         return (
-          <div className="text-lg">
+          <div className="text-lg flex flex-row font-semiboLD">
             <Sparkles className="w-5 h-5" />
-            MINT ( <TokenUSDC className="w-8 h-8" variant="branded" />
+            MINT ( <TokenUSDC className="w-12 h-12" variant="branded" />
             {PAYMENT_CONFIG.MINT.price})
           </div>
         );

@@ -20,10 +20,14 @@ export async function GET(request: NextRequest) {
       return new Response("Missing image URL parameter", { status: 400 });
     }
 
-    // Security: Validate image source is from Alchemy CDN
+    // Security: Validate image source is from trusted CDNs
     const allowedDomains = [
       "nft-cdn.alchemy.com",
       "res.cloudinary.com",
+      "ipfs.raribleuserdata.com",
+      "imagedelivery.net",
+      "ipfs.io",
+      "gateway.pinata.cloud",
     ];
 
     const imageUrlObj = new URL(imageUrl);

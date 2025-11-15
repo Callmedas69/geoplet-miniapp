@@ -28,6 +28,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'arweave.net',
       },
+      {
+        protocol: 'https',
+        hostname: 'ipfs.raribleuserdata.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'imagedelivery.net',
+      },
     ],
   },
 };
