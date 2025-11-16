@@ -29,7 +29,7 @@ export function BeforeMintShareBar({
       });
 
       haptics.success();
-      toast.success("Share window opened!");
+      toast.success("Shared to Farcaster!");
     } catch (error) {
       console.error("Share error:", error);
       haptics.error();

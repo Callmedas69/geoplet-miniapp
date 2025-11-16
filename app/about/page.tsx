@@ -67,47 +67,47 @@ export default function AboutPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f3daa1] p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8 mb-8">
       <div ref={containerRef} className="max-w-3xl mx-auto">
         <h1
-          className={`text-5xl md:text-6xl mb-6 md:mb-8 text-[#5c4a2f] ${spriteGraffiti.className}`}
+          className={`text-5xl md:text-6xl mb-6 md:mb-8 text-center ${spriteGraffiti.className}`}
         >
           About Geoplet
         </h1>
 
         {/* Philosophy */}
         <section className="mb-6 md:mb-8 bg-white/50 p-4 md:p-6 rounded-lg">
-          <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#5c4a2f]">
+          <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">
             Algorithmic Identity
           </h2>
-          <p className="mb-3 md:mb-4 text-sm md:text-base text-[#5c4a2f]">
+          <p className="mb-3 md:mb-4 text-sm md:text-base">
             Your Warplet defines you. Your Geoplet reveals you.
           </p>
-          <p className="mb-3 md:mb-4 text-sm md:text-base text-[#5c4a2f]">
+          <p className="mb-3 md:mb-4 text-sm md:text-base">
             One transformation. One geometric truth. One chance to embrace it.
           </p>
-          <p className="mb-0 text-sm md:text-base text-[#5c4a2f]">
+          <p className="mb-0 text-sm md:text-base">
             We don&apos;t believe in infinite retakes or pixel-perfect curation.
-            The first generation is not random—it is the truest geometric
+            The first generation is not random it is the truest geometric
             expression of your Warplet, shaped by algorithmic destiny.
           </p>
         </section>
 
         {/* Features */}
         <section className="mb-6 md:mb-8 bg-white/50 p-4 md:p-6 rounded-lg">
-          <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#5c4a2f]">
+          <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">
             Features
           </h2>
-          <ul className="list-disc list-inside space-y-2 text-[#5c4a2f] text-sm md:text-base">
+          <ul className="list-disc list-inside space-y-2 text-sm md:text-base">
             <li>Turn your Warplet into Bauhaus/Suprematist geometric art</li>
             <li>
               <strong>Mint</strong> your piece as an NFT on Base
             </li>
             <li>
-              <strong>Farcaster Miniapp</strong> with one-click sharing
+              <strong>Farcaster Miniapp</strong> with one click sharing
             </li>
             <li>
-              <strong>1:1 Identity</strong> — FID = Warplet ID = Geoplet ID
+              <strong>1:1 Identity</strong> - FID = Warplet ID = Geoplet ID
             </li>
             <li>
               <strong>Gallery</strong> of all minted Geoplets
@@ -118,8 +118,10 @@ export default function AboutPage() {
             <li>
               <strong>X402 Payments</strong> via{" "}
               <button
-                onClick={() => openExternalUrl("https://onchain.fi/", "onchain.fi")}
-                className="text-[#5c4a2f] underline hover:text-[#3d2f1f] transition-colors"
+                onClick={() =>
+                  openExternalUrl("https://onchain.fi/", "onchain.fi")
+                }
+                className="underline hover:text-[#3d2f1f] transition-colors"
               >
                 onchain.fi
               </button>{" "}
@@ -136,10 +138,10 @@ export default function AboutPage() {
 
         {/* Contract Addresses */}
         <section className="mb-6 md:mb-8 bg-white/50 p-4 md:p-6 rounded-lg">
-          <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 text-[#5c4a2f]">
+          <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4">
             Contract Addresses (Base Mainnet)
           </h2>
-          <ul className="list-none space-y-2 text-[#5c4a2f] text-sm">
+          <ul className="list-none space-y-2 text-sm">
             <ContractAddress address="0x999aC3B6571fEfb770EA3A836E82Cc45Cd1e653F" />
           </ul>
         </section>
