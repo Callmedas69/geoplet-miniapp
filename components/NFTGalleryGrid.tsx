@@ -12,6 +12,8 @@ import { ExpandableShareButton } from "./ExpandableShareButton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
+import { usePublicClient } from "wagmi";
+import { GeopletsABI } from "@/abi/GeopletsABI";
 
 interface NFTGalleryGridProps {
   nfts: GeopletNFT[];
@@ -28,6 +30,31 @@ interface NFTGalleryGridProps {
  */
 function isDataUri(url: string): boolean {
   return url.startsWith("data:");
+}
+
+/**
+ * Decode base64 tokenURI from contract to extract image
+ * Browser-compatible (uses atob instead of Buffer)
+ */
+function decodeTokenURI(tokenURIString: string): string | null {
+  try {
+    // Contract returns: "data:application/json;base64,eyJ..."
+    if (!tokenURIString.includes("data:application/json;base64,")) {
+      return null;
+    }
+
+    const base64String = tokenURIString.split("data:application/json;base64,")[1];
+    if (!base64String) return null;
+
+    // Decode base64 (browser-native)
+    const jsonString = atob(base64String);
+    const metadata = JSON.parse(jsonString);
+
+    return metadata.image || null;
+  } catch (error) {
+    console.error("[FEATURED-NFT] Failed to decode tokenURI:", error);
+    return null;
+  }
 }
 
 /**
@@ -63,8 +90,8 @@ function NFTImage({
   // Show skeleton if empty src or error occurred
   if (!src || src.trim() === "" || hasError) {
     return (
-      <div className="w-full h-full bg-amber-50/80 border border-amber-200/40 flex items-center justify-center">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-100/60 to-transparent animate-[shimmer_2s_ease-in-out_infinite]" />
+      <div className="w-full h-full bg-gray-100 border border-gray-200 flex items-center justify-center">
+        <p className="text-gray-400 text-xs">No image</p>
       </div>
     );
   }
@@ -105,6 +132,7 @@ export function NFTGalleryGrid({
 }: NFTGalleryGridProps) {
   const observerRef = useRef<HTMLDivElement>(null);
   const { nfts: userNFTs, isConnected } = useUserNFTs();
+  const publicClient = usePublicClient();
 
   // Sort NFTs by token ID descending (most recent first)
   const sortedNFTs = useMemo(() => {
@@ -113,6 +141,8 @@ export function NFTGalleryGrid({
 
   // Fetch user's Geoplet directly by FID (FID = tokenId in 1:1 mapping)
   const [myGeoplet, setMyGeoplet] = useState<GeopletNFT | null>(null);
+  const [isLoadingFeatured, setIsLoadingFeatured] = useState(false);
+  const [featuredError, setFeaturedError] = useState<string | null>(null);
   const cachedFidRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -121,6 +151,8 @@ export function NFTGalleryGrid({
       // This prevents showing stale data and is valid state synchronization, not a cascading render
       // eslint-disable-next-line react-hooks/exhaustive-deps
       setMyGeoplet(null);
+      setIsLoadingFeatured(false);
+      setFeaturedError(null);
       cachedFidRef.current = null;
       return;
     }
@@ -133,27 +165,66 @@ export function NFTGalleryGrid({
 
     // Fetch user's specific NFT from Rarible by FID (only if not cached)
     console.log('[FEATURED-NFT] Fetching from Rarible for FID:', userFid);
+    setIsLoadingFeatured(true);
+    setFeaturedError(null);
+
     getNFTById(GEOPLET_ADDRESS, userFid.toString())
-      .then(nft => {
+      .then(async (nft) => {
+        let image = nft.image;
+        const tokenId = parseInt(nft.tokenId, 10);
+
+        // Contract fallback: If Rarible has no image, read from contract
+        if ((!image || image.trim() === '') && publicClient) {
+          console.log(`[FEATURED-NFT] ⚠️ Token #${tokenId} has NO Rarible image, reading from contract...`);
+
+          try {
+            const tokenURI = await publicClient.readContract({
+              address: GEOPLET_CONFIG.address as `0x${string}`,
+              abi: GeopletsABI,
+              functionName: 'tokenURI',
+              args: [BigInt(tokenId)],
+            }) as string;
+
+            if (tokenURI) {
+              const decodedImage = decodeTokenURI(tokenURI);
+              if (decodedImage) {
+                image = decodedImage;
+                console.log(`[FEATURED-NFT] ✅ Token #${tokenId} fetched from contract: ${image.substring(0, 50)}...`);
+              }
+            }
+          } catch (contractError) {
+            console.error(`[FEATURED-NFT] Failed to read tokenURI for #${tokenId}:`, contractError);
+          }
+        }
+
+        // Final validation - if still no image, throw error
+        if (!image || image.trim() === '') {
+          throw new Error('No image data available from Rarible or contract');
+        }
+
         setMyGeoplet({
-          tokenId: parseInt(nft.tokenId, 10),
-          name: nft.name,
-          image: nft.image,
+          tokenId,
+          name: nft.name || `Geoplet #${tokenId}`,
+          image,
           attributes: nft.attributes, // Include rarity/trait data
         });
         cachedFidRef.current = userFid; // Cache the FID in ref
+        setIsLoadingFeatured(false);
+        setFeaturedError(null);
         console.log('[FEATURED-NFT] Fetched and cached:', {
           fid: userFid,
-          tokenId: nft.tokenId,
-          image: nft.image.substring(0, 100),
+          tokenId,
+          image: image.substring(0, 100),
           attributes: nft.attributes?.length || 0,
         });
       })
       .catch(error => {
         console.error('[FEATURED-NFT] Failed to fetch:', error);
         setMyGeoplet(null);
+        setIsLoadingFeatured(false);
+        setFeaturedError('Failed to load your Geoplet. Please try again.');
       });
-  }, [userFid]); // Only userFid dependency - no loop!
+  }, [userFid, publicClient]); // userFid and publicClient dependencies
 
   // Infinite scroll using Intersection Observer
   useEffect(() => {
@@ -260,7 +331,32 @@ export function NFTGalleryGrid({
         {/* Left: Featured "My Geoplet" Card - 2x bigger, sticky */}
         <div className="sticky top-20 z-10">
           <div className="relative w-full rounded-xl aspect-square border-2 border-dashed border-black/8 overflow-hidden">
-            {myGeoplet ? (
+            {isLoadingFeatured ? (
+              // Show loading state
+              <div className="relative w-full h-full flex items-center justify-center bg-amber-50/80">
+                <div className="text-center p-4">
+                  <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-black/60 text-sm">Loading your Geoplet...</p>
+                </div>
+              </div>
+            ) : featuredError ? (
+              // Show error state
+              <div className="relative w-full h-full flex items-center justify-center bg-red-50/80">
+                <div className="text-center p-4">
+                  <p className="text-red-600 text-sm mb-2">{featuredError}</p>
+                  <button
+                    onClick={() => {
+                      cachedFidRef.current = null;
+                      setFeaturedError(null);
+                      setMyGeoplet(null);
+                    }}
+                    className="text-xs text-red-700 underline hover:no-underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            ) : myGeoplet ? (
               // Show user's NFT
               <div className="relative w-full h-full rounded-xl">
                 <NFTImage
@@ -272,7 +368,7 @@ export function NFTGalleryGrid({
                 />
               </div>
             ) : (
-              // Show placeholder
+              // Show placeholder when no FID or not minted
               <div className="relative w-full h-full flex items-center justify-center">
                 <div className="text-center p-4">
                   <p className="text-black/60 text-sm mb-2">No Geoplet yet</p>
@@ -364,14 +460,14 @@ export function NFTGalleryGrid({
         {sortedNFTs.map((nft) => (
           <div
             key={nft.tokenId}
-            className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer  transition-colors"
+            className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-colors"
           >
             {/* NFT Image */}
-            <div className="relative w-full h-full p-2">
+            <div className="relative w-full h-full">
               <NFTImage
                 src={nft.image}
                 alt={nft.name}
-                className="object-contain rounded-xl border-1 border-gray-300 border-dashed"
+                className="object-contain rounded-xl"
                 tokenId={nft.tokenId}
               />
             </div>
@@ -383,11 +479,8 @@ export function NFTGalleryGrid({
           Array.from({ length: 8 }).map((_, i) => (
             <div
               key={`skeleton-${i}`}
-              className="aspect-square rounded-xl bg-amber-50/80 border border-amber-200/40 overflow-hidden relative"
-            >
-              {/* Shimmer overlay */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-100/60 to-transparent animate-[shimmer_2s_ease-in-out_infinite]" />
-            </div>
+              className="aspect-square rounded-xl bg-gray-100 border border-gray-200"
+            />
           ))}
       </div>
 
