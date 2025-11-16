@@ -4,6 +4,9 @@ import { GEOPLET_CONFIG } from "@/lib/contracts";
 import { getNFTById, transformRaribleItem, GEOPLET_ADDRESS } from "@/lib/rarible";
 import { readFileSync } from "fs";
 import path from "path";
+import { createPublicClient, http } from "viem";
+import { base } from "viem/chains";
+import { GeopletsABI } from "@/abi/GeopletsABI";
 
 // Use Node.js runtime (not Edge) to support Buffer, readFileSync, and image processing
 // Following Farcaster miniapp-img official pattern
@@ -17,6 +20,37 @@ const schoolbellFontData = readFileSync(
   path.join(process.cwd(), "public/font/Schoolbell-Regular.ttf")
 );
 
+// Create viem public client for Base mainnet (contract fallback)
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http(),
+});
+
+/**
+ * Decode base64 tokenURI from contract to extract image
+ * Browser-compatible (uses atob for server-side, Buffer for Node.js)
+ */
+function decodeTokenURI(tokenURIString: string): string | null {
+  try {
+    // Contract returns: "data:application/json;base64,eyJ..."
+    if (!tokenURIString.includes("data:application/json;base64,")) {
+      return null;
+    }
+
+    const base64String = tokenURIString.split("data:application/json;base64,")[1];
+    if (!base64String) return null;
+
+    // Decode base64 (Node.js Buffer for server-side)
+    const jsonString = Buffer.from(base64String, 'base64').toString('utf-8');
+    const metadata = JSON.parse(jsonString);
+
+    return metadata.image || null;
+  } catch (error) {
+    console.error("[OG] Failed to decode tokenURI:", error);
+    return null;
+  }
+}
+
 // Fetch and convert Geoplet image to PNG Buffer (KISS: no proxy, direct processing)
 async function getGeopletImageBuffer(fid: string): Promise<Buffer | null> {
   try {
@@ -25,14 +59,39 @@ async function getGeopletImageBuffer(fid: string): Promise<Buffer | null> {
     const data = await getNFTById(GEOPLET_ADDRESS, fid);
     const nft = transformRaribleItem(data);
 
-    const imageUrl = nft.image;
+    let imageUrl = nft.image;
 
+    // Contract fallback: If Rarible has no image, read from contract
     if (!imageUrl || imageUrl.trim() === '') {
-      console.log("[OG] No image found in Rarible metadata for FID:", fid);
-      return null;
-    }
+      console.log("[OG] ⚠️ No image in Rarible metadata for FID:", fid, "- attempting contract fallback...");
 
-    console.log("[OG] Found Geoplet image from Rarible:", imageUrl.substring(0, 100) + "...");
+      try {
+        const tokenURI = await publicClient.readContract({
+          address: GEOPLET_CONFIG.address as `0x${string}`,
+          abi: GeopletsABI,
+          functionName: 'tokenURI',
+          args: [BigInt(fid)],
+        }) as string;
+
+        if (tokenURI) {
+          const decodedImage = decodeTokenURI(tokenURI);
+          if (decodedImage) {
+            imageUrl = decodedImage;
+            console.log("[OG] ✅ Token #" + fid + " fetched from contract:", imageUrl.substring(0, 50) + "...");
+          }
+        }
+      } catch (contractError) {
+        console.error("[OG] Failed to read tokenURI for FID:", fid, contractError);
+      }
+
+      // Final check after contract fallback attempt
+      if (!imageUrl || imageUrl.trim() === '') {
+        console.log("[OG] ❌ No image available from Rarible or contract for FID:", fid);
+        return null;
+      }
+    } else {
+      console.log("[OG] Found Geoplet image from Rarible:", imageUrl.substring(0, 100) + "...");
+    }
 
     // 2. Handle data URI (inline base64) vs external URL
     let imageBuffer: Buffer;
