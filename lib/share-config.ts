@@ -13,22 +13,22 @@
 export const SHARE_CONFIG = {
   // 1. Before mint (pre-generation/preview)
   beforeMint: {
-    farcaster: "Art that deploys like code.\nPayments that settle like protocols.\nWelcome to Geoplet — fully on-chain, x402 powered, Onchain.Fi integrated.\n\nStart exploring ↓\n\n",
-    twitter: "Art that deploys like code.\nPayments that settle like protocols.\nWelcome to Geoplet — fully on-chain, x402 powered, @onchainpayment integrated.\n\nStart exploring ↓\n\n",
+    farcaster: "Welcome to Geoplet, art that deploys like code, preserved forever on-chain.\n\nGeopleting your Warplets by @sayangel, reborn with Bauhaus harmony and Suprematist geometry.\n\n🪙 Fully on-chain\n🪙 x402 payment enabled\n🪙 Powered by Onchain.fi\n🪙 Produced by @geoart\n\nStart exploring ↓\n\n",
+    twitter: "Welcome to Geoplet, art that deploys like code, preserved forever on-chain.\n\nGeopleting your Warplets by @sayangel, reborn with Bauhaus harmony and Suprematist geometry.\n\n🪙 Fully on-chain\n🪙 x402 payment enabled\n🪙 Powered by @onchainpayment\n🪙 Produced by @geoart\n\nStart exploring ↓\n\n",
   },
 
   // 2. After mint (post-mint celebration)
   afterMint: {
     farcaster:
-      "Just minted my Geoplet!\nFully on-chain - x402 powered - Onchain.Fi integrated.\nThe future of minting is already here\n\n",
+      "My Geoplet just went live on-chain!\nWarplets @sayangel being geopleted\n\n🪙 x402 payment settled\n🪙 Geometry aligned\n🪙 Art deployed.\n\nReady for upgrade.",
     twitter:
-      "Just minted my Geoplet!\nFully on-chain - x402 powered - @onchainpayment integrated.\nThe future of minting is already here\n\n",
+      "My Geoplet just went live on-chain!\nWarplets being geopleted\n\n🪙 x402 payment settled\n🪙 Geometry aligned\n🪙 Art deployed.\n\nReady for upgrade.",
   },
 
   // 3. Gallery (existing NFT share)
   gallery: {
-    farcaster: "Check out my Geoplet! \nFully on-chain. x402 powered.\nSettled by Onchain.Fi — art that deploys like code \n\nReady for upgrade\n\n",
-    twitter: "Check out my Geoplet! \nFully on-chain. x402 powered.\nSettled by @onchainpayment — art that deploys like code \n\nReady for upgrade\n\n",
+    farcaster: "A living archive of geometric art - each Geoplet is fully on-chain, immutable, and upgrade-ready.\n\nGeopleting Warplets by @sayangel with Bauhaus and Suprematist influence. Curated and produced by @geoart.",
+    twitter: "A living archive of geometric art - each Geoplet is fully on-chain, immutable, and upgrade-ready.\n\nGeopleting Warplets with Bauhaus and Suprematist influence. Curated and produced by @geoart_studio.",
   },
 
   // Animation feature share

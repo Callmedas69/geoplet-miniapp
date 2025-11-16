@@ -58,10 +58,10 @@ export const metadata: Metadata = {
       version: "1",
       imageUrl: `${appUrl}/embed-1200x800.webp`,
       button: {
-        title: "Geopleting",
+        title: "Launch Geoplet",
         action: {
           //type: "launch",
-          type: "open_url",
+          type: "launch_frame",
           name: "Geoplet",
           url: appUrl,
           splashImageUrl: `${appUrl}/splash.webp`,

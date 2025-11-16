@@ -36,9 +36,6 @@ export default function Home() {
   >("checking");
 
   const { address } = useAccount();
-
-  // FID (Farcaster ID) is the user's unique identifier from Farcaster
-  // In Geoplet contract, FID = tokenId (1:1 mapping), so FID 12345 = Geoplet NFT #12345
   const { nft, fid } = useWarplets();
   const {
     saveGeneration,

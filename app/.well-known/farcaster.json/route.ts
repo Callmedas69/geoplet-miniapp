@@ -24,7 +24,7 @@ export async function GET() {
       splashImageUrl: `${appUrl}/splash.webp`,
       splashBackgroundColor: "#f3daa1",
       webhookUrl: `${appUrl}/api/webhook`,
-      subtitle: "GeoFy your Warplets",
+      subtitle: "Geopleting your Warplets",
       description: "Geoplet: when geometric art meets Warplets",
       screenshotUrls: [
         `${appUrl}/embed-1200x800.webp`
@@ -32,7 +32,7 @@ export async function GET() {
       primaryCategory: "social",
       tags: ["nft", "art", "geoplets", "base", "erc721"],
       heroImageUrl: `${appUrl}/og-hero-1200x630.png`,
-      tagline: "GeoFy your Warplets",
+      tagline: "Geopleting your Warplets",
       ogTitle: "Geoplet - Geometric Warplets",
       ogDescription: "Geoplet: when geometric art meets Warplets",
       ogImageUrl: `${appUrl}/og-hero-1200x630.png`,
