@@ -36,7 +36,7 @@ export default function Home() {
   >("checking");
 
   const { address } = useAccount();
-  const { nft, fid } = useWarplets();
+  const { nft, fid, isLoading: isLoadingWarplet, hasWarplet } = useWarplets();
   const {
     saveGeneration,
     loadGeneration,
@@ -161,17 +161,17 @@ export default function Home() {
   useEffect(() => {
     // Show splash until we have all critical data
     const hasWallet = !!address;
-    const hasWarpletData = !!nft && !!fid;
+    const warpletCheckComplete = !isLoadingWarplet; // Warplet check finished (exists or 404)
     const storageCheckComplete = !isLoadingStorage;
 
-    if (hasWallet && hasWarpletData && storageCheckComplete) {
+    if (hasWallet && warpletCheckComplete && storageCheckComplete) {
       // Small delay for smooth transition
       const timer = setTimeout(() => {
         setIsPageLoading(false);
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [address, nft, fid, isLoadingStorage]);
+  }, [address, isLoadingWarplet, isLoadingStorage]);
 
   // Trigger GSAP transition when loading completes
   useSplashTransition(isPageLoading);
@@ -343,19 +343,37 @@ export default function Home() {
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col gap-8 px-4 pb-20">
-          {/* Hero Section */}
-          <div className="mt-4">
-            <HeroSection
-              warpletImage={nft?.thumbnailUrl || nft?.imageUrl || null}
-              warpletTokenId={nft?.tokenId || null}
-              generatedImage={generatedImage}
-              isGenerating={isGenerating}
-              isMinted={isMinted}
-            />
-          </div>
+          {/* Warplet Not Found - Show Error Immediately */}
+          {!isLoadingWarplet && !hasWarplet && fid && (
+            <div className="max-w-2xl mx-auto px-4 py-12 text-center mt-4">
+              <h2 className="text-2xl font-semibold mb-3 text-gray-800">
+                Warplet #{fid} Not Found
+              </h2>
+              <p className="text-gray-600 mb-2">
+                This Warplet hasn't been minted yet.
+              </p>
+              <p className="text-sm text-gray-500">
+                You need Warplet #{fid} to exist on-chain to create your Geoplet.
+              </p>
+            </div>
+          )}
 
-          {/* Badge Section - Trust signals and features */}
-          <BadgeSection />
+          {/* Normal App - Show when Warplet exists */}
+          {hasWarplet && (
+            <>
+              {/* Hero Section */}
+              <div className="mt-4">
+                <HeroSection
+                  warpletImage={nft?.thumbnailUrl || nft?.imageUrl || null}
+                  warpletTokenId={nft?.tokenId || null}
+                  generatedImage={generatedImage}
+                  isGenerating={isGenerating}
+                  isMinted={isMinted}
+                />
+              </div>
+
+              {/* Badge Section - Trust signals and features */}
+              <BadgeSection />
 
           {/* Mint Button - Conditional rendering based on payment status */}
           <div className="flex flex-col gap-4 justify-center items-center">
@@ -389,6 +407,8 @@ export default function Home() {
               <BeforeMintShareBar fid={fid} variant="inline" />
             </div>
           </div>
+            </>
+          )}
         </main>
 
         {/* Success Modal */}
