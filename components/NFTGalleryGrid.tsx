@@ -15,6 +15,7 @@ import { haptics } from "@/lib/haptics";
 import { usePublicClient } from "wagmi";
 import { GeopletsABI } from "@/abi/GeopletsABI";
 import { openExternalUrl } from "@/lib/external-links";
+import { getRarityColor, getRarityFromAttributes } from "@/lib/rarity";
 
 interface NFTGalleryGridProps {
   nfts: GeopletNFT[];
@@ -388,18 +389,14 @@ export function NFTGalleryGrid({
                 <p className="text-xl font-medium">{myGeoplet.name}</p>
 
                 {/* Rarity Display */}
-                {myGeoplet.attributes &&
-                  myGeoplet.attributes.length > 0 &&
-                  (() => {
-                    const rarityAttr = myGeoplet.attributes.find(
-                      (attr) => attr.key.toLowerCase() === "rarity"
-                    );
-                    return rarityAttr ? (
-                      <Badge variant="secondary" className="mt-2 w-fit">
-                        {rarityAttr.value}
-                      </Badge>
-                    ) : null;
-                  })()}
+                {(() => {
+                  const rarity = getRarityFromAttributes(myGeoplet.attributes);
+                  return rarity ? (
+                    <Badge className={`mt-2 w-fit ${getRarityColor(rarity)}`}>
+                      {rarity}
+                    </Badge>
+                  ) : null;
+                })()}
               </div>
               <div>
                 {/* NFT Marketplace Links & Share - Use FID directly since FID = tokenId (1:1 mapping) */}
@@ -456,22 +453,32 @@ export function NFTGalleryGrid({
       {/* Row 2: NFT Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
         {/* Regular NFTs */}
-        {sortedNFTs.map((nft) => (
-          <div
-            key={nft.tokenId}
-            className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-colors"
-          >
-            {/* NFT Image */}
-            <div className="relative w-full h-full">
-              <NFTImage
-                src={nft.image}
-                alt={nft.name}
-                className="object-contain rounded-xl"
-                tokenId={nft.tokenId}
-              />
+        {sortedNFTs.map((nft) => {
+          const rarity = getRarityFromAttributes(nft.attributes);
+
+          return (
+            <div key={nft.tokenId} className="flex flex-col gap-1">
+              {/* NFT Image */}
+              <div className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer transition-colors">
+                <div className="relative w-full h-full">
+                  <NFTImage
+                    src={nft.image}
+                    alt={nft.name}
+                    className="object-contain rounded-xl"
+                    tokenId={nft.tokenId}
+                  />
+                </div>
+              </div>
+
+              {/* Rarity Badge - Below Container */}
+              {rarity && (
+                <Badge className={`text-[8px] w-fit ${getRarityColor(rarity)}`}>
+                  {rarity}
+                </Badge>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Loading skeleton */}
         {isLoading &&

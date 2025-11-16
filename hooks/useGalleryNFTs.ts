@@ -142,12 +142,13 @@ export function useGalleryNFTs() {
               tokenId,
               name: nft.name || `Geoplet #${tokenId}`,
               image,
+              attributes: nft.attributes, // Include rarity data
             };
           })
         );
 
         // Filter out null entries
-        const parsedNFTs = nftsWithMetadata.filter((nft): nft is GeopletNFT => nft !== null);
+        const parsedNFTs = nftsWithMetadata.filter((nft) => nft !== null) as GeopletNFT[];
 
         console.log(`[Gallery] Final result: ${parsedNFTs.length} valid NFTs (removed ${data.items.length - parsedNFTs.length} invalid)`);
 
