@@ -161,15 +161,15 @@ async function generateMintSignature(
     chainTime,
     skewSeconds: skew,
     skewMinutes: (skew / 60).toFixed(1),
-    generatedDeadline: serverTime + (15 * 60),
+    generatedDeadline: serverTime + (60 * 60),
     contractValidatesAt: chainTime,
     userAddress: to,
     fid,
   });
 
-  // Generate voucher with 15-minute validity
+  // Generate voucher with 60-minute validity
   const now = Math.floor(Date.now() / 1000); // seconds
-  const EXPIRY_WINDOW = 15 * 60; // 15 minutes
+  const EXPIRY_WINDOW = 60 * 60; // 60 minutes
 
   const nonce = now;
   const deadline = now + EXPIRY_WINDOW;
