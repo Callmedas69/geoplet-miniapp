@@ -43,7 +43,9 @@ function decodeTokenURI(tokenURIString: string): string | null {
       return null;
     }
 
-    const base64String = tokenURIString.split("data:application/json;base64,")[1];
+    const base64String = tokenURIString.split(
+      "data:application/json;base64,"
+    )[1];
     if (!base64String) return null;
 
     // Decode base64 (browser-native)
@@ -159,12 +161,12 @@ export function NFTGalleryGrid({
 
     // KISS: Cache check - prevent refetching same NFT using ref
     if (cachedFidRef.current === userFid) {
-      console.log('[FEATURED-NFT] Using cached data for FID:', userFid);
+      console.log("[FEATURED-NFT] Using cached data for FID:", userFid);
       return;
     }
 
     // Fetch user's specific NFT from Rarible by FID (only if not cached)
-    console.log('[FEATURED-NFT] Fetching from Rarible for FID:', userFid);
+    console.log("[FEATURED-NFT] Fetching from Rarible for FID:", userFid);
     setIsLoadingFeatured(true);
     setFeaturedError(null);
 
@@ -174,32 +176,42 @@ export function NFTGalleryGrid({
         const tokenId = parseInt(nft.tokenId, 10);
 
         // Contract fallback: If Rarible has no image, read from contract
-        if ((!image || image.trim() === '') && publicClient) {
-          console.log(`[FEATURED-NFT] ⚠️ Token #${tokenId} has NO Rarible image, reading from contract...`);
+        if ((!image || image.trim() === "") && publicClient) {
+          console.log(
+            `[FEATURED-NFT] ⚠️ Token #${tokenId} has NO Rarible image, reading from contract...`
+          );
 
           try {
-            const tokenURI = await publicClient.readContract({
+            const tokenURI = (await publicClient.readContract({
               address: GEOPLET_CONFIG.address as `0x${string}`,
               abi: GeopletsABI,
-              functionName: 'tokenURI',
+              functionName: "tokenURI",
               args: [BigInt(tokenId)],
-            }) as string;
+            })) as string;
 
             if (tokenURI) {
               const decodedImage = decodeTokenURI(tokenURI);
               if (decodedImage) {
                 image = decodedImage;
-                console.log(`[FEATURED-NFT] ✅ Token #${tokenId} fetched from contract: ${image.substring(0, 50)}...`);
+                console.log(
+                  `[FEATURED-NFT] ✅ Token #${tokenId} fetched from contract: ${image.substring(
+                    0,
+                    50
+                  )}...`
+                );
               }
             }
           } catch (contractError) {
-            console.error(`[FEATURED-NFT] Failed to read tokenURI for #${tokenId}:`, contractError);
+            console.error(
+              `[FEATURED-NFT] Failed to read tokenURI for #${tokenId}:`,
+              contractError
+            );
           }
         }
 
         // Final validation - if still no image, throw error
-        if (!image || image.trim() === '') {
-          throw new Error('No image data available from Rarible or contract');
+        if (!image || image.trim() === "") {
+          throw new Error("No image data available from Rarible or contract");
         }
 
         setMyGeoplet({
@@ -211,18 +223,18 @@ export function NFTGalleryGrid({
         cachedFidRef.current = userFid; // Cache the FID in ref
         setIsLoadingFeatured(false);
         setFeaturedError(null);
-        console.log('[FEATURED-NFT] Fetched and cached:', {
+        console.log("[FEATURED-NFT] Fetched and cached:", {
           fid: userFid,
           tokenId,
           image: image.substring(0, 100),
           attributes: nft.attributes?.length || 0,
         });
       })
-      .catch(error => {
-        console.error('[FEATURED-NFT] Failed to fetch:', error);
+      .catch((error) => {
+        console.error("[FEATURED-NFT] Failed to fetch:", error);
         setMyGeoplet(null);
         setIsLoadingFeatured(false);
-        setFeaturedError('Failed to load your Geoplet. Please try again.');
+        setFeaturedError("Failed to load your Geoplet. Please try again.");
       });
   }, [userFid, publicClient]); // userFid and publicClient dependencies
 
@@ -336,7 +348,9 @@ export function NFTGalleryGrid({
               <div className="relative w-full h-full flex items-center justify-center bg-amber-50/80">
                 <div className="text-center p-4">
                   <div className="w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                  <p className="text-black/60 text-sm">Loading your Geoplet...</p>
+                  <p className="text-black/60 text-sm">
+                    Loading your Geoplet...
+                  </p>
                 </div>
               </div>
             ) : featuredError ? (
@@ -389,18 +403,18 @@ export function NFTGalleryGrid({
                 <p className="text-xl font-medium">{myGeoplet.name}</p>
 
                 {/* Rarity Display */}
-                {myGeoplet.attributes && myGeoplet.attributes.length > 0 && (
+                {myGeoplet.attributes &&
+                  myGeoplet.attributes.length > 0 &&
                   (() => {
                     const rarityAttr = myGeoplet.attributes.find(
-                      (attr) => attr.key.toLowerCase() === 'rarity'
+                      (attr) => attr.key.toLowerCase() === "rarity"
                     );
                     return rarityAttr ? (
                       <Badge variant="secondary" className="mt-2 w-fit">
                         {rarityAttr.value}
                       </Badge>
                     ) : null;
-                  })()
-                )}
+                  })()}
               </div>
               <div>
                 {/* NFT Marketplace Links & Share - Use FID directly since FID = tokenId (1:1 mapping) */}
@@ -451,7 +465,7 @@ export function NFTGalleryGrid({
       </section>
 
       <div className="font-bold border-b border-black/8 pb-4">
-        <p>Recently Geopleted</p>
+        <p>Recent GeoTizens</p>
       </div>
 
       {/* Row 2: NFT Grid */}
