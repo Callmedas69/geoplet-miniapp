@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 import { usePublicClient } from "wagmi";
 import { GeopletsABI } from "@/abi/GeopletsABI";
+import { openExternalUrl } from "@/lib/external-links";
 
 interface NFTGalleryGridProps {
   nfts: GeopletNFT[];
@@ -277,7 +278,7 @@ export function NFTGalleryGrid({
     }
   };
 
-  const handleShareX = () => {
+  const handleShareX = async () => {
     if (!userFid) return;
 
     const shareUrl = `${window.location.origin}/share/${userFid}`;
@@ -286,38 +287,22 @@ export function NFTGalleryGrid({
       text
     )}&url=${encodeURIComponent(shareUrl)}`;
 
-    const newWindow = window.open(twitterUrl, "_blank", "noopener,noreferrer");
-    if (newWindow) newWindow.opener = null;
-    haptics.tap();
+    await openExternalUrl(twitterUrl, "Twitter");
   };
 
   // Marketplace link handlers - Opens in Farcaster in-app browser
   const handleOpenSea = async () => {
     if (!userFid) return;
 
-    try {
-      const url = `https://opensea.io/assets/base/${GEOPLET_CONFIG.address}/${userFid}`;
-      await sdk.actions.openUrl(url);
-      haptics.tap();
-    } catch (error) {
-      console.error("Failed to open OpenSea:", error);
-      haptics.error();
-      toast.error("Failed to open OpenSea");
-    }
+    const url = `https://opensea.io/assets/base/${GEOPLET_CONFIG.address}/${userFid}`;
+    await openExternalUrl(url, "OpenSea");
   };
 
   const handleOnchainChecker = async () => {
     if (!userFid) return;
 
-    try {
-      const url = `https://onchainchecker.xyz/collection/base/${GEOPLET_CONFIG.address}/${userFid}`;
-      await sdk.actions.openUrl(url);
-      haptics.tap();
-    } catch (error) {
-      console.error("Failed to open OnchainChecker:", error);
-      haptics.error();
-      toast.error("Failed to open OnchainChecker");
-    }
+    const url = `https://onchainchecker.xyz/collection/base/${GEOPLET_CONFIG.address}/${userFid}`;
+    await openExternalUrl(url, "OnchainChecker");
   };
 
   // Empty state

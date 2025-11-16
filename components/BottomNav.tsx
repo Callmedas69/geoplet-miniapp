@@ -3,7 +3,7 @@
 /**
  * BottomNav Component
  *
- * Fixed bottom navigation bar with Home, Gallery, and Wallet icons
+ * Fixed bottom navigation bar with Home, Gallery, About, and Wallet icons
  * - Modern, minimal design with balanced spacing
  * - Mobile-optimized touch targets (52x52px with 28px icons)
  * - Subtle active state indicator (dot below icon)
@@ -12,7 +12,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, Wallet } from "lucide-react";
+import { Home, LayoutGrid, Info, Wallet } from "lucide-react";
 import { haptics } from "@/lib/haptics";
 
 interface BottomNavProps {
@@ -35,6 +35,13 @@ export function BottomNav({ onWalletClick }: BottomNavProps) {
       icon: LayoutGrid,
       label: "Gallery",
       isActive: pathname === "/gallery",
+      type: "link" as const,
+    },
+    {
+      href: "/about",
+      icon: Info,
+      label: "About",
+      isActive: pathname === "/about",
       type: "link" as const,
     },
     {
