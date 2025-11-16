@@ -300,6 +300,24 @@ console.log("[VOUCHER TIMING]", {
   deadlineISO: new Date(deadline * 1000).toISOString(),
 });
 
+// >>> DEBUG ADD — BACKEND RAW VOUCHER BEFORE SIGN
+console.log("[DEBUG BACKEND VOUCHER RAW BEFORE SIGN]", {
+  to: voucher.to,
+  fid: voucher.fid,
+  nonce: voucher.nonce,
+  deadline: voucher.deadline,
+});
+
+// >>> DEBUG ADD — BACKEND DOMAIN + TYPES BEFORE SIGN
+console.log("[DEBUG BACKEND EIP712 DOMAIN BEFORE SIGN]", {
+  ...GEOPLET_CONFIG.eip712.domain,
+  chainId: GEOPLET_CONFIG.chainId,
+  verifyingContract: GEOPLET_CONFIG.address,
+});
+
+// >>> DEBUG ADD
+console.log("[DEBUG BACKEND EIP712 TYPES BEFORE SIGN]", GEOPLET_CONFIG.eip712.types);
+
   // Create EIP-712 signature using viem (config from ABI)
   const signature = await walletClient.signTypedData({
     account,
@@ -312,6 +330,9 @@ console.log("[VOUCHER TIMING]", {
     primaryType: 'MintVoucher',
     message: voucher,
   });
+
+// >>> DEBUG ADD — SIGNATURE
+console.log("[DEBUG BACKEND SIGNATURE]", signature);
 
   // ✅ Signature Doctor - Verify locally before sending to frontend
   const recovered = await recoverTypedDataAddress({
@@ -341,6 +362,14 @@ console.log("[VOUCHER TIMING]", {
   }
 
   console.log('[✓ Signature verified]', { signer: recovered });
+
+  // >>> DEBUG ADD — FINAL VOUCHER SENT TO FRONTEND
+  console.log("[DEBUG BACKEND VOUCHER SENT TO FRONTEND]", {
+    to: voucher.to,
+    fid: voucher.fid.toString(),
+    nonce: voucher.nonce.toString(),
+    deadline: voucher.deadline.toString(),
+  });
 
   return {
     voucher: {

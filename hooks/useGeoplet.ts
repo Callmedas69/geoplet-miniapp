@@ -1,3 +1,5 @@
+// hooks/useGeoplet.ts
+
 /**
  * useGeoplet Hook - EIP-712 Signature-Based Minting
  *
@@ -64,6 +66,18 @@ export function useGeoplet() {
 
     const { voucher, signature } = signatureData;
 
+    // >>> DEBUG ADD — RAW FRONTEND RESPONSE
+    console.log("[DEBUG FRONTEND RAW RESPONSE]", JSON.stringify(signatureData, null, 2));
+
+    // >>> DEBUG ADD — RAW VOUCHER RECEIVED FROM BACKEND
+    console.log("[DEBUG FRONTEND VOUCHER RECEIVED]", {
+      to: voucher.to,
+      fid: voucher.fid,
+      nonce: voucher.nonce,
+      deadline: voucher.deadline,
+    });
+
+
     // Debug logging: Full signature data structure
     console.log('[MINT-DEBUG] ===== SIGNATURE DATA RECEIVED =====');
     console.log('[MINT-DEBUG] Full signatureData object:', JSON.stringify(signatureData, null, 2));
@@ -78,6 +92,32 @@ export function useGeoplet() {
       nonce: BigInt(voucher.nonce),
       deadline: BigInt(voucher.deadline),
     };
+
+// >>> DEBUG ADD — FINAL VOUCHER BEFORE writeContract
+console.log("[DEBUG FRONTEND FINAL VOUCHER BEFORE MINT]", {
+  to: mintVoucher.to,
+  fid: mintVoucher.fid.toString(),
+  nonce: mintVoucher.nonce.toString(),
+  deadline: mintVoucher.deadline.toString(),
+});
+
+// >>> DEBUG ADD — SIGNATURE CHECK
+console.log("[DEBUG FRONTEND SIGNATURE PASSED]", signature);
+
+// >>> DEBUG ADD — WRITE CONTRACT PARAMS
+console.log("[DEBUG FRONTEND WRITE CONTRACT PARAMS]", {
+  contract: GEOPLET_CONFIG.address,
+  args: [
+    {
+      to: mintVoucher.to,
+      fid: mintVoucher.fid.toString(),
+      nonce: mintVoucher.nonce.toString(),
+      deadline: mintVoucher.deadline.toString(),
+    },
+    `(Image length: ${base64ImageData.length})`,
+    signature,
+  ],
+});
 
     // Debug logging: Converted values
     console.log('[MINT-DEBUG] ===== MINT VOUCHER CONSTRUCTED =====');
