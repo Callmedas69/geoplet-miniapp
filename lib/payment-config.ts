@@ -8,15 +8,15 @@
 
 export const PAYMENT_CONFIG = {
   MINT: {
-    price: '1.99',           // Human-readable price
-    priceAtomic: '1990000',  // USDC atomic units (6 decimals)
+    price: '1',           // Human-readable price
+    priceAtomic: '1000000',  // USDC atomic units (6 decimals)
     endpoint: '/api/get-mint-signature',
     label: 'Mint',
     description: 'Mint your unique Geoplet NFT',
   },
   ANIMATION: {
-    price: '4.99',
-    priceAtomic: '4990000',
+    price: '1.99',
+    priceAtomic: '1990000',
     endpoint: '/api/generate-animation',
     label: 'Animation',
     description: 'Generate animated version',
