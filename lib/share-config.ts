@@ -27,8 +27,8 @@ export const SHARE_CONFIG = {
 
   // 3. Gallery (existing NFT share)
   gallery: {
-    farcaster: "A living archive of geometric art - each Geoplet is fully on-chain, immutable, and upgrade-ready.\n\nGeopleting Warplets by @sayangel with Bauhaus and Suprematist influence. Curated and produced by @geoart.",
-    twitter: "A living archive of geometric art - each Geoplet is fully on-chain, immutable, and upgrade-ready.\n\nGeopleting Warplets with Bauhaus and Suprematist influence. Curated and produced by @geoart_studio.",
+    farcaster: "A living archive of geometric art - each Geoplet is fully on-chain, immutable, and upgrade-ready.\n\nGeopleting Warplets by @sayangel with Bauhaus and Suprematist influence.\n\nCurated and produced by @geoart.",
+    twitter: "A living archive of geometric art - each Geoplet is fully on-chain, immutable, and upgrade-ready.\n\nGeopleting Warplets with Bauhaus and Suprematist influence.\n\nCurated and produced by @geoart_studio.",
   },
 
   // Animation feature share

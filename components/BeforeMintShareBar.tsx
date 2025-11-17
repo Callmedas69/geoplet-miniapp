@@ -6,7 +6,7 @@ import { sdk } from "@farcaster/miniapp-sdk";
 import { toast } from "sonner";
 import { haptics } from "@/lib/haptics";
 import { SHARE_CONFIG } from "@/lib/share-config";
-import { appUrl } from "@/lib/config";
+import { openExternalUrl } from "@/lib/external-links";
 
 interface BeforeMintShareBarProps {
   fid?: number | null;
@@ -17,8 +17,8 @@ export function BeforeMintShareBar({
   fid,
   variant = "inline",
 }: BeforeMintShareBarProps) {
-  // Share main site URL with OG metadata
-  const shareUrl = appUrl;
+  // Share landing page URL - web-to-app bridge for browser visitors
+  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : "https://geoplet.geoart.studio"}/share`;
 
   // Farcaster share
   const handleShareFarcaster = useCallback(async () => {
@@ -38,15 +38,13 @@ export function BeforeMintShareBar({
   }, [shareUrl]);
 
   // X/Twitter share
-  const handleShareX = useCallback(() => {
+  const handleShareX = useCallback(async () => {
     const text = SHARE_CONFIG.beforeMint.twitter;
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       text
     )}&url=${encodeURIComponent(shareUrl)}`;
 
-    const newWindow = window.open(twitterUrl, "_blank", "noopener,noreferrer");
-    if (newWindow) newWindow.opener = null;
-    haptics.tap();
+    await openExternalUrl(twitterUrl, "Twitter");
   }, [shareUrl]);
 
   const containerClasses =

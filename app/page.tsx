@@ -304,14 +304,12 @@ export default function Home() {
           errorMessage.toLowerCase().includes("service")
         ) {
           if (errorMessage.toLowerCase().includes("credit")) {
-            friendlyError =
-              "🔧 Our AI is refueling. Use Regenerate ($3) to skip the wait!";
+            friendlyError = "🔧 Our Agent is refueling!";
           } else if (errorMessage.toLowerCase().includes("rate")) {
             friendlyError =
               "⚡ Engine warming up. Try Regenerate or wait a moment!";
           } else {
-            friendlyError =
-              "🎨 Our AI artist is taking a break. Use Regenerate ($3) or refresh!";
+            friendlyError = "🎨 Our artist is taking a break.!";
           }
         }
 
@@ -349,11 +347,9 @@ export default function Home() {
               <h2 className="text-2xl font-semibold mb-3 text-gray-800">
                 Warplet #{fid} Not Found
               </h2>
-              <p className="text-gray-600 mb-2">
-                This Warplet hasn't been minted yet.
-              </p>
               <p className="text-sm text-gray-500">
-                You need Warplet #{fid} to exist on-chain to create your Geoplet.
+                You need Warplet #{fid} that tied to your FID to create your
+                Geoplet.
               </p>
             </div>
           )}
@@ -375,38 +371,38 @@ export default function Home() {
               {/* Badge Section - Trust signals and features */}
               <BadgeSection />
 
-          {/* Mint Button - Conditional rendering based on payment status */}
-          <div className="flex flex-col gap-4 justify-center items-center">
-            {paymentStatus === "checking" ? (
-              <div className="text-center text-gray-400 py-4">
-                Checking payment status...
-              </div>
-            ) : paymentStatus === "paid" ? (
-              <MintPaidButton
-                generatedImage={generatedImage}
-                onSuccess={(hash, tokenId) => {
-                  setMintTxHash(hash);
-                  setMintedTokenId(tokenId);
-                  setShowSuccessModal(true);
-                  setPaymentStatus("unpaid"); // Reset after successful mint
-                }}
-              />
-            ) : (
-              <MintButton
-                generatedImage={generatedImage}
-                onSuccess={(hash, tokenId) => {
-                  setMintTxHash(hash);
-                  setMintedTokenId(tokenId);
-                  setShowSuccessModal(true);
-                }}
-              />
-            )}
+              {/* Mint Button - Conditional rendering based on payment status */}
+              <div className="flex flex-col gap-4 justify-center items-center">
+                {paymentStatus === "checking" ? (
+                  <div className="text-center text-gray-400 py-4">
+                    Checking payment status...
+                  </div>
+                ) : paymentStatus === "paid" ? (
+                  <MintPaidButton
+                    generatedImage={generatedImage}
+                    onSuccess={(hash, tokenId) => {
+                      setMintTxHash(hash);
+                      setMintedTokenId(tokenId);
+                      setShowSuccessModal(true);
+                      setPaymentStatus("unpaid"); // Reset after successful mint
+                    }}
+                  />
+                ) : (
+                  <MintButton
+                    generatedImage={generatedImage}
+                    onSuccess={(hash, tokenId) => {
+                      setMintTxHash(hash);
+                      setMintedTokenId(tokenId);
+                      setShowSuccessModal(true);
+                    }}
+                  />
+                )}
 
-            {/* Share Buttons - Below Mint Button */}
-            <div className="w-full flex justify-center">
-              <BeforeMintShareBar fid={fid} variant="inline" />
-            </div>
-          </div>
+                {/* Share Buttons - Below Mint Button */}
+                <div className="w-full flex justify-center">
+                  <BeforeMintShareBar fid={fid} variant="inline" />
+                </div>
+              </div>
             </>
           )}
         </main>

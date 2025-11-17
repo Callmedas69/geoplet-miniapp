@@ -52,7 +52,5 @@ export const metadata: Metadata = {
 };
 
 export default function EmbedPage() {
-  // Server-side redirect - instant, no client JS, no UI flash
-  // Social media crawlers get metadata before redirect executes
   redirect("/");
 }
