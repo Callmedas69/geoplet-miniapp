@@ -26,4 +26,14 @@ export interface UnmintedGeoplet {
   fid: number;
   image_data: string;
   created_at: string;
+  username: string;
+  cast_sent: boolean;
+}
+
+export interface UnconvertedUser {
+  fid: number;
+  username: string;
+  image_data: string;
+  generated_at: string;
+  cast_sent: boolean;
 }

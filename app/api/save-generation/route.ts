@@ -26,11 +26,12 @@ function checkRateLimit(fid: string): boolean {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { fid, image_data } = body;
+    const { fid, image_data, username } = body;
 
     console.log('[SAVE-GEN-API] Request received:', {
       fid,
       fidType: typeof fid,
+      username,
       hasImageData: !!image_data,
       imageDataLength: image_data?.length,
       timestamp: new Date().toISOString()
@@ -41,6 +42,14 @@ export async function POST(request: NextRequest) {
       console.error('[SAVE-GEN-API] ❌ Invalid FID:', { fid, fidType: typeof fid });
       return NextResponse.json(
         { success: false, error: 'Invalid FID' },
+        { status: 400 }
+      );
+    }
+
+    if (!username || typeof username !== 'string') {
+      console.error('[SAVE-GEN-API] ❌ Invalid username:', { fid, username, usernameType: typeof username });
+      return NextResponse.json(
+        { success: false, error: 'Invalid username' },
         { status: 400 }
       );
     }
@@ -119,6 +128,7 @@ export async function POST(request: NextRequest) {
         {
           fid,
           image_data: rawBase64,
+          username,
           created_at: new Date().toISOString(),
         },
         {

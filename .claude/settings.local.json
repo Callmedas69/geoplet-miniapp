@@ -89,7 +89,10 @@
       "Bash(else echo \"⚠️  .next folder not found\")",
       "Bash(else echo \"✗ .next not found\")",
       "Bash(else echo \"✗ No node_modules cache found\")",
-      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\components\\SDKInitializer.tsx\")"
+      "Bash(del \"D:\\Harry\\BasedNouns\\CodeProject\\geoplet\\components\\SDKInitializer.tsx\")",
+      "Bash(grep:*)",
+      "Bash(dir /s /B *.ts *.tsx *.js *.jsx 2)",
+      "WebFetch(domain:docs.neynar.com)"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -36,7 +36,7 @@ export default function Home() {
   >("checking");
 
   const { address } = useAccount();
-  const { nft, fid, isLoading: isLoadingWarplet, hasWarplet } = useWarplets();
+  const { nft, fid, username, isLoading: isLoadingWarplet, hasWarplet } = useWarplets();
   const {
     saveGeneration,
     loadGeneration,
@@ -264,11 +264,12 @@ export default function Home() {
         // Save to Supabase
         console.log("[AUTO-GEN] Attempting to save to Supabase", {
           fid,
+          username,
           imageSize: data.imageData.length,
           imageSizeKB: (data.imageData.length / 1024).toFixed(2),
         });
 
-        const saved = await saveGeneration(fid, data.imageData);
+        const saved = await saveGeneration(fid, data.imageData, username || `fid-${fid}`);
         if (!saved) {
           console.error("[AUTO-GEN] ❌ FAILED TO SAVE:", {
             fid,

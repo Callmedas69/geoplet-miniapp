@@ -16,21 +16,23 @@ export function useGenerationStorage() {
 
   // Save generation to Supabase
   const saveGeneration = useCallback(
-    async (fid: number, imageData: string): Promise<boolean> => {
+    async (fid: number, imageData: string, username: string): Promise<boolean> => {
       // Enhanced validation logging
       console.log('[SAVE-GEN] Starting save:', {
         fid,
         fidType: typeof fid,
+        username,
         imageDataLength: imageData?.length,
         imageDataPrefix: imageData?.substring(0, 50),
         timestamp: new Date().toISOString()
       });
 
-      if (!fid || !imageData) {
+      if (!fid || !imageData || !username) {
         console.error("[SAVE-GEN] ❌ Validation failed:", {
           fid,
           fidType: typeof fid,
-          hasImageData: !!imageData
+          hasImageData: !!imageData,
+          hasUsername: !!username
         });
         return false;
       }
@@ -52,7 +54,7 @@ export function useGenerationStorage() {
         const response = await fetch("/api/save-generation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fid, image_data: imageData }),
+          body: JSON.stringify({ fid, image_data: imageData, username }),
         });
 
         const data = await response.json();

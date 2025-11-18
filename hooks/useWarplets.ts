@@ -19,6 +19,7 @@ export function useWarplets() {
   const { isConnected } = useAccount();
   const [nft, setNft] = useState<WarpletNFT | null>(null);
   const [fid, setFid] = useState<number | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,6 +28,7 @@ export function useWarplets() {
       setNft(null);
       setError(null);
       setFid(null);
+      setUsername(null);
       return;
     }
 
@@ -43,11 +45,13 @@ export function useWarplets() {
           throw new Error('Unable to get Farcaster ID. Please ensure you are using this app within Farcaster.');
         }
 
-        // Retrieve FID (Farcaster ID) from SDK context
+        // Retrieve FID (Farcaster ID) and username from SDK context
         // This FID is used throughout the app as the user's unique identifier
         // In Geoplet contract: FID = tokenId (1:1 mapping)
         const userFid = context.user.fid;
+        const userName = context.user.username;
         setFid(userFid);
+        setUsername(userName ?? null);
 
         if (!userFid) {
           throw new Error('Unable to get Farcaster ID');
@@ -102,6 +106,7 @@ export function useWarplets() {
   return {
     nft,
     fid,
+    username,
     isLoading,
     error,
     hasWarplet: nft !== null,
