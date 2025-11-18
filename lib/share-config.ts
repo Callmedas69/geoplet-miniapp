@@ -14,7 +14,7 @@ export const SHARE_CONFIG = {
   // 1. Before mint (pre-generation/preview)
   beforeMint: {
     farcaster: "Welcome to Geoplet, art that deploys like code, preserved forever on-chain.\n\nGeopleting your Warplets by @sayangel, reborn with Bauhaus harmony and Suprematist geometry.\n\n🪙 Fully on-chain\n🪙 x402 payment enabled\n🪙 Powered by Onchain.fi\n🪙 Produced by @geoart\n\nStart exploring ↓\n\n",
-    twitter: "Welcome to Geoplet, art that deploys like code, preserved forever on-chain.\n\nGeopleting your Warplets by @sayangel, reborn with Bauhaus harmony and Suprematist geometry.\n\n🪙 Fully on-chain\n🪙 x402 payment enabled\n🪙 Powered by @onchainpayment\n🪙 Produced by @geoart\n\nStart exploring ↓\n\n",
+    twitter: "Welcome to Geoplet, art that deploys like code, preserved forever on-chain.\n\nGeopleting your Warplets by @sayangel, reborn with Bauhaus harmony and Suprematist geometry.\n\n🪙 Fully on-chain\n🪙 x402 payment enabled\n🪙 Powered by @onchainpayment\n🪙 Produced by @geoart_studio\n\nStart exploring ↓\n\n",
   },
 
   // 2. After mint (post-mint celebration)
