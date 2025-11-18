@@ -170,7 +170,7 @@ export async function GET(
             display: "flex",
             flexDirection: "row",
             backgroundColor: "#f3daa1",
-            padding: "100px",
+            padding: "120px",
           }}
         >
           {/* Left: Geoplet Image */}
@@ -208,10 +208,20 @@ export async function GET(
             {/* Logo */}
             <div
               style={{
+                fontFamily: "Schoolbell",
+                fontSize: "48px",
+                color: "#451a03",
+                fontStyle: "italic",
+              }}
+            >
+              your
+            </div>
+            <div
+              style={{
                 fontFamily: "SpriteGraffiti",
                 fontSize: "120px",
                 color: "#451a03",
-                marginBottom: "2px",
+                marginBottom: "10px",
                 fontWeight: "bold",
               }}
             >
@@ -226,9 +236,10 @@ export async function GET(
                 color: "#451a03",
                 marginBottom: "10px",
                 fontStyle: "italic",
+                lineHeight: "1.1",
               }}
             >
-              your Geoplet is patiently waiting… 😊
+              is patiently waiting…
             </div>
 
             {/* Description */}
@@ -249,9 +260,8 @@ export async function GET(
             <div
               style={{
                 fontFamily: "Schoolbell",
-                fontSize: "16px",
+                fontSize: "18px",
                 color: "#451a03",
-                opacity: 0.7,
                 textAlign: "right",
               }}
             >
