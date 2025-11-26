@@ -40,6 +40,7 @@ import {
   PaymentErrorCode,
   type APIError,
 } from '@/types/errors';
+import { ONCHAIN_FI_INTERMEDIATES } from '@/lib/payment-config';
 
 // Use empty string for relative paths in client-side fetch
 // This ensures same-origin requests with all headers preserved (including X-Payment)
@@ -164,12 +165,16 @@ export function usePayment(config: PaymentConfig) {
       console.log(`[x402 ${config.label}] Step 3: Awaiting user signature for payment authorization...`);
 
       // Generate payment header with EIP-3009 signature
+      // CRITICAL: Sign to onchain.fi intermediate address, NOT final recipient
+      // The intermediate handles the transfer and forwards to final recipient
       setStatus('processing');
       console.log(`[x402 ${config.label}] Step 4: Generating payment header...`);
+      console.log(`[x402 ${config.label}] Signing to intermediate: ${ONCHAIN_FI_INTERMEDIATES.BASE_TO_BASE}`);
+      console.log(`[x402 ${config.label}] Final recipient (from terms): ${terms.payTo}`);
 
       const paymentHeader = await generatePaymentHeader(walletClient, {
         from: address,
-        to: terms.payTo as `0x${string}`,
+        to: ONCHAIN_FI_INTERMEDIATES.BASE_TO_BASE as `0x${string}`,  // Sign to intermediate, NOT final recipient
         value: config.priceAtomic,
         validAfter: '0',
         usdcAddress: USDC_ADDRESS,
