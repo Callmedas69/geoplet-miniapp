@@ -137,9 +137,9 @@ function getErrorCodeForEndpoint(error: AppError): PaymentErrorCode | MintErrorC
  * 4. Execute mint transaction
  *
  * @param paymentHeader - Base64-encoded x402 payment authorization
- * @returns true if payment verified successfully
+ * @returns { valid: boolean, paymentId?: string } - paymentId required for settlement
  */
-async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
+async function verifyPaymentOnly(paymentHeader: string): Promise<{ valid: boolean; paymentId?: string }> {
   try {
     // Decode payment header to check expiration and log details
     try {
@@ -161,7 +161,7 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
       if (now > validBefore) {
         console.error('[PAYMENT-CHECK] ❌ Payment signature EXPIRED!');
         console.error('[PAYMENT-CHECK] Expired since:', `${now - validBefore} seconds ago`);
-        return false;
+        return { valid: false };
       }
 
       // Warn if expiring soon (less than 60 seconds)
@@ -178,7 +178,7 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
       });
     } catch (decodeError) {
       console.error('[ONCHAIN.FI] Could not decode payment header:', decodeError);
-      return false;
+      return { valid: false };
     }
 
     console.log('[ONCHAIN.FI] Step 1: Verifying payment...');
@@ -228,18 +228,19 @@ async function verifyPaymentOnly(paymentHeader: string): Promise<boolean> {
         reason: verifyData.data?.reason,
         data: verifyData.data,
       });
-      return false;
+      return { valid: false };
     }
 
     console.log('[ONCHAIN.FI] ✅ Payment verified (settlement deferred until simulation passes)');
+    console.log('[ONCHAIN.FI] paymentId:', verifyData.data.paymentId);
 
-    return true;
+    return { valid: true, paymentId: verifyData.data.paymentId };
   } catch (error: unknown) {
     console.error('[ONCHAIN.FI] Payment error:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       error: error,
     });
-    return false;
+    return { valid: false };
   }
 }
 
@@ -542,9 +543,9 @@ export async function POST(request: NextRequest) {
 
     // Verify payment via Onchain.fi (NO settlement yet - per LOG.md)
     console.log('[ONCHAIN.FI] Verifying payment (settlement deferred)...');
-    const paymentValid = await verifyPaymentOnly(paymentHeader);
+    const verifyResult = await verifyPaymentOnly(paymentHeader);
 
-    if (!paymentValid) {
+    if (!verifyResult.valid) {
       return createErrorResponse(
         PaymentErrorCode.PAYMENT_VERIFICATION_FAILED,
         'Payment verification failed - Invalid or insufficient payment',
@@ -552,19 +553,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { paymentId } = verifyResult;
     console.log('[ONCHAIN.FI] Payment verified successfully (will settle after simulation)');
+    console.log('[ONCHAIN.FI] paymentId for settlement:', paymentId);
 
     // Generate EIP-712 signature
     console.log('Generating mint signature for:', { userAddress, fid });
     const { voucher, signature } = await generateMintSignature(userAddress as Address, fid);
 
-    // Return success response with payment header for settlement
+    // Return success response with payment header and paymentId for settlement
     return NextResponse.json(
       {
         success: true,
         voucher,
         signature,
         paymentHeader, // Return to frontend for settlement after simulation
+        paymentId,     // Required for settlement - must be passed to /api/settle-payment
         message: 'Mint signature generated successfully (payment verified, not settled yet)',
       },
       {

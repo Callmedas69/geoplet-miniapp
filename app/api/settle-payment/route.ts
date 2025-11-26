@@ -43,7 +43,7 @@ export async function OPTIONS() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { paymentHeader, fid, userAddress } = body;
+    const { paymentHeader, paymentId, fid, userAddress } = body;
 
     // Validate required fields
     if (!paymentHeader) {
@@ -51,6 +51,19 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           error: 'Payment header is required',
+        },
+        {
+          status: 400,
+          headers: corsHeaders,
+        }
+      );
+    }
+
+    if (!paymentId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Payment ID is required (from verify step)',
         },
         {
           status: 400,
@@ -85,7 +98,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log('[SETTLE] Request:', { fid, userAddress, hasPaymentHeader: !!paymentHeader });
+    console.log('[SETTLE] Request:', { fid, userAddress, paymentId, hasPaymentHeader: !!paymentHeader });
 
     // Validate environment variables
     if (!process.env.ONCHAIN_FI_API_KEY) {
@@ -112,9 +125,10 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        paymentId,                    // Required: from verify response
         paymentHeader,
-        sourceNetwork: 'base',      // New format (supports cross-chain)
-        destinationNetwork: 'base',  // New format (supports cross-chain)
+        sourceNetwork: 'base',
+        destinationNetwork: 'base',
         priority: 'balanced',
       }),
     });

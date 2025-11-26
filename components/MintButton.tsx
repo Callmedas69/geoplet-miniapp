@@ -263,6 +263,7 @@ export function MintButton({
         body: JSON.stringify({
           fid: fid.toString(),
           paymentHeader: signature.paymentHeader,
+          paymentId: signature.paymentId,  // Required by onchain.fi /settle endpoint
           userAddress: signature.voucher.to,
         }),
       });

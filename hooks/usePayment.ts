@@ -76,6 +76,7 @@ export interface MintSignatureResponse {
   };
   signature: string;
   paymentHeader: string; // Added for settlement after simulation
+  paymentId: string;     // Required for settlement - from onchain.fi verify response
 }
 
 export function usePayment(config: PaymentConfig) {
@@ -214,7 +215,7 @@ export function usePayment(config: PaymentConfig) {
 
       const data = await paymentResponse.json();
 
-      if (!data.success || !data.voucher || !data.signature) {
+      if (!data.success || !data.voucher || !data.signature || !data.paymentId) {
         throw new AppError(PaymentErrorCode.API_ERROR, 'Invalid response from server');
       }
 
